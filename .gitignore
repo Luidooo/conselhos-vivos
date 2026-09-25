@@ -1,0 +1,21 @@
+# segredos — NUNCA comitar credenciais do INLABS
+.env
+*.env
+!.env.example
+
+# dados brutos: pesados e reproduzíveis pelo pipeline
+data/raw/**
+data/bronze/**
+!data/**/.gitkeep
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# sistema
+.DS_Store
+*.swp
