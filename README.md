@@ -31,7 +31,7 @@ Um conselho que só produz `AUTO` está se auto-administrando, não incidindo em
 | Fonte | O que traz | Acesso |
 |---|---|---|
 | [INLABS / Imprensa Nacional](https://inlabs.in.gov.br/) | Edições completas do DOU em XML, desde 01/01/2020 | Gratuito, exige cadastro |
-| Planilhas da pesquisadora | 2.638 atos já classificados à mão — nosso *ground truth* | Cedidas pela pesquisadora |
+| Planilhas da pesquisadora | 215 atos já classificados à mão, 2003–2020 — nosso *ground truth* | Cedidas pela pesquisadora |
 | [Brasil Participativo](https://brasilparticipativo.presidencia.gov.br/) | Composição, agenda e reuniões de cada conselho | Público (Decidim) |
 | Cadastro de órgãos (SIORG / decretos) | O censo de conselhos existentes — o denominador | Público |
 
