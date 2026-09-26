@@ -9,7 +9,7 @@ help: ## lista os comandos
 	@echo "→ .env criado a partir do .env.example — preencha as credenciais do INLABS"
 
 setup: .env up ## primeira vez: cria o .env (se faltar) e sobe tudo
-	@echo "→ banco em localhost:$$(grep ^POSTGRES_PORT= .env | cut -d= -f2) · adminer em http://localhost:8080"
+	@echo "→ banco em localhost:$$(grep ^POSTGRES_PORT= .env | cut -d= -f2) · pgAdmin em http://localhost:5050"
 
 up: .env ## sobe os serviços e espera o banco ficar healthy
 	docker compose up -d --wait

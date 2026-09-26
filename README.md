@@ -52,9 +52,11 @@ Isso sobe:
 | Serviço | Onde | Para quê |
 |---|---|---|
 | `db` — PostgreSQL 16 | `localhost:5432` (host) · `db:5432` (entre containers) | o OLTP de curadoria |
-| `adminer` | <http://localhost:8080> | explorar o banco pelo navegador — servidor `db`, credenciais do `.env` |
+| `pgadmin` — pgAdmin 4 | <http://localhost:5050> | explorar o banco pelo navegador — abre sem login, com o servidor `conselhos-vivos (db)` já cadastrado e conectado |
 
 Os dados ficam no volume `pgdata` e sobrevivem a `docker compose down`.
+
+> **`db` ou `localhost`?** Dentro do compose (pgAdmin, ingestores) o banco é `db:5432`. Fora dele, no seu terminal ou no DBeaver, é `localhost:5432`. Dentro de um container, `localhost` é o próprio container.
 
 ```bash
 make test      # teste de fumaça: sobe healthy e persiste entre down/up
