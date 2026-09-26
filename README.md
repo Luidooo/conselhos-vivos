@@ -39,12 +39,13 @@ Um conselho que só produz `AUTO` está se auto-administrando, não incidindo em
 
 ## Como rodar
 
-Pré-requisito: Docker com Compose v2 (`docker compose version`).
+Pré-requisitos: Docker com Compose v2 (`docker compose version`) e `make`.
 
 ```bash
-cp .env.example .env     # preencha as credenciais do INLABS
-docker compose up -d --wait
+make setup     # cria o .env a partir do .env.example (se faltar) e sobe tudo
 ```
+
+Depois, preencha as credenciais do INLABS no `.env`. Sem `make`, o equivalente é `cp .env.example .env && docker compose up -d --wait`.
 
 Isso sobe:
 
@@ -56,9 +57,11 @@ Isso sobe:
 Os dados ficam no volume `pgdata` e sobrevivem a `docker compose down`.
 
 ```bash
-bash tests/infra/test_compose.sh   # confere que sobe healthy e persiste entre down/up
-docker compose down                # para, mantém os dados
-docker compose down -v             # para e APAGA o banco (volta ao zero)
+make test      # teste de fumaça: sobe healthy e persiste entre down/up
+make psql      # abre o psql dentro do container
+make down      # para, mantém os dados
+make reset     # APAGA o banco e sobe do zero
+make           # lista todos os comandos
 ```
 
 > **Porta 5432 ocupada?** Se você já tem um Postgres instalado na máquina, o `up` falha com `port is already allocated`. Troque `POSTGRES_PORT` no seu `.env` (ex.: `5433`) — só no `.env`, não no `.env.example`.
