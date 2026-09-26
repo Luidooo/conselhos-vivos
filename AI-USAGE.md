@@ -8,6 +8,7 @@ Conforme a Política de Uso de IA da disciplina.
 |---|---|---|
 | Levantamento do domínio | Claude Code | Transcrição do áudio de briefing, leitura das planilhas, pesquisa da estrutura do DOU/INLABS |
 | Documentação | Claude Code | Redação do briefing da squad e deste README |
+| Issue #1 — planejamento (26/09) | Claude Code | Leitura do plano de ensino e do checklist da E1, levantamento das tags de imagem no Docker Hub, detecção do conflito de porta 5432 na máquina local, e redação do plano de implementação da issue |
 
 ## Princípios da squad
 
