@@ -8,6 +8,8 @@ Conforme a Política de Uso de IA da disciplina.
 |---|---|---|
 | Levantamento do domínio | Claude Code | Transcrição do áudio de briefing, leitura das planilhas, pesquisa da estrutura do DOU/INLABS |
 | Documentação | Claude Code | Redação do briefing da squad e deste README |
+| Issue #1 — planejamento (26/09) | Claude Code | Leitura do plano de ensino e do checklist da E1, levantamento das tags de imagem no Docker Hub, detecção do conflito de porta 5432 na máquina local, e redação do plano de implementação da issue |
+| Issue #1 — implementação (26/09) | Claude Code | Geração do `docker-compose.yml`, do teste de fumaça `tests/infra/test_compose.sh`, do `Makefile` (`make setup`) e da seção "Como rodar" do README. Revisado e executado pela Luiza, incluindo teste em clone limpo |
 
 ## Princípios da squad
 

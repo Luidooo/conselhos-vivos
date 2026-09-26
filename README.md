@@ -39,12 +39,34 @@ Um conselho que só produz `AUTO` está se auto-administrando, não incidindo em
 
 ## Como rodar
 
-> ⚠️ Em construção — ver `docs/diario/` para o estado atual.
+Pré-requisitos: Docker com Compose v2 (`docker compose version`) e `make`.
 
 ```bash
-cp .env.example .env     # preencha as credenciais do INLABS
-docker compose up -d
+make setup     # cria o .env a partir do .env.example (se faltar) e sobe tudo
 ```
+
+Depois, preencha as credenciais do INLABS no `.env`. Sem `make`, o equivalente é `cp .env.example .env && docker compose up -d --wait`.
+
+Isso sobe:
+
+| Serviço | Onde | Para quê |
+|---|---|---|
+| `db` — PostgreSQL 16 | `localhost:5432` (host) · `db:5432` (entre containers) | o OLTP de curadoria |
+| `pgadmin` — pgAdmin 4 | <http://localhost:5050> | explorar o banco pelo navegador — abre sem login, com o servidor `conselhos-vivos (db)` já cadastrado e conectado |
+
+Os dados ficam no volume `pgdata` e sobrevivem a `docker compose down`.
+
+> **`db` ou `localhost`?** Dentro do compose (pgAdmin, ingestores) o banco é `db:5432`. Fora dele, no seu terminal ou no DBeaver, é `localhost:5432`. Dentro de um container, `localhost` é o próprio container.
+
+```bash
+make test      # teste de fumaça: sobe healthy e persiste entre down/up
+make psql      # abre o psql dentro do container
+make down      # para, mantém os dados
+make reset     # APAGA o banco e sobe do zero
+make           # lista todos os comandos
+```
+
+> **Porta 5432 ocupada?** Se você já tem um Postgres instalado na máquina, o `up` falha com `port is already allocated`. Troque `POSTGRES_PORT` no seu `.env` (ex.: `5433`) — só no `.env`, não no `.env.example`.
 
 ## Estrutura
 
