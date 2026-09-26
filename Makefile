@@ -1,8 +1,8 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup up down test reset psql logs
+.PHONY: help setup up down test reset pgadmin-reset psql logs
 
 help: ## lista os comandos
-	@grep -E '^[a-z]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-7s %s\n", $$1, $$2}'
+	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
 
 .env:
 	cp .env.example .env
@@ -23,6 +23,13 @@ test: .env ## teste de fumaça: sobe healthy e persiste entre down/up
 reset: ## APAGA o banco e sobe do zero
 	docker compose down -v
 	docker compose up -d --wait
+
+pgadmin-reset: ## recria o pgAdmin do zero (use se mudar POSTGRES_USER ou POSTGRES_DB)
+	docker compose rm -sf pgadmin
+	docker volume ls -q --filter label=com.docker.compose.volume=pgadmin \
+	  --filter label=com.docker.compose.project=$$(docker compose config | awk '/^name:/{print $$2}') \
+	  | xargs docker volume rm
+	docker compose up -d --wait pgadmin
 
 psql: ## abre o psql dentro do container
 	docker compose exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
