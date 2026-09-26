@@ -31,7 +31,7 @@ Um conselho que só produz `AUTO` está se auto-administrando, não incidindo em
 | Fonte | O que traz | Acesso |
 |---|---|---|
 | [INLABS / Imprensa Nacional](https://inlabs.in.gov.br/) | Edições completas do DOU em XML, desde 01/01/2020 | Gratuito, exige cadastro |
-| Planilhas da pesquisadora | 215 atos já classificados à mão, 2003–2020 — nosso *ground truth* | Cedidas pela pesquisadora |
+| Planilhas da pesquisadora | 215 atos já classificados à mão, 2003–2020 — nosso *ground truth* | Pública; cópia versionada em `data/raw/` |
 | [Brasil Participativo](https://brasilparticipativo.presidencia.gov.br/) | Composição, agenda e reuniões de cada conselho | Público (Decidim) |
 | Cadastro de órgãos (SIORG / decretos) | O censo de conselhos existentes — o denominador | Público |
 
@@ -42,10 +42,10 @@ Um conselho que só produz `AUTO` está se auto-administrando, não incidindo em
 Pré-requisitos: Docker com Compose v2 (`docker compose version`) e `make`.
 
 ```bash
-make setup     # cria o .env (se faltar), sobe tudo e aplica as migrações de sql/
+make setup     # cria o .env (se faltar), sobe tudo, aplica as migrações de sql/ e carrega a planilha
 ```
 
-Depois, preencha as credenciais do INLABS no `.env`. Sem `make`, o equivalente é `cp .env.example .env && docker compose up -d --wait && bash scripts/migrate.sh`.
+Depois, preencha as credenciais do INLABS no `.env`. Sem `make`, o equivalente é `cp .env.example .env && docker compose up -d --wait && bash scripts/migrate.sh && bash scripts/carga.sh`.
 
 Isso sobe:
 
@@ -59,11 +59,12 @@ Os dados ficam no volume `pgdata` e sobrevivem a `docker compose down`.
 > **`db` ou `localhost`?** Dentro do compose (pgAdmin, ingestores) o banco é `db:5432`. Fora dele, no seu terminal ou no DBeaver, é `localhost:5432`. Dentro de um container, `localhost` é o próprio container.
 
 ```bash
-make test      # testes de infra (sobe, 127.0.0.1, persiste) e do esquema do OLTP
+make test      # testes: infra, esquema do OLTP, leitura da planilha e carga
 make migrate   # aplica as migrações de sql/ que ainda não rodaram
+make carga     # carrega a planilha da pesquisadora (idempotente) e atualiza o relatório
 make psql      # abre o psql dentro do container
 make down      # para, mantém os dados
-make reset     # APAGA o banco, sobe do zero e migra
+make reset     # APAGA o banco, sobe do zero, migra e carrega a planilha
 make pgadmin-reset  # recria o pgAdmin (se mudar POSTGRES_USER ou POSTGRES_DB)
 make           # lista todos os comandos
 ```
@@ -76,6 +77,8 @@ make           # lista todos os comandos
 >
 > **Subiu a branch da #2 antes desta correção?** O esquema era criado pelo `initdb`, e o `make migrate` quebra com `relation "orgao" already exists`. Rode `make reset` uma vez (apaga o banco local, que ainda não tem dado real).
 
+**Carga da planilha:** o `make carga` lê `data/raw/Cópia_bancos_dados_Carla_Rocha.xlsx` no serviço `carga` do compose (só biblioteca padrão do Python, sem rede), grava os 215 atos e as classificações da pesquisadora, e reescreve [`docs/carga/relatorio-planilha.md`](docs/carga/relatorio-planilha.md): quantas linhas entraram, quantas foram descartadas e por quê. Rodar de novo não duplica nada nem muda o relatório. Os atos normalizados ficam em `data/interim/planilha/atos.csv`.
+
 **Migrações:** cada arquivo `sql/NNN_*.sql` roda uma vez, em ordem e em transação, e fica registrado em `schema_migrations`. Depois de mergeado no `main`, um arquivo de migração **não se edita**: mudança nova vira o próximo número.
 
 ## Estrutura
@@ -85,6 +88,7 @@ sql/            DDL versionado do banco
 src/            ingestão, parsing e transformações
 docs/adr/       decisões de arquitetura (o porquê de cada escolha)
 docs/diario/    registro semanal do andamento
+docs/carga/     relatório da carga da planilha (gerado pelo make carga, versionado)
 data/           dados locais (não versionados)
 tests/          testes do pipeline
 ```
