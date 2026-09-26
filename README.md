@@ -59,14 +59,19 @@ Os dados ficam no volume `pgdata` e sobrevivem a `docker compose down`.
 > **`db` ou `localhost`?** Dentro do compose (pgAdmin, ingestores) o banco é `db:5432`. Fora dele, no seu terminal ou no DBeaver, é `localhost:5432`. Dentro de um container, `localhost` é o próprio container.
 
 ```bash
-make test      # teste de fumaça: sobe healthy e persiste entre down/up
+make test      # teste de fumaça: sobe healthy, só em 127.0.0.1, e persiste entre down/up
 make psql      # abre o psql dentro do container
 make down      # para, mantém os dados
 make reset     # APAGA o banco e sobe do zero
+make pgadmin-reset  # recria o pgAdmin (se mudar POSTGRES_USER ou POSTGRES_DB)
 make           # lista todos os comandos
 ```
 
 > **Porta 5432 ocupada?** Se você já tem um Postgres instalado na máquina, o `up` falha com `port is already allocated`. Troque `POSTGRES_PORT` no seu `.env` (ex.: `5433`) — só no `.env`, não no `.env.example`.
+>
+> **Só na sua máquina.** O banco e o pgAdmin escutam apenas em `127.0.0.1`: ninguém na mesma rede (Wi-Fi da UnB, por exemplo) alcança. Não troque isso — o pgAdmin roda **sem login**.
+>
+> **Senha com `$`?** No `.env`, coloque o valor entre aspas simples (`INLABS_SENHA='a$b'`), senão o Compose tenta interpolar. A senha do Postgres não pode ter `:` nem `\` (formato do `pgpass` do pgAdmin).
 
 ## Estrutura
 
