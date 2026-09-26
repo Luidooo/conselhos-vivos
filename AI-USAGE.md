@@ -67,7 +67,7 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi pedido:** revisar o PR #7 procurando bugs e corrigir o que fosse encontrado.
 - **O que foi aproveitado:** os 6 achados. Os dois graves eram de segurança e foram introduzidos pela própria IA na implementação: pgAdmin sem login e Postgres publicados em `0.0.0.0`. Também: `source .env` frágil no teste, `servers.json` que não acompanha o `.env` e mensagem de falha inalcançável no teste.
 - **Como foi verificado:** medido antes e depois pelo IP da rede — antes, HTTP 200 no pgAdmin e login no `psql` com a senha do README; depois, os dois recusados. O teste de fumaça agora falha se alguma porta sair de `127.0.0.1`; ele foi visto falhando antes da correção e passando depois. Uma senha com espaço, `;` e `$` no `.env` não quebra mais o teste.
-- **Quem revisou:** pendente — revisão no PR de correção.
+- **Quem revisou:** Moura (@thegm445), que aprovou o PR #8.
 
 ### 2026-09-26 — Revisão e correções do esquema da #2
 
