@@ -42,10 +42,10 @@ Um conselho que só produz `AUTO` está se auto-administrando, não incidindo em
 Pré-requisitos: Docker com Compose v2 (`docker compose version`) e `make`.
 
 ```bash
-make setup     # cria o .env a partir do .env.example (se faltar) e sobe tudo
+make setup     # cria o .env (se faltar), sobe tudo e aplica as migrações de sql/
 ```
 
-Depois, preencha as credenciais do INLABS no `.env`. Sem `make`, o equivalente é `cp .env.example .env && docker compose up -d --wait`.
+Depois, preencha as credenciais do INLABS no `.env`. Sem `make`, o equivalente é `cp .env.example .env && docker compose up -d --wait && bash scripts/migrate.sh`.
 
 Isso sobe:
 
@@ -59,10 +59,11 @@ Os dados ficam no volume `pgdata` e sobrevivem a `docker compose down`.
 > **`db` ou `localhost`?** Dentro do compose (pgAdmin, ingestores) o banco é `db:5432`. Fora dele, no seu terminal ou no DBeaver, é `localhost:5432`. Dentro de um container, `localhost` é o próprio container.
 
 ```bash
-make test      # teste de fumaça: sobe healthy, só em 127.0.0.1, e persiste entre down/up
+make test      # testes de infra (sobe, 127.0.0.1, persiste) e do esquema do OLTP
+make migrate   # aplica as migrações de sql/ que ainda não rodaram
 make psql      # abre o psql dentro do container
 make down      # para, mantém os dados
-make reset     # APAGA o banco e sobe do zero
+make reset     # APAGA o banco, sobe do zero e migra
 make pgadmin-reset  # recria o pgAdmin (se mudar POSTGRES_USER ou POSTGRES_DB)
 make           # lista todos os comandos
 ```
@@ -72,6 +73,10 @@ make           # lista todos os comandos
 > **Só na sua máquina.** O banco e o pgAdmin escutam apenas em `127.0.0.1`: ninguém na mesma rede (Wi-Fi da UnB, por exemplo) alcança. Não troque isso — o pgAdmin roda **sem login**.
 >
 > **Senha com `$`?** No `.env`, coloque o valor entre aspas simples (`INLABS_SENHA='a$b'`), senão o Compose tenta interpolar. A senha do Postgres não pode ter `:` nem `\` (formato do `pgpass` do pgAdmin).
+>
+> **Subiu a branch da #2 antes desta correção?** O esquema era criado pelo `initdb`, e o `make migrate` quebra com `relation "orgao" already exists`. Rode `make reset` uma vez (apaga o banco local, que ainda não tem dado real).
+
+**Migrações:** cada arquivo `sql/NNN_*.sql` roda uma vez, em ordem e em transação, e fica registrado em `schema_migrations`. Depois de mergeado no `main`, um arquivo de migração **não se edita**: mudança nova vira o próximo número.
 
 ## Estrutura
 
