@@ -1,130 +1,110 @@
 #!/usr/bin/env bash
+# Testes do esquema do OLTP de curadoria (issue #2).
+# Pré-requisito: banco no ar e migrado (make migrate). Cada caso roda numa
+# transação que nunca é confirmada, então o teste não deixa lixo no banco.
+# Uso: bash tests/db/test_schema.sh   (a partir de qualquer diretório)
 set -euo pipefail
+cd "$(dirname "$0")/../.."
 
-# 1. Carrega as variáveis do .env se o arquivo existir
-if [ -f .env ]; then
-  # exporta as variáveis sem quebrar caso haja comentários
-  export $(grep -v '^#' .env | xargs)
-elif [ -f ../../.env ]; then
-  export $(grep -v '^#' ../../.env | xargs)
-fi
+falhas=0
+ok()    { echo "  ok    $1"; }
+falha() { echo "  FALHA $1"; falhas=$((falhas + 1)); }
 
-# Cores para output
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-echo -e "${YELLOW}=== [TESTE DE FUMAÇA] Modelagem OLTP (Issue #2) ===${NC}\n"
-
-# Função auxiliar para rodar queries psql com as variáveis certas
-run_sql() {
-    docker compose exec -T db psql \
-      -U "${POSTGRES_USER}" \
-      -d "${POSTGRES_DB}" \
-      -v ON_ERROR_STOP=1 -q -t -A -c "$1"
+# Credenciais lidas dentro do container: o .env é formato do Compose, não de shell.
+psql_db() {
+  docker compose exec -T db sh -c \
+    'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -q -tA -c "$1"' sh "$1" 2>&1
 }
 
-# 1. Checar se o banco está de pé
-echo -n "1. Verificando conectividade com o banco... "
-if docker compose exec -T db pg_isready -q; then
-    echo -e "${GREEN}OK${NC}"
-else
-    echo -e "${RED}FALHA: Postgres não está respondendo.${NC}"
-    exit 1
-fi
+# Roda o SQL numa transação desfeita no fim e devolve a saída.
+em_rollback() { psql_db "BEGIN; $1; ROLLBACK;"; }
 
-# 2. Conferir se as 7 tabelas foram criadas
-echo -n "2. Verificando se as 7 tabelas existem... "
-TABELAS_ESPERADAS=("orgao" "orgao_nome" "conselho" "ato" "tipologia" "revisor" "classificacao")
-QTD_TABELAS=$(run_sql "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('orgao', 'orgao_nome', 'conselho', 'ato', 'tipologia', 'revisor', 'classificacao');")
+# Passa se o SQL for aceito e imprimir exatamente o esperado.
+espera_valor() {
+  local nome=$1 esperado=$2 sql=$3 out
+  if out=$(em_rollback "$sql") && [ "$out" = "$esperado" ]; then ok "$nome"
+  else falha "$nome — esperava '$esperado', veio: $out"; fi
+}
 
-if [ "$QTD_TABELAS" -eq 7 ]; then
-    echo -e "${GREEN}OK (7/7 tabelas encontradas)${NC}"
-else
-    echo -e "${RED}FALHA: Esperadas 7 tabelas, encontradas $QTD_TABELAS.${NC}"
-    exit 1
-fi
+# Passa só se o SQL for recusado PELO motivo esperado (nome da restrição ou trecho da mensagem).
+espera_erro() {
+  local nome=$1 motivo=$2 sql=$3 out
+  if out=$(em_rollback "$sql"); then falha "$nome — o banco aceitou"
+  elif grep -q "$motivo" <<<"$out"; then ok "$nome"
+  else falha "$nome — recusou por outro motivo: $out"; fi
+}
 
-# 3. Conferir se as 5 tipologias foram carregadas no seed
-echo -n "3. Verificando seed das 5 tipologias (DEF, FISC, GEST, AUTO, IP)... "
-TIPOLOGIAS=$(run_sql "SELECT count(*) FROM tipologia WHERE sigla IN ('DEF', 'FISC', 'GEST', 'AUTO', 'IP');")
-if [ "$TIPOLOGIAS" -eq 5 ]; then
-    echo -e "${GREEN}OK (5/5 tipologias carregadas)${NC}"
-else
-    echo -e "${RED}FALHA: Esperadas 5 tipologias, encontradas $TIPOLOGIAS.${NC}"
-    exit 1
-fi
+# Um órgão, um ato do DOU e a pesquisadora (revisor do seed), prontos para cada caso.
+BASE="INSERT INTO orgao DEFAULT VALUES;
+INSERT INTO ato (origem, id_dou, orgao_id, data_publicacao, conteudo)
+  VALUES ('DOU', 'TESTE-1', currval('orgao_id_seq'), '2021-01-01', 'texto');"
+PESQUISADORA="(SELECT id FROM revisor WHERE email = 'curadoria@pesquisa.local')"
 
-# 4. Conferir comentários obrigatórios (COMMENT ON)
-echo -n "4. Verificando existência de comentários (documentação no banco)... "
-QTD_COMMENTS=$(run_sql "SELECT count(*) FROM pg_description;")
-if [ "$QTD_COMMENTS" -ge 7 ]; then
-    echo -e "${GREEN}OK ($QTD_COMMENTS comentários registrados)${NC}"
-else
-    echo -e "${RED}FALHA: Poucos ou nenhum comentário encontrado ($QTD_COMMENTS). Documente o schema com COMMENT ON.${NC}"
-    exit 1
-fi
+echo "estrutura"
+espera_valor "7 tabelas + schema_migrations" "8" \
+  "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
+espera_valor "migrações 001 e 002 registradas" "001_schema.sql,002_seeds.sql" \
+  "SELECT string_agg(arquivo, ',' ORDER BY arquivo) FROM schema_migrations"
+espera_valor "tabelas do public documentadas com COMMENT ON (só as nossas)" "t" \
+  "SELECT count(DISTINCT c.relname) >= 7 FROM pg_description d
+     JOIN pg_class c ON c.oid = d.objoid JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND d.objsubid = 0 AND c.relkind = 'r'"
 
-# 5. Teste Transacional de Domínio e Restrições de Integridade
-echo "5. Executando testes de integridade relacional..."
+echo "tipologia (definições do README)"
+espera_valor "5 siglas" "AUTO,DEF,FISC,GEST,IP" \
+  "SELECT string_agg(sigla, ',' ORDER BY sigla) FROM tipologia"
+espera_valor "AUTO é autorregulação" "t" "SELECT nome ILIKE 'Autorregula%' FROM tipologia WHERE sigla = 'AUTO'"
+espera_valor "IP gere instâncias participativas" "t" "SELECT nome ILIKE '%participativ%' FROM tipologia WHERE sigla = 'IP'"
+espera_valor "GEST é gestão da política já definida" "t" "SELECT descricao ILIKE '%já definida%' FROM tipologia WHERE sigla = 'GEST'"
 
-run_sql "
-BEGIN;
+echo "ato"
+espera_valor "ato da planilha entra sem id_dou nem conteúdo" "1" \
+  "INSERT INTO orgao DEFAULT VALUES;
+   INSERT INTO ato (origem, ref_legal, orgao_id, data_publicacao, ementa)
+     VALUES ('PLANILHA', 'Resolução 12/2003', currval('orgao_id_seq'), '2003-02-19', 'ementa');
+   SELECT count(*) FROM ato WHERE origem = 'PLANILHA'"
+espera_erro "ato do DOU sem id_dou é recusado" "ck_ato_dou_completo" \
+  "INSERT INTO orgao DEFAULT VALUES;
+   INSERT INTO ato (origem, orgao_id, data_publicacao, conteudo) VALUES ('DOU', currval('orgao_id_seq'), '2021-01-01', 't')"
+espera_erro "ato sem conteúdo nem ementa é recusado" "ck_ato_tem_texto" \
+  "INSERT INTO orgao DEFAULT VALUES;
+   INSERT INTO ato (origem, orgao_id, data_publicacao) VALUES ('PLANILHA', currval('orgao_id_seq'), '2003-01-01')"
 
--- A. Inserir hierarquia de órgão e histórico de nomes
-INSERT INTO orgao (id, parent_id) VALUES (1000, NULL);
-INSERT INTO orgao_nome (orgao_id, nome, data_inicio, data_fim) 
-VALUES (1000, 'Ministério do Meio Ambiente', '2000-01-01', '2022-12-31');
-INSERT INTO orgao_nome (orgao_id, nome, data_inicio, data_fim) 
-VALUES (1000, 'Ministério do Meio Ambiente e Mudança do Clima', '2023-01-01', NULL);
+echo "classificação insert-only"
+espera_valor "reclassificar guarda as duas e a vigente é a última" "GEST|2" \
+  "$BASE
+   INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id) VALUES (currval('ato_id_seq'), 'DEF', $PESQUISADORA);
+   INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id) VALUES (currval('ato_id_seq'), 'GEST', $PESQUISADORA);
+   SELECT v.tipologia_sigla || '|' || (SELECT count(*) FROM classificacao WHERE ato_id = currval('ato_id_seq'))
+     FROM classificacao_vigente v WHERE v.ato_id = currval('ato_id_seq')"
+espera_valor "humana e automática convivem no mesmo ato" "2" \
+  "$BASE
+   INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id) VALUES (currval('ato_id_seq'), 'DEF', $PESQUISADORA);
+   INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id, confianca)
+     VALUES (currval('ato_id_seq'), 'GEST', (SELECT id FROM revisor WHERE tipo = 'PIPELINE' LIMIT 1), 0.8);
+   SELECT count(*) FROM classificacao_vigente WHERE ato_id = currval('ato_id_seq')"
+espera_erro "UPDATE em classificacao é bloqueado" "insert-only" \
+  "$BASE
+   INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id) VALUES (currval('ato_id_seq'), 'DEF', $PESQUISADORA);
+   UPDATE classificacao SET tipologia_sigla = 'IP' WHERE ato_id = currval('ato_id_seq')"
+espera_erro "apagar ato com classificação é bloqueado" "classificacao_ato_id_fkey" \
+  "$BASE
+   INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id) VALUES (currval('ato_id_seq'), 'DEF', $PESQUISADORA);
+   DELETE FROM ato WHERE id = currval('ato_id_seq')"
 
--- Inserir conselho vinculado
-INSERT INTO conselho (orgao_id, eh_participativo) VALUES (1000, true);
+echo "órgão"
+espera_erro "dois nomes vigentes para o mesmo órgão são recusados" "uq_orgao_nome_vigente" \
+  "INSERT INTO orgao DEFAULT VALUES;
+   INSERT INTO orgao_nome (orgao_id, nome, data_inicio) VALUES
+     (currval('orgao_id_seq'), 'Conselho A', '2020-01-01'), (currval('orgao_id_seq'), 'Conselho B', '2021-01-01')"
+espera_valor "renomeação com vigência fechada é aceita" "2" \
+  "INSERT INTO orgao DEFAULT VALUES;
+   INSERT INTO orgao_nome (orgao_id, nome, data_inicio, data_fim) VALUES
+     (currval('orgao_id_seq'), 'Ministério do Meio Ambiente', '2000-01-01', '2022-12-31');
+   INSERT INTO orgao_nome (orgao_id, nome, data_inicio) VALUES
+     (currval('orgao_id_seq'), 'Ministério do Meio Ambiente e Mudança do Clima', '2023-01-01');
+   SELECT count(*) FROM orgao_nome WHERE orgao_id = currval('orgao_id_seq')"
 
--- B. Testar Ato e Retificação (mesmo id_dou, versões diferentes)
-INSERT INTO ato (id, id_dou, versao, data_publicacao, conteudo, orgao_id)
-VALUES (9001, 'DOU-2026-TESTE-01', 1, '2026-03-01', 'Texto original da portaria', 1000);
-
-INSERT INTO ato (id, id_dou, versao, data_publicacao, conteudo, orgao_id)
-VALUES (9002, 'DOU-2026-TESTE-01', 2, '2026-03-05', 'Texto retificado com correção', 1000);
-
--- C. Cadastrar revisores (Humano e Pipeline)
-INSERT INTO revisor (id, nome, tipo, email) VALUES (8001, 'Pesquisadora Ana', 'HUMANO', 'ana@unb.br');
-INSERT INTO revisor (id, nome, tipo, email) VALUES (8002, 'Pipeline BERT-v1', 'PIPELINE', 'bot@pipeline.local');
-
--- D. Testar coexistência de classificação Humana e Automática no mesmo ato (9001)
-INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id) VALUES (9001, 'DEF', 8001);
-INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id) VALUES (9001, 'GEST', 8002);
-
-ROLLBACK; -- Desfaz os dados fictícios sem poluir o banco
-"
-
-echo -e "   -> Hierarquia, retificação e coexistência: ${GREEN}OK${NC}"
-
-# 6. Teste de Violação: Bloqueio de duplicidade pelo mesmo revisor
-echo -n "6. Testando se o banco impede duplicidade do mesmo revisor no mesmo ato... "
-SET_UP_TEST="
-INSERT INTO orgao (id, parent_id) VALUES (9999, NULL) ON CONFLICT DO NOTHING;
-INSERT INTO ato (id, id_dou, versao, data_publicacao, conteudo, orgao_id) VALUES (9999, 'TEST-DUP', 1, '2026-01-01', 'conteudo', 9999) ON CONFLICT DO NOTHING;
-INSERT INTO revisor (id, nome, tipo, email) VALUES (9999, 'Robô Teste', 'PIPELINE', 'bot@test.br') ON CONFLICT DO NOTHING;
-INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id) VALUES (9999, 'DEF', 9999);
-"
-
-# Roda o setup
-run_sql "$SET_UP_TEST" > /dev/null 2>&1
-
-# Tenta inserir duplicata proposital
-if run_sql "INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id) VALUES (9999, 'GEST', 9999);" > /dev/null 2>&1; then
-    echo -e "${RED}FALHA: O banco aceitou duplicata para o mesmo revisor no mesmo ato!${NC}"
-    # Limpa antes de sair
-    run_sql "DELETE FROM classificacao WHERE ato_id = 9999; DELETE FROM ato WHERE id = 9999; DELETE FROM revisor WHERE id = 9999; DELETE FROM orgao WHERE id = 9999;" > /dev/null 2>&1
-    exit 1
-else
-    echo -e "${GREEN}OK (Restrição UNIQUE uq_classificacao_ato_revisor atuou com sucesso)${NC}"
-fi
-
-# Limpa dados do teste 6
-run_sql "DELETE FROM classificacao WHERE ato_id = 9999; DELETE FROM ato WHERE id = 9999; DELETE FROM revisor WHERE id = 9999; DELETE FROM orgao WHERE id = 9999;" > /dev/null 2>&1
-
-echo -e "\n${GREEN}=== TODOS OS TESTES DE FUMAÇA PASSARAM COM SUCESSO! ===${NC}"
+echo
+if [ "$falhas" -gt 0 ]; then echo "FALHOU: $falhas caso(s)"; exit 1; fi
+echo "OK"
