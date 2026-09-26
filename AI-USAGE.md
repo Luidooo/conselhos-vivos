@@ -122,3 +122,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** tudo. A IA tinha recomendado que os 6 atos `99` entrassem sem classificação; a squad preferiu cadastrar o `99` como sigla. O teste da carga saiu errado na primeira versão (booleano comparado como `t` e um `ORDER BY` ambíguo que o `grep` escondia); foi corrigido, e o teste passou a mostrar a saída inteira do psql quando falha.
 - **Como foi verificado:** nomes e datas dos 5 conselhos lidos no texto das leis e decretos no planalto.gov.br; `make setup` + `make test` num clone limpo da branch, com o `git status` vazio no fim; duas cargas seguidas sem mudar o banco nem o relatório; 5 defeitos plantados no código de leitura, todos pegos pelos testes; o caso "não sobrepõe a curadoria" rodado com o `NOT EXISTS` removido, dentro de uma transação desfeita, e ele pegou; conferido que o banco ficou com as mesmas 215 classificações depois disso.
 - **Quem revisou:** Bruno (@BrunoBReis), que tomou as decisões de mapeamento. Revisão do PR: pendente — Márcio Henrique e mais uma pessoa da squad.
+
+### 2026-09-26 — ADR 0003 da carga da planilha (#3)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `docs/adr/0003-carregar-a-planilha-como-rotulo-da-curadoria.md`, `docs/adr/README.md`, `docs/diario/2026-09-26.md`
+- **O que foi pedido:** registrar como ADR 0003 as decisões da carga da planilha, já tomadas e implementadas na #3.
+- **O que foi aproveitado:** o ADR inteiro. Ele junta a chave conselho + `ID_VERSAO`, a classificação da planilha que não sobrepõe a curadoria, o `99` como sigla e a leitura com a biblioteca padrão; não traz decisão nova.
+- **Como foi verificado:** cada número do ADR foi conferido contra o diário de 26/09, o `resultados.json` do benchmark e o relatório da carga; conferido que o commit `e4f87eb` citado para reproduzir o benchmark contém o `bench.py`.
+- **Quem revisou:** pendente — a squad, no PR #10.
