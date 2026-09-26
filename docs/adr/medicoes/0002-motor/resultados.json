@@ -1,0 +1,311 @@
+[
+  {
+    "motor": "postgres",
+    "imagem_mb": 159,
+    "pronto_s": 1.3,
+    "C1_ddl_transacional": true,
+    "C2_indice_parcial": "nativo",
+    "C2_recusa_2_vigentes": true,
+    "C4_check": true,
+    "C3_fk_padrao": true,
+    "C5_trigger": true,
+    "cdc_padrao": "wal_level=replica",
+    "Q1_ms_n2638": 0.22,
+    "Q2_ms_n2638": 3.7,
+    "Q2_distinct_on_ms_n2638": 3.02,
+    "Q2_resultado_n2638": [
+      [
+        "AUTO",
+        528
+      ],
+      [
+        "DEF",
+        528
+      ],
+      [
+        "FISC",
+        527
+      ],
+      [
+        "GEST",
+        527
+      ],
+      [
+        "IP",
+        528
+      ]
+    ],
+    "Q1_ms_n26380": 0.27,
+    "Q2_ms_n26380": 21.86,
+    "Q2_distinct_on_ms_n26380": 15.38,
+    "Q2_resultado_n26380": [
+      [
+        "AUTO",
+        5276
+      ],
+      [
+        "DEF",
+        5276
+      ],
+      [
+        "FISC",
+        5276
+      ],
+      [
+        "GEST",
+        5276
+      ],
+      [
+        "IP",
+        5276
+      ]
+    ],
+    "ram_mb": 41
+  },
+  {
+    "motor": "mysql",
+    "imagem_mb": 234,
+    "pronto_s": 6.2,
+    "C1_ddl_transacional": false,
+    "C2_indice_parcial": "contorno (coluna gerada)",
+    "C2_recusa_2_vigentes": true,
+    "C4_check": true,
+    "C3_fk_padrao": true,
+    "C5_trigger": true,
+    "cdc_padrao": "log_bin=1, binlog_format=ROW",
+    "Q1_ms_n2638": 0.2,
+    "Q2_ms_n2638": 6.75,
+    "Q2_resultado_n2638": [
+      [
+        "AUTO",
+        528
+      ],
+      [
+        "DEF",
+        528
+      ],
+      [
+        "FISC",
+        527
+      ],
+      [
+        "GEST",
+        527
+      ],
+      [
+        "IP",
+        528
+      ]
+    ],
+    "Q1_ms_n26380": 0.24,
+    "Q2_ms_n26380": 72.95,
+    "Q2_resultado_n26380": [
+      [
+        "AUTO",
+        5276
+      ],
+      [
+        "DEF",
+        5276
+      ],
+      [
+        "FISC",
+        5276
+      ],
+      [
+        "GEST",
+        5276
+      ],
+      [
+        "IP",
+        5276
+      ]
+    ],
+    "ram_mb": 547
+  },
+  {
+    "motor": "mariadb",
+    "imagem_mb": 101,
+    "pronto_s": 3.2,
+    "C1_ddl_transacional": false,
+    "C2_indice_parcial": "contorno (coluna gerada)",
+    "C2_recusa_2_vigentes": true,
+    "C4_check": true,
+    "C3_fk_padrao": true,
+    "C5_trigger": true,
+    "cdc_padrao": "log_bin=0, binlog_format=MIXED",
+    "Q1_ms_n2638": 0.21,
+    "Q2_ms_n2638": 7.86,
+    "Q2_resultado_n2638": [
+      [
+        "AUTO",
+        528
+      ],
+      [
+        "DEF",
+        528
+      ],
+      [
+        "FISC",
+        527
+      ],
+      [
+        "GEST",
+        527
+      ],
+      [
+        "IP",
+        528
+      ]
+    ],
+    "Q1_ms_n26380": 0.37,
+    "Q2_ms_n26380": 27.93,
+    "Q2_resultado_n26380": [
+      [
+        "AUTO",
+        5276
+      ],
+      [
+        "DEF",
+        5276
+      ],
+      [
+        "FISC",
+        5276
+      ],
+      [
+        "GEST",
+        5276
+      ],
+      [
+        "IP",
+        5276
+      ]
+    ],
+    "ram_mb": 166
+  },
+  {
+    "motor": "sqlite",
+    "imagem_mb": 0,
+    "pronto_s": 0.0,
+    "C1_ddl_transacional": true,
+    "C2_indice_parcial": "nativo",
+    "C2_recusa_2_vigentes": true,
+    "C4_check": true,
+    "C3_fk_padrao": false,
+    "C3_fk_com_pragma": true,
+    "C5_trigger": true,
+    "cdc_padrao": "não existe",
+    "Q1_ms_n2638": 0.01,
+    "Q2_ms_n2638": 3.18,
+    "Q2_resultado_n2638": [
+      [
+        "AUTO",
+        528
+      ],
+      [
+        "DEF",
+        528
+      ],
+      [
+        "FISC",
+        527
+      ],
+      [
+        "GEST",
+        527
+      ],
+      [
+        "IP",
+        528
+      ]
+    ],
+    "Q1_ms_n26380": 0.01,
+    "Q2_ms_n26380": 33.5,
+    "Q2_resultado_n26380": [
+      [
+        "AUTO",
+        5276
+      ],
+      [
+        "DEF",
+        5276
+      ],
+      [
+        "FISC",
+        5276
+      ],
+      [
+        "GEST",
+        5276
+      ],
+      [
+        "IP",
+        5276
+      ]
+    ],
+    "ram_mb": "no processo da aplicação",
+    "disco_kb": 7432
+  },
+  {
+    "motor": "cassandra",
+    "imagem_mb": 168,
+    "pronto_s": 57.5,
+    "C1_ddl_transacional": false,
+    "C2_indice_parcial": "não existe (sem unicidade além da chave)",
+    "C2_recusa_2_vigentes": false,
+    "C4_check": false,
+    "C3_fk_padrao": false,
+    "C5_trigger": false,
+    "cdc_padrao": "cdc_enabled=false (padrão do cassandra.yaml)",
+    "Q1_ms_n2638": 0.77,
+    "Q2_ms_n2638": 135.81,
+    "Q2_resultado_n2638": [
+      [
+        "AUTO",
+        528
+      ],
+      [
+        "DEF",
+        527
+      ],
+      [
+        "FISC",
+        527
+      ],
+      [
+        "GEST",
+        527
+      ],
+      [
+        "IP",
+        529
+      ]
+    ],
+    "Q1_ms_n26380": 0.7,
+    "Q2_ms_n26380": 118.4,
+    "Q2_resultado_n26380": [
+      [
+        "AUTO",
+        5276
+      ],
+      [
+        "DEF",
+        5275
+      ],
+      [
+        "FISC",
+        5276
+      ],
+      [
+        "GEST",
+        5276
+      ],
+      [
+        "IP",
+        5277
+      ]
+    ],
+    "ram_mb": 4744
+  }
+]

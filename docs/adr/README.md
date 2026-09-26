@@ -20,3 +20,4 @@ Levantadas na fase de entendimento do domínio, ainda sem ADR escrito:
 | # | Decisão | Status |
 |---|---|---|
 | [0001](0001-adotar-sistema-de-curadoria-insert-only-como-oltp.md) | O OLTP do projeto é o sistema de curadoria, com classificação insert-only | proposto |
+| [0002](0002-manter-postgresql-como-motor-do-oltp.md) | O OLTP de curadoria continua em PostgreSQL 16 | proposto |
