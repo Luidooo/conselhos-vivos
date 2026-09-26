@@ -1,0 +1,154 @@
+{
+  "ambiente": {
+    "quando": "2026-09-26T17:11:52",
+    "so": "Linux-7.2.5-3-omarchy-x86_64-with-glibc2.44",
+    "cpu": "AMD Ryzen 7 2700 Eight-Core Processor",
+    "docker": "29.7.2",
+    "planilha_sha256": "635b3f0a6580fff358171b830b13ef2a2ccd2945f0f2d05a7e0c178964c7d347",
+    "base_mb": 43.3,
+    "uv_mb": 68.2
+  },
+  "candidatos": {
+    "stdlib": {
+      "dependencias": [],
+      "linhas_de_codigo": 61,
+      "criterios": {
+        "A1 conta 215, não 2.638": true,
+        "A2 cabeçalho do CONAMA na linha 2": true,
+        "A3 data serial → ISO, nas 215": true,
+        "A4 CNPIR: '1/2005' recuperado": true,
+        "A5 tipologia mista (99 no meio de texto)": true,
+        "A6 linha do Excel de cada registro": true,
+        "A7 determinístico (2 execuções, mesmo sha256)": true,
+        "A8 mesmos 215 registros que os outros candidatos": true
+      },
+      "M1 data vira texto 's/d'": "falha e para: ValueError: could not convert string to float: 's/d'",
+      "M2 linha 10 do CNAS esvaziada": "ok: 214 registros, linhas certas",
+      "container": {
+        "build_s": 0.7,
+        "imagem_mb": 0.0,
+        "execucao_s": 0.72
+      },
+      "uv": {
+        "primeira_execucao_s": 0.9,
+        "execucao_s": 0.76,
+        "cache_mb": 0.0
+      }
+    },
+    "pandas_openpyxl": {
+      "dependencias": [
+        "pandas==3.0.6",
+        "openpyxl==3.1.5"
+      ],
+      "linhas_de_codigo": 34,
+      "criterios": {
+        "A1 conta 215, não 2.638": true,
+        "A2 cabeçalho do CONAMA na linha 2": true,
+        "A3 data serial → ISO, nas 215": true,
+        "A4 CNPIR: '1/2005' recuperado": true,
+        "A5 tipologia mista (99 no meio de texto)": true,
+        "A6 linha do Excel de cada registro": true,
+        "A7 determinístico (2 execuções, mesmo sha256)": true,
+        "A8 mesmos 215 registros que os outros candidatos": true
+      },
+      "M1 data vira texto 's/d'": "falha e para: pandas._libs.tslibs.parsing.DateParseError: Unknown datetime string format, unable to parse: s/d",
+      "M2 linha 10 do CNAS esvaziada": "ok: 214 registros, linhas certas",
+      "container": {
+        "build_s": 22.9,
+        "imagem_mb": 45.0,
+        "execucao_s": 1.73
+      },
+      "uv": {
+        "primeira_execucao_s": 5.5,
+        "execucao_s": 2.08,
+        "cache_mb": 112.9
+      },
+      "sonda": {
+        "contagem pelo openpyxl (max_row - 1, 5 abas)": 2638,
+        "CNAS: read_excel padrão": {
+          "linhas": 53,
+          "indice_da_linha_id_12": 16
+        },
+        "CNAS com a linha 10 vazia": {
+          "linhas": 53,
+          "indice_da_linha_id_12": 16
+        },
+        "CONAMA: read_excel padrão (cabeçalho na linha 2)": {
+          "colunas": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2"
+          ]
+        },
+        "CNPIR: DIS_LEG da linha 2": "datetime.datetime(2005, 1, 1, 0, 0)",
+        "CNAS: tipologia 99": "99",
+        "CNAS com data 's/d': to_datetime(errors='coerce')": {
+          "datas_nulas": 1
+        }
+      }
+    },
+    "duckdb_sql": {
+      "dependencias": [
+        "duckdb==1.5.5"
+      ],
+      "linhas_de_codigo": 35,
+      "criterios": {
+        "A1 conta 215, não 2.638": true,
+        "A2 cabeçalho do CONAMA na linha 2": true,
+        "A3 data serial → ISO, nas 215": true,
+        "A4 CNPIR: '1/2005' recuperado": true,
+        "A5 tipologia mista (99 no meio de texto)": true,
+        "A6 linha do Excel de cada registro": true,
+        "A7 determinístico (2 execuções, mesmo sha256)": true,
+        "A8 mesmos 215 registros que os outros candidatos": true
+      },
+      "M1 data vira texto 's/d'": "falha e para: _duckdb.ConversionException: Conversion Error: Could not convert string 's/d' to DOUBLE when casting from source column ",
+      "M2 linha 10 do CNAS esvaziada": "ok: 214 registros, linhas certas",
+      "container": {
+        "build_s": 9.7,
+        "imagem_mb": 29.6,
+        "execucao_s": 0.64
+      },
+      "uv": {
+        "primeira_execucao_s": 2.6,
+        "execucao_s": 1.02,
+        "cache_mb": 75.7
+      },
+      "sonda": {
+        "CNAS: read_xlsx padrão": [
+          [
+            53
+          ]
+        ],
+        "CNAS com a linha 10 vazia": [
+          [
+            8
+          ]
+        ],
+        "CONAMA: read_xlsx padrão (cabeçalho na linha 2)": [
+          [
+            98,
+            351.0
+          ]
+        ],
+        "CNPIR: read_xlsx padrão": {
+          "erro": "InvalidInputException: Invalid Input Error: read_xlsx: Failed to parse cell 'E6': Could not convert string '7/2013 (moção)' to DOUBLE"
+        },
+        "CNPIR: ignore_errors=true, DIS_LEG nulos": [
+          [
+            1,
+            "2005-01-01"
+          ]
+        ],
+        "CNAS: tipologia 99": [
+          [
+            "99.0"
+          ]
+        ],
+        "CNAS com data 's/d': read_xlsx padrão": {
+          "erro": "InvalidInputException: Invalid Input Error: read_xlsx: Failed to parse cell 'C3': Could not convert string 's/d' to DOUBLE"
+        }
+      }
+    }
+  }
+}
