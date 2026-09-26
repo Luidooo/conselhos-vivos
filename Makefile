@@ -19,6 +19,7 @@ down: ## para os serviços, mantém os dados
 
 test: .env ## teste de fumaça: sobe healthy e persiste entre down/up
 	bash tests/infra/test_compose.sh
+	bash tests/db/test_schema.sh
 
 reset: ## APAGA o banco e sobe do zero
 	docker compose down -v
