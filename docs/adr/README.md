@@ -22,3 +22,4 @@ Levantadas na fase de entendimento do domínio, ainda sem ADR escrito:
 | [0001](0001-adotar-sistema-de-curadoria-insert-only-como-oltp.md) | O OLTP do projeto é o sistema de curadoria, com classificação insert-only | proposto |
 | [0002](0002-manter-postgresql-como-motor-do-oltp.md) | O OLTP de curadoria continua em PostgreSQL 16 | proposto |
 | [0003](0003-carregar-a-planilha-como-rotulo-da-curadoria.md) | A planilha da pesquisadora entra no OLTP como rótulo da curadoria, lida só com a biblioteca padrão | proposto |
+| [0004](0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md) | A identidade de um conselho sai de uma chave normalizada mais decisões registradas, nunca de similaridade de texto | proposto |

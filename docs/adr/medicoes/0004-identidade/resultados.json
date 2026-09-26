@@ -1,0 +1,151 @@
+{
+  "linhas": 125,
+  "gabarito": {
+    "grupos_certos": 82,
+    "ambiguas": 3,
+    "indefinidas": 2
+  },
+  "alternativas": {
+    "A nome literal": {
+      "entidades": 125,
+      "pares_certos_juntados": 0,
+      "pares_que_faltou_juntar": 43,
+      "fusoes_erradas": 0,
+      "exemplos_de_fusao_errada": [],
+      "linhas_certas": 120
+    },
+    "B0 normalização do diário de 25/09": {
+      "entidades": 96,
+      "pares_certos_juntados": 29,
+      "pares_que_faltou_juntar": 14,
+      "fusoes_erradas": 0,
+      "exemplos_de_fusao_errada": [],
+      "linhas_certas": 120
+    },
+    "B chave normalizada": {
+      "entidades": 95,
+      "pares_certos_juntados": 30,
+      "pares_que_faltou_juntar": 13,
+      "fusoes_erradas": 0,
+      "exemplos_de_fusao_errada": [],
+      "linhas_certas": 120
+    },
+    "C similaridade >= 0.80": {
+      "entidades": 68,
+      "pares_certos_juntados": 36,
+      "pares_que_faltou_juntar": 7,
+      "fusoes_erradas": 240,
+      "exemplos_de_fusao_errada": [
+        [
+          "Conselho Diretor do Fundo Nacional de Desenvolvimento Científico e Tecnológico",
+          "Conselho Nacional de Desenvolvimento Científico e Tecnológico"
+        ],
+        [
+          "Conselho Nacional de Arquivos",
+          "Conselho Nacional de Educação"
+        ],
+        [
+          "Conselho Nacional de Arquivos",
+          "Conselho Nacional de Educação (CNE)"
+        ],
+        [
+          "Conselho Nacional de Arquivos",
+          "CONSELHO NACIONAL DE IMIGRAÇÃO"
+        ],
+        [
+          "Conselho Nacional de Arquivos",
+          "Conselho Nacional de Imigração (CNIg)"
+        ]
+      ],
+      "linhas_certas": 120
+    },
+    "C similaridade >= 0.85": {
+      "entidades": 84,
+      "pares_certos_juntados": 36,
+      "pares_que_faltou_juntar": 7,
+      "fusoes_erradas": 19,
+      "exemplos_de_fusao_errada": [
+        [
+          "Conselho Diretor do Fundo Nacional de Desenvolvimento Científico e Tecnológico",
+          "Conselho Nacional de Desenvolvimento Científico e Tecnológico"
+        ],
+        [
+          "CONSELHO NACIONAL DE ASSISTÊNCIA SOCIAL",
+          "Conselho Nacional de Previdência Social"
+        ],
+        [
+          "Conselho Nacional de Assistência Social (CNAS)",
+          "Conselho Nacional de Previdência Social"
+        ],
+        [
+          "Conselho Nacional de Juventude",
+          "Conselho Nacional de Saúde"
+        ],
+        [
+          "Conselho Nacional de Juventude",
+          "Conselho Nacional de Saúde (CNS)"
+        ]
+      ],
+      "linhas_certas": 120
+    },
+    "C similaridade >= 0.90": {
+      "entidades": 92,
+      "pares_certos_juntados": 35,
+      "pares_que_faltou_juntar": 8,
+      "fusoes_erradas": 0,
+      "exemplos_de_fusao_errada": [],
+      "linhas_certas": 120
+    },
+    "C similaridade >= 0.95": {
+      "entidades": 93,
+      "pares_certos_juntados": 34,
+      "pares_que_faltou_juntar": 9,
+      "fusoes_erradas": 0,
+      "exemplos_de_fusao_errada": [],
+      "linhas_certas": 120
+    },
+    "D SIORG pela chave B": {
+      "entidades": 99,
+      "pares_certos_juntados": 26,
+      "pares_que_faltou_juntar": 17,
+      "fusoes_erradas": 0,
+      "exemplos_de_fusao_errada": [],
+      "linhas_certas": 120,
+      "siorg": {
+        "data": "2026-09-26",
+        "sha256": "555d2a057afde4ad483dbf4ba8551431ee63a59986d8d7a0abcda637787e860a",
+        "unidades": 95877,
+        "unidades_colegiadas": 2010
+      },
+      "linhas_com_1_unidade": 95,
+      "linhas_com_varias_unidades": {
+        "Conselho de Ensino Pesquisa e Extensão": 3,
+        "Conselho Deliberativo": 9
+      },
+      "linhas_sem_unidade": 28,
+      "tipo_da_unidade_achada": {
+        "unidade-colegiada": 93,
+        "entidade": 2
+      },
+      "grupos_certos_com_codigo": 68,
+      "exemplos_sem_unidade": [
+        "Comissão de Objetivos do Desenvolvimento Sustentável (CNODS)",
+        "Comissão Nacional de População e Desenvolvimento (CNPD)",
+        "Comissão Nacional de População e Desenvolvimento",
+        "Comitê Gestor da CPR Furnas",
+        "Comitê Gestor da CPR São Francisco e Parnaíba",
+        "Comitê Interministerial da Política Pública de Juventude",
+        "Comitê Nacional para os Refugiados (CONARE)",
+        "Conselho Curador do FGTS (CCFGTS)",
+        "Conselho da Justiça Federal",
+        "Conselho de Defesa dos Direitos da Pessoa Humana",
+        "Conselho de Participação Social (CPS)",
+        "Conselho Nacional das Populações Extrativistas Instituto Chico Mendes de Conservação da Biodiversidade"
+      ]
+    },
+    "E chave B + decisões registradas": {
+      "grupos_que_B_nao_fecha": 7,
+      "linhas_sem_decisao_possivel_por_codigo": 5
+    }
+  }
+}
