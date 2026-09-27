@@ -8,12 +8,12 @@
 
 O projeto mede a vitalidade dos conselhos nacionais de participação social a partir do que eles publicam no DOU, classificando cada ato numa tipologia de 5 categorias (`DEF`, `FISC`, `GEST`, `AUTO`, `IP`). A E1 pede uma fonte transacional própria. A pergunta é **onde, neste domínio, um dado nasce por um evento transacional nosso**: o DOU nasce na Imprensa Nacional, e copiá-lo é ingestão, não transação. O espelho do DOU é a camada bronze, que é OLAP e vem na E2.
 
-**Caracterização da carga** (números do domínio, diário de 25/09):
+**Caracterização da carga** (números do domínio, diários de 25/09 e 26/09):
 
 | Dimensão | Valor | Fonte |
 |---|---|---|
-| Carga inicial | 2.638 atos classificados à mão, 2003–2022, em 5 conselhos | planilhas da pesquisadora |
-| Taxa de escrita humana | ~130 classificações/ano (2.638 em ~20 anos, uma pessoa) | idem |
+| Carga inicial | 215 atos classificados à mão, 2003–2020, em 5 conselhos | planilhas da pesquisadora (recontadas em 26/09: o diário de 25/09 contou 2.638 linhas, a maioria só formatada) |
+| Taxa de escrita humana | ~12 classificações/ano (215 atos datados entre 2003 e 2020, uma pessoa) | idem |
 | Fluxo do DOU | ~300 matérias/dia útil na Seção 1; ~2,5 GB de XML/ano desde 2020 | INLABS |
 | Fração do DOU que é ato de conselho | **não medida** — depende do ingestor (#6) | — |
 | Identidade dos conselhos | 125 linhas → 96 nomes distintos após normalização; renomeações por lei | aba "Conselhos mapeados" |
@@ -54,7 +54,7 @@ docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v n
   < docs/adr/medicoes/0001-classificacao-vigente.sql
 ```
 
-**Condição:** PostgreSQL 16.15 no Docker Desktop 29.6.2, Mac Apple Silicon; mediana de 5 execuções. Atos e classificações **sintéticos no volume do domínio**: por ato, a pesquisadora classifica de 1 a 3 vezes e o pipeline 1 vez. `n = 2.638` é a carga inicial; `n = 26.380` projeta 10× para quando o DOU entrar. Refazer com a carga real quando a #3 terminar.
+**Condição:** PostgreSQL 16.15 no Docker Desktop 29.6.2, Mac Apple Silicon; mediana de 5 execuções. Atos e classificações **sintéticos no volume do domínio**: por ato, a pesquisadora classifica de 1 a 3 vezes e o pipeline 1 vez. `n = 2.638` era a carga inicial registrada no diário de 25/09; a recontagem de 26/09 achou 215, então as duas linhas medem ~12× e ~120× a carga inicial real, e as conclusões valem com folga. Refazer com a carga real quando a #3 terminar.
 
 | Consulta | n | D1 CRUD | D2 insert-only |
 |---|---|---|---|
@@ -70,7 +70,7 @@ A correção do modelo é coberta por `tests/db/test_schema.sh` (16 casos, `make
 
 ## Decisão
 
-Adotamos o **sistema de curadoria como OLTP**, com a **classificação insert-only** (D2). Os 2.638 atos da pesquisadora entram como carga inicial com `origem = 'PLANILHA'`, e classificamos a **versão** do ato.
+Adotamos o **sistema de curadoria como OLTP**, com a **classificação insert-only** (D2). Os 215 atos da pesquisadora entram como carga inicial com `origem = 'PLANILHA'`, e classificamos a **versão** do ato.
 
 ## Consequências
 

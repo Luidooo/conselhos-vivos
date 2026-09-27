@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup up down migrate test reset pgadmin-reset psql logs
+.PHONY: help setup up down migrate carga test reset pgadmin-reset psql logs
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -8,7 +8,7 @@ help: ## lista os comandos
 	cp .env.example .env
 	@echo "→ .env criado a partir do .env.example — preencha as credenciais do INLABS"
 
-setup: .env up migrate ## primeira vez: cria o .env (se faltar), sobe tudo e migra
+setup: .env up migrate carga ## primeira vez: cria o .env (se faltar), sobe tudo, migra e carrega a planilha
 	@echo "→ banco em localhost:$$(grep ^POSTGRES_PORT= .env | cut -d= -f2) · pgAdmin em http://localhost:5050"
 
 up: .env ## sobe os serviços e espera o banco ficar healthy
@@ -20,15 +20,21 @@ down: ## para os serviços, mantém os dados
 migrate: ## aplica as migrações de sql/ que ainda não rodaram, em ordem
 	bash scripts/migrate.sh
 
-test: .env ## testes: infra (sobe, 127.0.0.1, persiste) e esquema do OLTP
+carga: ## carrega a planilha da pesquisadora no banco (idempotente) e atualiza o relatório
+	bash scripts/carga.sh
+
+test: .env ## testes: infra, esquema do OLTP, leitura da planilha e carga
 	bash tests/infra/test_compose.sh
 	bash scripts/migrate.sh
 	bash tests/db/test_schema.sh
+	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/planilha
+	bash tests/db/test_carga.sh
 
-reset: ## APAGA o banco, sobe do zero e migra
+reset: ## APAGA o banco, sobe do zero, migra e carrega a planilha
 	docker compose down -v
 	docker compose up -d --wait
 	bash scripts/migrate.sh
+	bash scripts/carga.sh
 
 pgadmin-reset: ## recria o pgAdmin do zero (use se mudar POSTGRES_USER ou POSTGRES_DB)
 	docker compose rm -sf pgadmin

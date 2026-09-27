@@ -45,6 +45,23 @@ services:
       db:
         condition: service_healthy
 
+  # Carga da planilha da pesquisadora (#3): só biblioteca padrão do Python, sem rede, só leitura.
+  # Escreve SQL, relatório ou CSV no stdout; quem grava é o scripts/carga.sh (make carga).
+  # O perfil impede que suba com `up`: roda com `docker compose run --rm -T carga sql`.
+  carga:
+    image: python:3.12.14-slim
+    profiles: [carga]
+    network_mode: none
+    working_dir: /app
+    environment:
+      PYTHONPATH: /app/src
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./src:/app/src:ro
+      - ./data/raw:/app/data/raw:ro
+      - ./tests:/app/tests:ro
+    entrypoint: [python, -m, planilha]
+
 # servers.json e pgpass gerados a partir do .env: o pgAdmin já abre conectado no banco.
 # O servers.json só é importado na 1ª subida do volume `pgadmin`; se mudar
 # POSTGRES_USER ou POSTGRES_DB, rode `make pgadmin-reset`. Senha sem `:` nem `\`

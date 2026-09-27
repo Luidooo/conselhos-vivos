@@ -8,7 +8,7 @@
 
 O PostgreSQL entrou no projeto pela issue #1 sem decisão registrada. O ADR 0001 fixou **o que** o OLTP guarda; este decide **em que motor** ele roda, antes que o esquema dependa mais dele.
 
-**Carga** (ver ADR 0001): ~130 classificações humanas/ano; carga inicial de 2.638 atos; leitura por chave na tela de curadoria e agregação diária para o indicador. Carga pequena: **desempenho não deve decidir**, e a medição confirma.
+**Carga** (ver ADR 0001): ~12 classificações humanas/ano; carga inicial de 215 atos; leitura por chave na tela de curadoria e agregação diária para o indicador. Carga pequena: **desempenho não deve decidir**, e a medição confirma.
 
 **O que o nosso esquema exige do motor** (ADR 0001, `sql/001_schema.sql`, `scripts/migrate.sh`):
 
@@ -44,7 +44,7 @@ Não relacional. Entra para medir o que se perde saindo do modelo relacional; o 
 uv run docs/adr/medicoes/0002-motor/bench.py
 ```
 
-**Condição:** Mac Apple Silicon, Docker Desktop 29.6.2, imagens oficiais `postgres:16.15`, `mysql:8.4`, `mariadb:11.4`, `cassandra:5.0` e SQLite 3 do Python. C1–C5 foram **executadas**, não lidas na documentação. Q1/Q2: mediana de 7 execuções após aquecimento, dados sintéticos no volume do domínio (n = 2.638 e 10×), medidos pelo cliente. O benchmark rodou duas vezes com resultados estáveis. Dados brutos em `docs/adr/medicoes/0002-motor/resultados.json`.
+**Condição:** Mac Apple Silicon, Docker Desktop 29.6.2, imagens oficiais `postgres:16.15`, `mysql:8.4`, `mariadb:11.4`, `cassandra:5.0` e SQLite 3 do Python. C1–C5 foram **executadas**, não lidas na documentação. Q1/Q2: mediana de 7 execuções após aquecimento, dados sintéticos no volume do domínio (n = 2.638 e 10×, ~12× e ~120× a carga inicial real de 215 atos, recontada em 26/09), medidos pelo cliente. O benchmark rodou duas vezes com resultados estáveis. Dados brutos em `docs/adr/medicoes/0002-motor/resultados.json`.
 
 | | PostgreSQL | MySQL | MariaDB | SQLite | Cassandra |
 |---|---|---|---|---|---|

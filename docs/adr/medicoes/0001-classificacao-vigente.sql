@@ -4,7 +4,8 @@
 --   docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v n=2638' \
 --     < docs/adr/medicoes/0001-classificacao-vigente.sql
 --
--- :n = número de atos. 2638 = atos classificados à mão pela pesquisadora (diário 25/09).
+-- :n = número de atos. 2638 = carga inicial registrada no diário de 25/09; a recontagem
+-- de 26/09 achou 215 atos na planilha. O valor fica para reproduzir a medição do ADR 0001.
 -- Os atos e classificações são SINTÉTICOS no volume do domínio (a carga real é a #3).
 -- Por ato: a pesquisadora classifica 1 a 3 vezes (reclassificações) e o pipeline 1 vez.
 -- Tudo roda numa transação desfeita no fim: o banco não é alterado.

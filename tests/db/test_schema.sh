@@ -43,7 +43,7 @@ PESQUISADORA="(SELECT id FROM revisor WHERE email = 'curadoria@pesquisa.local')"
 echo "estrutura"
 espera_valor "7 tabelas + schema_migrations" "8" \
   "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
-espera_valor "migrações 001 e 002 registradas" "001_schema.sql,002_seeds.sql" \
+espera_valor "toda migração de sql/ registrada" "$(cd sql && ls [0-9][0-9][0-9]_*.sql | paste -sd,)" \
   "SELECT string_agg(arquivo, ',' ORDER BY arquivo) FROM schema_migrations"
 espera_valor "tabelas do public documentadas com COMMENT ON (só as nossas)" "t" \
   "SELECT count(DISTINCT c.relname) >= 7 FROM pg_description d
@@ -51,7 +51,7 @@ espera_valor "tabelas do public documentadas com COMMENT ON (só as nossas)" "t"
     WHERE n.nspname = 'public' AND d.objsubid = 0 AND c.relkind = 'r'"
 
 echo "tipologia (definições do README)"
-espera_valor "5 siglas" "AUTO,DEF,FISC,GEST,IP" \
+espera_valor "5 siglas e o 99 da planilha" "99,AUTO,DEF,FISC,GEST,IP" \
   "SELECT string_agg(sigla, ',' ORDER BY sigla) FROM tipologia"
 espera_valor "AUTO é autorregulação" "t" "SELECT nome ILIKE 'Autorregula%' FROM tipologia WHERE sigla = 'AUTO'"
 espera_valor "IP gere instâncias participativas" "t" "SELECT nome ILIKE '%participativ%' FROM tipologia WHERE sigla = 'IP'"
@@ -60,15 +60,28 @@ espera_valor "GEST é gestão da política já definida" "t" "SELECT descricao I
 echo "ato"
 espera_valor "ato da planilha entra sem id_dou nem conteúdo" "1" \
   "INSERT INTO orgao DEFAULT VALUES;
-   INSERT INTO ato (origem, ref_legal, orgao_id, data_publicacao, ementa)
-     VALUES ('PLANILHA', 'Resolução 12/2003', currval('orgao_id_seq'), '2003-02-19', 'ementa');
-   SELECT count(*) FROM ato WHERE origem = 'PLANILHA'"
+   INSERT INTO ato (origem, id_planilha, orgao_id, data_publicacao, ementa)
+     VALUES ('PLANILHA', 1, currval('orgao_id_seq'), '2003-02-19', 'ementa');
+   SELECT count(*) FROM ato WHERE orgao_id = currval('orgao_id_seq')"
+espera_erro "ato da planilha sem id_planilha é recusado" "ck_ato_planilha_completo" \
+  "INSERT INTO orgao DEFAULT VALUES;
+   INSERT INTO ato (origem, orgao_id, data_publicacao, ementa) VALUES ('PLANILHA', currval('orgao_id_seq'), '2003-01-01', 'e')"
+espera_erro "a mesma linha da planilha duas vezes é recusada" "uq_ato_planilha" \
+  "INSERT INTO orgao DEFAULT VALUES;
+   INSERT INTO ato (origem, id_planilha, orgao_id, data_publicacao, ementa) VALUES
+     ('PLANILHA', 7, currval('orgao_id_seq'), '2003-01-01', 'e'), ('PLANILHA', 7, currval('orgao_id_seq'), '2004-01-01', 'f')"
+espera_valor "o mesmo ID_VERSAO em conselhos diferentes é aceito" "2" \
+  "INSERT INTO orgao DEFAULT VALUES;
+   INSERT INTO ato (origem, id_planilha, orgao_id, data_publicacao, ementa) VALUES ('PLANILHA', 7, currval('orgao_id_seq'), '2003-01-01', 'e');
+   INSERT INTO orgao DEFAULT VALUES;
+   INSERT INTO ato (origem, id_planilha, orgao_id, data_publicacao, ementa) VALUES ('PLANILHA', 7, currval('orgao_id_seq'), '2003-01-01', 'e');
+   SELECT count(*) FROM ato WHERE id_planilha = 7 AND orgao_id >= currval('orgao_id_seq') - 1"
 espera_erro "ato do DOU sem id_dou é recusado" "ck_ato_dou_completo" \
   "INSERT INTO orgao DEFAULT VALUES;
    INSERT INTO ato (origem, orgao_id, data_publicacao, conteudo) VALUES ('DOU', currval('orgao_id_seq'), '2021-01-01', 't')"
 espera_erro "ato sem conteúdo nem ementa é recusado" "ck_ato_tem_texto" \
   "INSERT INTO orgao DEFAULT VALUES;
-   INSERT INTO ato (origem, orgao_id, data_publicacao) VALUES ('PLANILHA', currval('orgao_id_seq'), '2003-01-01')"
+   INSERT INTO ato (origem, id_planilha, orgao_id, data_publicacao) VALUES ('PLANILHA', 1, currval('orgao_id_seq'), '2003-01-01')"
 
 echo "classificação insert-only"
 espera_valor "reclassificar guarda as duas e a vigente é a última" "GEST|2" \
@@ -93,6 +106,11 @@ espera_erro "apagar ato com classificação é bloqueado" "classificacao_ato_id_
    DELETE FROM ato WHERE id = currval('ato_id_seq')"
 
 echo "órgão"
+espera_valor "os 5 conselhos da planilha, com nome vigente" "5" \
+  "SELECT count(*) FROM conselho c JOIN orgao_nome n ON n.orgao_id = c.orgao_id AND n.data_fim IS NULL
+    WHERE n.nome IN ('Conselho Nacional de Assistência Social', 'Conselho Nacional do Meio Ambiente',
+      'Conselho das Cidades', 'Conselho Nacional de Desenvolvimento Rural Sustentável',
+      'Conselho Nacional de Promoção da Igualdade Racial')"
 espera_erro "dois nomes vigentes para o mesmo órgão são recusados" "uq_orgao_nome_vigente" \
   "INSERT INTO orgao DEFAULT VALUES;
    INSERT INTO orgao_nome (orgao_id, nome, data_inicio) VALUES
