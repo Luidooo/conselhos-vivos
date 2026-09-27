@@ -1,0 +1,28 @@
+linha,nome_na_planilha,tipo,canonico,sigla,inicio,troca,ato,motivo
+3,Comissão de Objetivos do Desenvolvimento Sustentável (CNODS),nome,Comissão de Objetivos do Desenvolvimento Sustentável,CNODS,,,,sem unidade no SIORG; nome como na planilha
+8,Comissão Nacional de População e Desenvolvimento (CNPD),nome,Comissão Nacional de População e Desenvolvimento,CNPD,,,,sem unidade no SIORG; nome como na planilha
+13,Comitê Gestor da CPR Furnas,nome,Comitê Gestor da CPR Furnas,,,,,sem unidade no SIORG; nome como na planilha
+14,Comitê Gestor da CPR São Francisco e Parnaíba,nome,Comitê Gestor da CPR São Francisco e Parnaíba,,,,,sem unidade no SIORG; nome como na planilha
+17,Comitê Interministerial da Política Pública de Juventude,nome,Comitê Interministerial da Política Pública de Juventude,,,,,sem unidade no SIORG; nome como na planilha
+20,Comitê Nacional para os Refugiados (CONARE),nome,Comitê Nacional para os Refugiados,CONARE,,,,sem unidade no SIORG; nome como na planilha
+22,Conselho Curador do FGTS (CCFGTS),nome,Conselho Curador do FGTS,CCFGTS,,,,sem unidade no SIORG; nome como na planilha
+24,Conselho da Justiça Federal,nome,Conselho da Justiça Federal,,,,,Poder Judiciário: fora do SIORG; nome como na planilha
+27,Conselho de Defesa dos Direitos da Pessoa Humana,renomeacao,Conselho Nacional dos Direitos Humanos,,1964-03-16,2014-06-02,"Lei nº 12.986, de 2/6/2014, art. 1º","""passa a denominar-se""; criado pela Lei nº 4.319, de 16/3/1964"
+28,Conselho de Ensino Pesquisa e Extensão,indefinido,,,,,,nome genérico: há mais de 200 unidades colegiadas no SIORG com esse nome ou quase (uma por universidade ou instituto)
+30,Conselho de Participação Social (CPS),nome,Conselho de Participação Social,CPS,,,,sem unidade no SIORG; nome como na planilha
+33,Conselho Deliberativo,indefinido,,,,,,nome genérico: 9 unidades no SIORG com esse nome; falta o órgão a que pertence
+44,Conselho Nacional das Populações Extrativistas Instituto Chico Mendes de Conservação da Biodiversidade,ambiguo,,,,,,"nome seguido do ICMBio (artCategory sem a barra); pode ser o CNS, organização da sociedade civil (antigo Conselho Nacional dos Seringueiros); sem unidade no SIORG"
+54,Conselho Nacional de Combate à Pirataria e aos Delitos Ministério da Justiça e Segurança Pública,grafia,Conselho Nacional de Combate à Pirataria e Delitos contra a Propriedade Intelectual,,,,,nome truncado seguido do ministério (artCategory sem a barra)
+55,Conselho Nacional de Combate à Pirataria e Delitos de Propriedade Intelectual,grafia,Conselho Nacional de Combate à Pirataria e Delitos contra a Propriedade Intelectual,,,,,"""de"" no lugar de ""contra a"""
+61,Conselho Nacional de Desenvolvimento Econômico e Social Sustentável,nome,Conselho Nacional de Desenvolvimento Econômico e Social Sustentável,,,,,sem unidade no SIORG; nome como na planilha
+68,CONSELHO NACIONAL DE FERTILIZANTES,ambiguo,,,,,,"o Conselho Nacional de Fertilizantes e Nutrição de Plantas foi instituído pelo Decreto nº 10.991, de 11/3/2022; não achamos um conselho anterior com este nome: o mesmo órgão abreviado ou outro?"
+69,CONSELHO NACIONAL DE FERTILIZANTES E NUTRIÇÃO DE PLANTAS,ambiguo,,,,,,"par da linha 68: fica pendente junto, para não criar um órgão que depois precise ser fundido"
+70,Conselho Nacional de Fomento e Colaboração (CONFOCO),nome,Conselho Nacional de Fomento e Colaboração,CONFOCO,,,,sem unidade no SIORG; nome como na planilha
+74,Conselho Nacional de Justiça,nome,Conselho Nacional de Justiça,,,,,Poder Judiciário: fora do SIORG; nome como na planilha
+75,Conselho Nacional de Juventude,nome,Conselho Nacional de Juventude,CONJUVE,,,,sem unidade no SIORG; nome como na planilha
+77,Conselho Nacional de Meio Ambiente,grafia,Conselho Nacional do Meio Ambiente,,,,,"""de"" no lugar de ""do"""
+83,Conselho Nacional de Política Cultural a regulamentação do Sistema Nacional de Cultura,grafia,Conselho Nacional de Política Cultural,,,,,nome seguido de trecho da ementa
+109,CONSELHO NACIONAL DO SERVIÇO SOCIAL DO TRANSPORTE,nome,Conselho Nacional do Serviço Social do Transporte,,,,,sem unidade no SIORG; nome da planilha fora da caixa alta
+116,Conselho Nacional dos Direitos da Mulher (CNDM),renomeacao,Conselho Nacional dos Direitos das Mulheres,,1985-08-29,2023-01-01,"Decreto nº 11.351, de 1º/1/2023","primeiro ato conferido com o nome novo, sem ""passa a denominar-se""; criado pela Lei nº 7.353, de 29/8/1985"
+120,"Conselho Nacional dos Direitos das Pessoas Lésbicas, Gays, Bissexuais, Travestis, Trans., Queers, Intersexos,",grafia,Conselho Nacional dos Direitos das Pessoas LGBTQIA+,,,,,nome por extenso e truncado
+122,Conselho Nacional dos Direitos do Idoso,renomeacao,Conselho Nacional dos Direitos da Pessoa Idosa,,,2019-06-27,"Decreto nº 9.893, de 27/6/2019","primeiro ato conferido com o nome novo, sem ""passa a denominar-se"""

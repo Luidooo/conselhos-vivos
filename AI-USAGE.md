@@ -131,3 +131,21 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** o ADR inteiro. Ele junta a chave conselho + `ID_VERSAO`, a classificação da planilha que não sobrepõe a curadoria, o `99` como sigla e a leitura com a biblioteca padrão; não traz decisão nova.
 - **Como foi verificado:** cada número do ADR foi conferido contra o diário de 26/09, o `resultados.json` do benchmark e o relatório da carga; conferido que o commit `e4f87eb` citado para reproduzir o benchmark contém o `bench.py`.
 - **Quem revisou:** pendente — a squad, no PR #10.
+
+### 2026-09-26 — ADR 0004: identidade dos conselhos (#4)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md`, `docs/adr/medicoes/0004-identidade/` (`bench.py`, `gabarito.csv`, `resultados.json`), `docs/adr/README.md`
+- **O que foi pedido:** entender o contexto da issue #4 e escrever o ADR 0004 antes de qualquer execução; a implementação espera a validação do ADR.
+- **O que foi aproveitado:** o ADR inteiro, validado antes da execução da issue. O gabarito das 125 linhas é proposta da IA e precisa ser conferido pela squad e pela pesquisadora.
+- **Como foi verificado:** as renomeações foram lidas no texto das leis e decretos no planalto.gov.br (Lei 12.986/2014, Decreto 9.893/2019, Lei 7.353/1985, Decreto 11.351/2023, Decreto 10.991/2022); o SIORG foi consultado pela API pública e o sha256 do arquivo ficou registrado; o benchmark foi rodado e os números do ADR foram copiados do `resultados.json`; os pares mais parecidos de conselhos diferentes foram listados para achar o limiar de similaridade.
+- **Quem revisou:** pendente — a squad, no PR.
+
+### 2026-09-26 — Implementação da identidade dos conselhos (#4)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `src/conselhos/`, `sql/006_identidade_dos_conselhos.sql`, `data/referencia/conselhos-decisoes.csv`, `data/referencia/siorg-conselhos.csv`, `scripts/carga.sh`, `docker-compose.yml` (serviço `siorg` e montagens do `carga`), `Makefile`, `tests/conselhos/test_conselhos.py`, `tests/db/test_carga.sh`, `tests/db/test_schema.sh`, `docs/carga/relatorio-conselhos.md`, `README.md`, `docs/diario/2026-09-26.md`
+- **O que foi pedido:** executar a #4 conforme o ADR 0004 validado, trazendo as opções de cada decisão de implementação para escolha antes do código.
+- **O que foi aproveitado:** tudo, com as opções escolhidas em cada decisão (formato do CSV, recorte do SIORG, comando, modelo do alias, origem do nome vigente, colunas do SIORG e da sigla, ambíguos sem órgão, data das renomeações sem "passa a denominar-se"). Dois erros da IA apareceram nos testes e foram corrigidos: uma vírgula sem aspas no CSV, que deslocava as colunas sem erro, e uma variável PL/pgSQL com o nome de uma coluna.
+- **Como foi verificado:** a partição da carga foi comparada linha a linha com o gabarito do ADR; `make setup` + `make test` num diretório limpo, com volume novo; duas cargas seguidas sem mudar o banco nem os relatórios; 5 defeitos plantados na identidade, todos pegos; os relatórios do diretório limpo são idênticos aos versionados.
+- **Quem revisou:** pendente — a squad, no PR. O CSV de decisões precisa da revisão da pesquisadora.
