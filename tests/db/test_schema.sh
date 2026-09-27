@@ -41,12 +41,12 @@ INSERT INTO ato (origem, id_dou, orgao_id, data_publicacao, conteudo)
 PESQUISADORA="(SELECT id FROM revisor WHERE email = 'curadoria@pesquisa.local')"
 
 echo "estrutura"
-espera_valor "7 tabelas + schema_migrations" "8" \
+espera_valor "8 tabelas + schema_migrations" "9" \
   "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
 espera_valor "toda migração de sql/ registrada" "$(cd sql && ls [0-9][0-9][0-9]_*.sql | paste -sd,)" \
   "SELECT string_agg(arquivo, ',' ORDER BY arquivo) FROM schema_migrations"
 espera_valor "tabelas do public documentadas com COMMENT ON (só as nossas)" "t" \
-  "SELECT count(DISTINCT c.relname) >= 7 FROM pg_description d
+  "SELECT count(DISTINCT c.relname) >= 8 FROM pg_description d
      JOIN pg_class c ON c.oid = d.objoid JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND d.objsubid = 0 AND c.relkind = 'r'"
 
@@ -122,6 +122,30 @@ espera_valor "renomeação com vigência fechada é aceita" "2" \
    INSERT INTO orgao_nome (orgao_id, nome, data_inicio) VALUES
      (currval('orgao_id_seq'), 'Ministério do Meio Ambiente e Mudança do Clima', '2023-01-01');
    SELECT count(*) FROM orgao_nome WHERE orgao_id = currval('orgao_id_seq')"
+
+espera_valor "nome com data de início não verificada é aceito" "1" \
+  "INSERT INTO orgao DEFAULT VALUES;
+   INSERT INTO orgao_nome (orgao_id, nome, data_inicio) VALUES (currval('orgao_id_seq'), 'Conselho Sem Data', NULL);
+   SELECT count(*) FROM orgao_nome WHERE orgao_id = currval('orgao_id_seq') AND data_inicio IS NULL"
+espera_erro "dois órgãos com o mesmo código SIORG são recusados" "uq_orgao_codigo_siorg" \
+  "INSERT INTO orgao (codigo_siorg) VALUES (-1), (-1)"
+
+echo "alias (ADR 0004)"
+espera_erro "alias resolvido sem órgão é recusado" "ck_orgao_alias_resolvido_tem_orgao" \
+  "INSERT INTO orgao_alias (nome, chave, fonte, status) VALUES ('X', 'x', 'DOU', 'RESOLVIDO')"
+espera_erro "alias indefinido com órgão é recusado" "ck_orgao_alias_resolvido_tem_orgao" \
+  "INSERT INTO orgao DEFAULT VALUES;
+   INSERT INTO orgao_alias (nome, chave, fonte, orgao_id, status, motivo)
+     VALUES ('X', 'x', 'DOU', currval('orgao_id_seq'), 'INDEFINIDO', 'genérico')"
+espera_erro "alias pendente sem motivo é recusado" "ck_orgao_alias_pendente_tem_motivo" \
+  "INSERT INTO orgao_alias (nome, chave, fonte, status) VALUES ('X', 'x', 'DOU', 'AMBIGUO')"
+espera_erro "o mesmo nome duas vezes na mesma fonte é recusado" "uq_orgao_alias_fonte_nome" \
+  "INSERT INTO orgao_alias (nome, chave, fonte, status, motivo) VALUES
+     ('X', 'x', 'DOU', 'AMBIGUO', 'm'), ('X', 'x', 'DOU', 'INDEFINIDO', 'm')"
+espera_erro "apagar órgão com alias é bloqueado" "orgao_alias_orgao_id_fkey" \
+  "INSERT INTO orgao DEFAULT VALUES;
+   INSERT INTO orgao_alias (nome, chave, fonte, orgao_id, status) VALUES ('X', 'x', 'DOU', currval('orgao_id_seq'), 'RESOLVIDO');
+   DELETE FROM orgao WHERE id = currval('orgao_id_seq')"
 
 echo
 if [ "$falhas" -gt 0 ]; then echo "FALHOU: $falhas caso(s)"; exit 1; fi
