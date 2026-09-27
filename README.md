@@ -59,9 +59,10 @@ Os dados ficam no volume `pgdata` e sobrevivem a `docker compose down`.
 > **`db` ou `localhost`?** Dentro do compose (pgAdmin, ingestores) o banco é `db:5432`. Fora dele, no seu terminal ou no DBeaver, é `localhost:5432`. Dentro de um container, `localhost` é o próprio container.
 
 ```bash
-make test      # testes: infra, esquema do OLTP, leitura da planilha e carga
+make test      # testes: infra, esquema do OLTP, leitura da planilha, identidade dos conselhos e carga
 make migrate   # aplica as migrações de sql/ que ainda não rodaram
-make carga     # carrega a planilha da pesquisadora (idempotente) e atualiza o relatório
+make carga     # carrega os conselhos e a planilha da pesquisadora (idempotente) e atualiza os relatórios
+make siorg     # baixa o SIORG (precisa de rede) e atualiza o recorte em data/referencia/
 make psql      # abre o psql dentro do container
 make down      # para, mantém os dados
 make reset     # APAGA o banco, sobe do zero, migra e carrega a planilha
@@ -79,6 +80,8 @@ make           # lista todos os comandos
 
 **Carga da planilha:** o `make carga` lê `data/raw/Cópia_bancos_dados_Carla_Rocha.xlsx` no serviço `carga` do compose (só biblioteca padrão do Python, sem rede), grava os 215 atos e as classificações da pesquisadora, e reescreve [`docs/carga/relatorio-planilha.md`](docs/carga/relatorio-planilha.md): quantas linhas entraram, quantas foram descartadas e por quê. Rodar de novo não duplica nada nem muda o relatório. Os atos normalizados ficam em `data/interim/planilha/atos.csv`.
 
+**Identidade dos conselhos:** antes dos atos, o `make carga` junta os 125 nomes da aba "Conselhos mapeados no DOU" em **82 órgãos** ([ADR 0004](docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md)). Nomes que só diferem em caixa, acento ou sigla se juntam sozinhos; o resto é decisão registrada em [`data/referencia/conselhos-decisoes.csv`](data/referencia/conselhos-decisoes.csv) (grafia, renomeação com o ato legal, nome, indefinido ou ambíguo), que abre em qualquer planilha. Para corrigir uma decisão, edite o CSV e rode `make carga`. O resultado, com a conta que chega a 82, está em [`docs/carga/relatorio-conselhos.md`](docs/carga/relatorio-conselhos.md).
+
 **Migrações:** cada arquivo `sql/NNN_*.sql` roda uma vez, em ordem e em transação, e fica registrado em `schema_migrations`. Depois de mergeado no `main`, um arquivo de migração **não se edita**: mudança nova vira o próximo número.
 
 ## Estrutura
@@ -88,8 +91,9 @@ sql/            DDL versionado do banco
 src/            ingestão, parsing e transformações
 docs/adr/       decisões de arquitetura (o porquê de cada escolha)
 docs/diario/    registro semanal do andamento
-docs/carga/     relatório da carga da planilha (gerado pelo make carga, versionado)
-data/           dados locais (não versionados)
+docs/carga/     relatórios da carga (gerados pelo make carga, versionados)
+data/           dados locais (não versionados), exceto a planilha em raw/ e referencia/
+data/referencia/ decisões de identidade dos conselhos e recorte do SIORG (versionados)
 tests/          testes do pipeline
 ```
 
