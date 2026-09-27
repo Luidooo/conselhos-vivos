@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup up down migrate carga test reset pgadmin-reset psql logs
+.PHONY: help setup up down migrate carga siorg test reset pgadmin-reset psql logs
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -20,14 +20,19 @@ down: ## para os serviços, mantém os dados
 migrate: ## aplica as migrações de sql/ que ainda não rodaram, em ordem
 	bash scripts/migrate.sh
 
-carga: ## carrega a planilha da pesquisadora no banco (idempotente) e atualiza o relatório
+carga: ## carrega os conselhos e a planilha da pesquisadora no banco (idempotente) e atualiza os relatórios
 	bash scripts/carga.sh
 
-test: .env ## testes: infra, esquema do OLTP, leitura da planilha e carga
+siorg: ## baixa o SIORG (com rede) e atualiza o recorte em data/referencia/; rode make carga depois
+	docker compose --progress quiet run --rm -T siorg > data/referencia/siorg-conselhos.csv.novo
+	mv data/referencia/siorg-conselhos.csv.novo data/referencia/siorg-conselhos.csv
+
+test: .env ## testes: infra, esquema do OLTP, leitura da planilha, identidade dos conselhos e carga
 	bash tests/infra/test_compose.sh
 	bash scripts/migrate.sh
 	bash tests/db/test_schema.sh
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/planilha
+	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/conselhos
 	bash tests/db/test_carga.sh
 
 reset: ## APAGA o banco, sobe do zero, migra e carrega a planilha

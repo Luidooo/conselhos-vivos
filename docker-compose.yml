@@ -59,8 +59,24 @@ services:
     volumes:
       - ./src:/app/src:ro
       - ./data/raw:/app/data/raw:ro
+      - ./data/referencia:/app/data/referencia:ro
       - ./tests:/app/tests:ro
+      - ./docs/adr/medicoes:/app/docs/adr/medicoes:ro
     entrypoint: [python, -m, planilha]
+
+  # Recorte do SIORG para a identidade dos conselhos (#4, ADR 0004). O único com rede:
+  # baixa o SIORG e escreve o recorte no stdout; quem grava é o `make siorg`. Não roda no setup.
+  siorg:
+    image: python:3.12.14-slim
+    profiles: [siorg]
+    working_dir: /app
+    environment:
+      PYTHONPATH: /app/src
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ./src:/app/src:ro
+      - ./data/raw:/app/data/raw:ro
+    entrypoint: [python, -m, conselhos, siorg]
 
 # servers.json e pgpass gerados a partir do .env: o pgAdmin já abre conectado no banco.
 # O servers.json só é importado na 1ª subida do volume `pgadmin`; se mudar
