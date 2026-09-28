@@ -2,6 +2,8 @@
 
 > Quais conselhos nacionais de participação social ainda estão funcionando?
 
+**Documentação:** <https://luidooo.github.io/conselhos-vivos/> — decisões, medições, relatórios de carga e o checklist da E1, num só lugar.
+
 Os conselhos nacionais — CONAMA, CNAS, ConCidades, CONDRAF, CNPIR e dezenas de outros — são órgãos paritários onde sociedade civil e governo decidem juntos sobre política pública. Eles são **autogeridos**: se ninguém convoca a reunião, o conselho simplesmente para de funcionar. Não é extinto, não é noticiado, não aparece em lugar nenhum. Ele só silencia.
 
 Este projeto constrói a plataforma de dados que detecta esse silêncio — lendo o Diário Oficial da União, identificando quem publicou o quê, classificando o tipo de decisão e publicando um indicador de vitalidade por conselho.
@@ -64,6 +66,7 @@ make migrate   # aplica as migrações de sql/ que ainda não rodaram
 make carga     # carrega os conselhos e a planilha da pesquisadora (idempotente) e atualiza os relatórios
 make siorg     # baixa o SIORG (precisa de rede) e atualiza o recorte em data/referencia/
 make psql      # abre o psql dentro do container
+make docs      # sobe o site de documentação em localhost:5173 (precisa de Node)
 make down      # para, mantém os dados
 make reset     # APAGA o banco, sobe do zero, migra e carrega a planilha
 make pgadmin-reset  # recria o pgAdmin (se mudar POSTGRES_USER ou POSTGRES_DB)
@@ -95,6 +98,7 @@ docs/carga/     relatórios da carga (gerados pelo make carga, versionados)
 data/           dados locais (não versionados), exceto a planilha em raw/ e referencia/
 data/referencia/ decisões de identidade dos conselhos e recorte do SIORG (versionados)
 tests/          testes do pipeline
+site/           site de documentação (VitePress); as páginas são os .md do repositório
 ```
 
 ## Decisões de arquitetura

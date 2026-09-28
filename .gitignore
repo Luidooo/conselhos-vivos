@@ -22,3 +22,8 @@ venv/
 # sistema
 .DS_Store
 *.swp
+
+# site de documentação (VitePress)
+site/node_modules/
+site/.vitepress/dist/
+site/.vitepress/cache/
