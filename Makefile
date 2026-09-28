@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup up down migrate carga siorg test reset pgadmin-reset psql logs
+.PHONY: help docs setup up down migrate carga siorg test reset pgadmin-reset psql logs
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -47,6 +47,10 @@ pgadmin-reset: ## recria o pgAdmin do zero (use se mudar POSTGRES_USER ou POSTGR
 	  --filter label=com.docker.compose.project=$$(docker compose config | awk '/^name:/{print $$2}') \
 	  | xargs docker volume rm
 	docker compose up -d --wait pgadmin
+
+docs: ## sobe o site de documentação em http://localhost:5173/conselhos-vivos/ (precisa de Node)
+	npm --prefix site ci --no-audit --no-fund
+	npm --prefix site run dev -- --port 5173
 
 psql: ## abre o psql dentro do container
 	docker compose exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'

@@ -1,0 +1,186 @@
+/* Estética limpa, no espírito dos sites da Apple: fonte do sistema, títulos grandes
+   com tracking justo, muito respiro, azul de destaque, cartões arredondados. */
+
+:root {
+  --vp-font-family-base: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --vp-font-family-mono: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
+
+  --vp-c-brand-1: #0071e3;
+  --vp-c-brand-2: #0077ed;
+  --vp-c-brand-3: #0071e3;
+  --vp-c-brand-soft: rgba(0, 113, 227, 0.1);
+
+  --vp-c-bg: #ffffff;
+  --vp-c-bg-alt: #f5f5f7;
+  --vp-c-bg-soft: #f5f5f7;
+  --vp-c-text-1: #1d1d1f;
+  --vp-c-text-2: #6e6e73;
+  --vp-c-divider: #e5e5ea;
+
+  --vp-button-brand-bg: #0071e3;
+  --vp-button-brand-hover-bg: #0077ed;
+  --vp-button-brand-active-bg: #006edb;
+  --vp-button-brand-border: transparent;
+  --vp-button-alt-bg: transparent;
+  --vp-button-alt-border: #0071e3;
+  --vp-button-alt-text: #0071e3;
+  --vp-button-alt-hover-bg: rgba(0, 113, 227, 0.06);
+  --vp-button-alt-hover-border: #0071e3;
+  --vp-button-alt-hover-text: #0071e3;
+
+  --vp-home-hero-name-color: #1d1d1f;
+  --vp-home-hero-image-background-image: none;
+
+  --cv-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 30px rgba(0, 0, 0, 0.06);
+  --cv-radius: 18px;
+}
+
+.dark {
+  --vp-c-brand-1: #2997ff;
+  --vp-c-brand-2: #47a6ff;
+  --vp-c-brand-3: #2997ff;
+  --vp-c-brand-soft: rgba(41, 151, 255, 0.14);
+
+  --vp-c-bg: #000000;
+  --vp-c-bg-alt: #0b0b0c;
+  --vp-c-bg-soft: #1c1c1e;
+  --vp-c-text-1: #f5f5f7;
+  --vp-c-text-2: #a1a1a6;
+  --vp-c-divider: #2c2c2e;
+
+  --vp-button-brand-bg: #0071e3;
+  --vp-button-alt-border: #2997ff;
+  --vp-button-alt-text: #2997ff;
+  --vp-button-alt-hover-border: #2997ff;
+  --vp-button-alt-hover-text: #2997ff;
+  --vp-button-alt-hover-bg: rgba(41, 151, 255, 0.1);
+
+  --vp-home-hero-name-color: #f5f5f7;
+  --cv-card-shadow: 0 0 0 1px #2c2c2e;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* barra superior translúcida, com desfoque */
+.VPNavBar.has-sidebar .content-body,
+.VPNavBar:not(.home) .content-body,
+.VPNavBar.home:not(.top) .content-body {
+  background: color-mix(in srgb, var(--vp-c-bg) 72%, transparent) !important;
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+.VPNavBar .divider-line { background-color: var(--vp-c-divider); }
+
+/* ---------- página inicial ---------- */
+
+.VPHero .name,
+.VPHero .text {
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+.VPHero .name { font-size: clamp(44px, 7vw, 80px); }
+.VPHero .text {
+  font-size: clamp(26px, 3.4vw, 40px);
+  color: var(--vp-c-text-2);
+  max-width: 820px;
+  margin-top: 12px;
+}
+.VPHero .tagline {
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--vp-c-text-2);
+  max-width: 680px;
+  padding-top: 20px;
+}
+.VPHero .actions { padding-top: 32px; }
+.VPButton.medium { border-radius: 980px; padding: 0 22px; font-weight: 500; }
+
+.VPFeature {
+  border: none !important;
+  border-radius: var(--cv-radius) !important;
+  background: var(--vp-c-bg-soft) !important;
+  box-shadow: var(--cv-card-shadow);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.VPFeature:hover { transform: translateY(-3px); }
+.VPFeature .title {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+.VPFeature .details { font-size: 15px; line-height: 1.5; }
+
+/* ---------- páginas de conteúdo ---------- */
+
+.vp-doc h1 {
+  font-size: clamp(32px, 4vw, 44px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+.vp-doc h2 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  border-top: none;
+  margin-top: 56px;
+}
+.vp-doc h3 { font-size: 21px; letter-spacing: -0.015em; }
+.vp-doc p, .vp-doc li { font-size: 16.5px; line-height: 1.7; }
+
+.vp-doc table {
+  /* block + overflow: tabela larga rola dentro dela, sem estourar a página no celular */
+  display: block;
+  overflow-x: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.vp-doc th { background: var(--vp-c-bg-soft); font-weight: 600; }
+.vp-doc tr { border-top: none; }
+.vp-doc td, .vp-doc th { border: none; border-top: 1px solid var(--vp-c-divider); }
+.vp-doc tr:first-child th { border-top: none; }
+.vp-doc tr:nth-child(2n) { background: transparent; }
+
+.vp-doc blockquote {
+  border-left: none;
+  border-radius: 14px;
+  background: var(--vp-c-bg-soft);
+  padding: 14px 20px;
+}
+.vp-doc blockquote > p { color: var(--vp-c-text-1); }
+
+.vp-doc div[class*='language-'] { border-radius: 14px; }
+.vp-doc :not(pre) > code { border-radius: 6px; }
+
+.vp-doc .custom-block { border-radius: 14px; border: none; }
+
+/* conteúdo abaixo do hero, na página inicial */
+.cv-home {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 24px 24px 96px;
+}
+@media (min-width: 640px) { .cv-home { padding: 24px 48px 96px; } }
+@media (min-width: 960px) { .cv-home { padding: 24px 64px 96px; } }
+.cv-home h2 {
+  font-size: clamp(28px, 3.2vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 72px 0 12px;
+  border: none;
+}
+.cv-home .cv-lead {
+  font-size: 19px;
+  color: var(--vp-c-text-2);
+  max-width: 720px;
+  line-height: 1.55;
+}
