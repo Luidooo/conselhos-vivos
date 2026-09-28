@@ -43,7 +43,7 @@ PESQUISADORA="(SELECT id FROM revisor WHERE email = 'curadoria@pesquisa.local')"
 echo "estrutura"
 espera_valor "8 tabelas + schema_migrations" "9" \
   "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
-espera_valor "toda migração de sql/ registrada" "$(cd sql && ls [0-9][0-9][0-9]_*.sql | paste -sd,)" \
+espera_valor "toda migração de sql/ registrada" "$(cd sql && ls [0-9][0-9][0-9]_*.sql | paste -sd, -)" \
   "SELECT string_agg(arquivo, ',' ORDER BY arquivo) FROM schema_migrations"
 espera_valor "tabelas do public documentadas com COMMENT ON (só as nossas)" "t" \
   "SELECT count(DISTINCT c.relname) >= 8 FROM pg_description d
