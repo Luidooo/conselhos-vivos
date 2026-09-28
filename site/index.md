@@ -5,7 +5,7 @@ title: Conselhos Vivos
 hero:
   name: Conselhos Vivos
   text: Quais conselhos nacionais de participação social ainda estão funcionando?
-  tagline: Um conselho autogerido que para de se reunir não é extinto nem noticiado — ele só silencia. Esta plataforma de dados lê o Diário Oficial da União e mede esse silêncio.
+  tagline: "Os conselhos nacionais não são extintos quando param de funcionar: eles simplesmente deixam de publicar. Esta plataforma lê o Diário Oficial da União, classifica cada ato e mostra quais conselhos seguem decidindo sobre política pública."
   actions:
     - theme: brand
       text: Conferir a Entrega E1
