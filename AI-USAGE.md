@@ -157,7 +157,7 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi pedido:** um site de documentação no GitHub Pages para a professora e a monitoria, no ar junto com a E1, com visual no estilo da Apple.
 - **O que foi aproveitado:** o site inteiro. As páginas são os `.md` do próprio repositório; só a página inicial e a "Entrega E1" foram escritas para o site, a partir do `main` (números conferidos nos relatórios de carga). Links para `.csv`, `.py`, `.sql` e pastas são reescritos para o GitHub.
 - **Como foi verificado:** `npm run build` sem link quebrado (14 páginas); links reescritos conferidos no HTML gerado; navegação conferida no navegador, em claro e escuro; YAML do workflow validado.
-- **Quem revisou:** pendente — a squad, no PR.
+- **Quem revisou:** ninguém além da autora: o PR #13 foi mergeado pela Luiza sem revisão de outra pessoa da squad.
 
 ### 2026-09-28 — Página "Jornada do dado" no site
 
@@ -166,7 +166,7 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi pedido:** uma página sobre a jornada do dado: replicar a planilha feita hoje à mão e depois enriquecê-la com a tipologia da pesquisadora, usando IA classificatória.
 - **O que foi aproveitado:** a página inteira. O limite de validação (só 4 dos 215 atos são de 2020 em diante, quando o INLABS começa) foi medido no banco e entrou na página como decisão pendente da E2.
 - **Como foi verificado:** consulta ao banco para o período dos atos por conselho; distribuição da tipologia conferida no relatório da carga; build sem link quebrado; página conferida no navegador.
-- **Quem revisou:** pendente — a squad, no PR.
+- **Quem revisou:** Luiza
 
 ### 2026-09-28 — Diagrama da jornada do dado (Mermaid) e etapa do RAG
 
@@ -175,4 +175,41 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi pedido:** um diagrama Mermaid vertical e grande da jornada do dado, com nomes compreensíveis para leigos, terminando num assistente de perguntas (RAG); e tirar do fluxo a etapa em que a pesquisadora valida a classificação da IA.
 - **O que foi aproveitado:** o diagrama e a seção do RAG. A primeira versão (horizontal, com termos técnicos como "Bronze · Parquet" e "artCategory × aliases") foi descartada a pedido. O plugin `vitepress-plugin-mermaid` exigiu declarar dependências CommonJS e um link `node_modules` na raiz para o modo dev.
 - **Como foi verificado:** build sem link quebrado; no navegador, em claro e escuro, conferido que nenhum rótulo do diagrama fica cortado e que o Mermaid não acusa erro.
+- **Observação:** tirar a validação da classificação pela pesquisadora deixa a página em desacordo com o ADR 0001, que justifica o OLTP pelo julgamento humano da curadoria. A squad precisa decidir entre manter a validação como opcional ou revisar o ADR 0001.
 - **Quem revisou:** pendente — a squad, no PR.
+
+### 2026-09-28 — Frase de abertura do site (PR #14)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `site/index.md`
+- **O que foi pedido:** reescrever a frase da página inicial, que estava estranha.
+- **O que foi aproveitado:** uma das três opções propostas, escolhida pela Luiza.
+- **Como foi verificado:** build sem link quebrado; frase conferida no navegador.
+- **Quem revisou:** ninguém além da autora: o PR #14 foi mergeado pela Luiza sem revisão de outra pessoa da squad.
+
+### 2026-09-28 — Diagnóstico do deploy do site
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** GitHub Actions, workflow `docs.yml` (nenhum arquivo alterado)
+- **O que foi pedido:** descobrir por que o deploy quebrou depois do merge do PR #13.
+- **O que foi aproveitado:** o diagnóstico. O build passou e o deploy falhou com HTTP 404, porque o GitHub Pages não estava ligado no repositório (confirmado pela API: `has_pages: false`). Só o dono do repositório consegue ligar.
+- **Como foi verificado:** log da execução que falhou (`gh run view --log-failed`) e consulta à API do repositório.
+- **Quem revisou:** não se aplica: não houve mudança de código.
+
+### 2026-09-28 — Teste do esquema no macOS (PR #15)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `tests/db/test_schema.sh`
+- **O que foi pedido:** entender a falha do `make test` no Mac da Luiza.
+- **O que foi aproveitado:** a correção inteira, de um caractere: `paste -sd,` virou `paste -sd, -`, porque o `paste` do macOS exige o `-` para ler da entrada. Antes disso, um erro de `codigo_siorg` foi descartado como bug: ele veio de dois `make reset` rodando ao mesmo tempo, um da Luiza e outro da IA.
+- **Como foi verificado:** `make test` completo no Mac depois da correção: infra 5/5, esquema 26/26, planilha 21/21, conselhos 27/27, carga 15/15.
+- **Quem revisou:** ninguém além da autora: o PR #15 foi mergeado pela Luiza sem revisão de outra pessoa da squad.
+
+### 2026-09-28 — Guia e roteiro da apresentação da E1
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** fora do repositório (roteiro em PDF, guia de preparação e textos dos PRs #13, #14 e #15)
+- **O que foi pedido:** um guia de preparação, um roteiro falado de cerca de 10 minutos com as perguntas prováveis, e o roteiro em PDF.
+- **O que foi aproveitado:** o roteiro e a lista de perguntas. Os números citados (215 atos, 82 conselhos, 16,4 ms contra 4,1 ms, 94 verificações) foram conferidos nos ADRs, nos relatórios de carga e na saída do `make test`.
+- **Como foi verificado:** cada número conferido na fonte; o PDF foi renderizado e revisado página por página.
+- **Quem revisou:** Luiza. A apresentação e a arguição são individuais e sem IA, como pede a política da disciplina.
