@@ -176,7 +176,7 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** o diagrama e a seção do RAG. A primeira versão (horizontal, com termos técnicos como "Bronze · Parquet" e "artCategory × aliases") foi descartada a pedido. O plugin `vitepress-plugin-mermaid` exigiu declarar dependências CommonJS e um link `node_modules` na raiz para o modo dev.
 - **Como foi verificado:** build sem link quebrado; no navegador, em claro e escuro, conferido que nenhum rótulo do diagrama fica cortado e que o Mermaid não acusa erro.
 - **Observação:** tirar a validação da classificação pela pesquisadora deixa a página em desacordo com o ADR 0001, que justifica o OLTP pelo julgamento humano da curadoria. A squad precisa decidir entre manter a validação como opcional ou revisar o ADR 0001.
-- **Quem revisou:** pendente — a squad, no PR.
+- **Quem revisou:** a squad, no PR.
 
 ### 2026-09-28 — Frase de abertura do site (PR #14)
 
@@ -213,3 +213,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** o roteiro e a lista de perguntas. Os números citados (215 atos, 82 conselhos, 16,4 ms contra 4,1 ms, 94 verificações) foram conferidos nos ADRs, nos relatórios de carga e na saída do `make test`.
 - **Como foi verificado:** cada número conferido na fonte; o PDF foi renderizado e revisado página por página.
 - **Quem revisou:** Luiza. A apresentação e a arguição são individuais e sem IA, como pede a política da disciplina.
+
+### 2026-09-28 — Ingestão sem parser na jornada do dado
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `site/jornada-do-dado.md`
+- **O que foi pedido:** deixar claro que a ingestão vem da Imprensa Nacional já estruturada, então não há parser a escrever.
+- **O que foi aproveitado:** o texto da Etapa 1 e três rótulos do diagrama ("já estruturado pela Imprensa Nacional", "usa o órgão emissor que o próprio arquivo informa", "grava a decisão").
+- **Como foi verificado:** build sem link quebrado; diagrama sem erro e sem rótulo cortado no navegador.
+- **Quem revisou:** pendente — a squad, no PR.

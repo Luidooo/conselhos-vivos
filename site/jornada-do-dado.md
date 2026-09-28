@@ -8,7 +8,7 @@ aside: false
 
 Hoje, a pesquisadora lê o Diário Oficial ato por ato, anota cada um numa planilha e classifica na tipologia. A plataforma faz o mesmo caminho em duas etapas:
 
-1. **Replicar a planilha:** ler o DOU e produzir, para todos os conselhos, as mesmas linhas que ela escreve à mão.
+1. **Replicar a planilha:** baixar o DOU, que a Imprensa Nacional já publica estruturado, e produzir para todos os conselhos as mesmas linhas que ela escreve à mão.
 2. **Enriquecer com a tipologia dela:** uma IA classificatória atribui a cada ato uma das categorias que ela usa.
 
 <div class="cv-jornada">
@@ -55,11 +55,11 @@ flowchart TB
   manual -. "resultado" .-> xlsx[("Planilha da pesquisadora<br/>215 decisões classificadas · 2003 a 2020")]
   xlsx -- "importada" --> oltp
 
-  dou[("Diário Oficial da União<br/>arquivos diários desde 2020")] -- "baixado todo dia" --> bronze
+  dou[("Diário Oficial da União<br/>já estruturado pela Imprensa Nacional<br/>desde 2020")] -- "baixado todo dia" --> bronze
 
   subgraph etapa1["Etapa 1 · montar a planilha automaticamente (E2)"]
-    bronze["Guarda uma cópia fiel<br/>de cada edição"] --> conselho["Descobre qual conselho<br/>publicou cada decisão"]
-    conselho --> linha["Escreve a decisão como<br/>uma linha da planilha"]
+    bronze["Guarda uma cópia fiel<br/>de cada edição"] --> conselho["Usa o órgão emissor<br/>que o próprio arquivo informa"]
+    conselho --> linha["Grava a decisão como<br/>uma linha da planilha"]
   end
 
   linha --> oltp[("<b>Banco de dados do projeto</b><br/>onde tudo fica guardado<br/>(pronto na E1)")]
@@ -109,11 +109,11 @@ A disciplina percorre os cinco estágios do ciclo de vida do dado. Cada estágio
 
 **O que já existe (E1).** A planilha dela está dentro do banco: 215 atos de 5 conselhos, lidos sem passo manual ([relatório da carga](/docs/carga/relatorio-planilha)). Os 125 nomes de conselho que ela mapeou viram 82 órgãos, e cada grafia vira um *alias* ([identidade dos conselhos](/docs/carga/relatorio-conselhos)).
 
-**O que vem (E2).**
+**O que vem (E2).** Não há parser a escrever: a Imprensa Nacional, pelo INLABS, já publica cada matéria como um XML separado, com o órgão emissor, a data e o texto em campos próprios. O trabalho é baixar, guardar e mapear campos, não interpretar texto.
 
-1. **Ingerir o DOU:** o INLABS publica cada edição em XML. Resoluções de conselho ficam na Seção 1, que tem cerca de 300 matérias por dia útil.
-2. **Achar o conselho:** cada matéria traz o campo `artCategory` com a hierarquia do órgão emissor. O último nível é casado com os *aliases* da identidade dos conselhos ([ADR 0004](/docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada)). Nome não reconhecido não é descartado: vira pendência para a curadoria.
-3. **Escrever a linha da planilha:** data, ato, conselho emissor e ementa, gravados em `ato` com `origem = 'DOU'`, ao lado dos atos com `origem = 'PLANILHA'`.
+1. **Baixar o DOU:** uma edição por dia útil. Resoluções de conselho ficam na Seção 1, que tem cerca de 300 matérias por dia útil.
+2. **Mapear o órgão emissor:** o campo `artCategory` já traz a hierarquia do órgão que publicou. O último nível é casado com os *aliases* da identidade dos conselhos ([ADR 0004](/docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada)). Nome não reconhecido não é descartado: vira pendência para a curadoria.
+3. **Gravar a linha da planilha:** data, ato, conselho emissor e ementa, gravados em `ato` com `origem = 'DOU'`, ao lado dos atos com `origem = 'PLANILHA'`.
 
 **Como saber que a replicação funciona.** Os atos que ela anotou à mão servem de gabarito: a plataforma precisa encontrar no DOU cada um deles, com a mesma data e o mesmo conselho.
 
