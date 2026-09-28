@@ -65,12 +65,12 @@ flowchart TB
   linha --> oltp[("<b>Banco de dados do projeto</b><br/>onde tudo fica guardado<br/>(pronto na E1)")]
   siorg[("Cadastro oficial de<br/>órgãos do governo")] -- "confirma os 82 conselhos" --> oltp
 
-  subgraph etapa2["Etapa 2 · classificar as decisões (E3)"]
-    ia["Inteligência artificial<br/>classifica o tipo de decisão"]
+  subgraph etapa2["Etapa 2 · classificar e enriquecer as decisões (E3)"]
+    ia["Inteligência artificial<br/>classifica o tipo de decisão"] --> outros["Enriquece com<br/>outros dados"]
   end
 
   oltp -- "decisões ainda sem tipo" --> ia
-  ia -- "tipo e grau de certeza" --> ind
+  outros -- "decisões enriquecidas" --> ind
 
   subgraph consumo["Resultado (E3 e E4)"]
     ind["Índice de vitalidade<br/>quem parou de publicar e<br/>o que cada conselho decide"] --> pub["Painel para a pesquisadora<br/>e para o público"]
@@ -88,7 +88,7 @@ flowchart TB
   classDef proximo fill:#ffffff,stroke:#0071e3,stroke-dasharray:4 3,color:#1d1d1f
   class manual manual
   class oltp feito
-  class bronze,conselho,linha,ia,ind,pub,rag proximo
+  class bronze,conselho,linha,ia,outros,ind,pub,rag proximo
 ```
 
 <p class="cv-legenda">Cinza: o trabalho feito hoje à mão. Azul cheio: já pronto. Contorno tracejado: o que vem nas próximas etapas, até o assistente de perguntas.</p>
