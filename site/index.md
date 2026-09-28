@@ -11,6 +11,9 @@ hero:
       text: Conferir a Entrega E1
       link: /entrega-e1
     - theme: alt
+      text: Jornada do dado
+      link: /jornada-do-dado
+    - theme: alt
       text: Como rodar
       link: /visao-geral#como-rodar
     - theme: alt

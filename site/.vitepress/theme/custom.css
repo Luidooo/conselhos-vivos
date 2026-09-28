@@ -184,3 +184,54 @@ body {
   max-width: 720px;
   line-height: 1.55;
 }
+
+/* jornada do dado: hoje (à mão) × plataforma, em cartões lado a lado */
+.cv-jornada {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 20px 0 8px;
+}
+@media (max-width: 640px) { .cv-jornada { grid-template-columns: 1fr; } }
+.cv-passo {
+  position: relative;
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: var(--vp-c-bg-soft);
+  box-shadow: var(--cv-card-shadow);
+}
+.cv-passo strong { display: block; font-size: 17px; letter-spacing: -0.015em; margin: 4px 0 2px; }
+.cv-passo p { margin: 0 !important; font-size: 14px !important; line-height: 1.45 !important; color: var(--vp-c-text-2); }
+.cv-rotulo {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-2);
+}
+.cv-jornada-plataforma .cv-passo { background: var(--vp-c-brand-soft); }
+.cv-jornada-plataforma .cv-rotulo { color: var(--vp-c-brand-1); }
+
+/* diagramas Mermaid: largura total, rolagem no celular, legenda discreta */
+.vp-doc .mermaid {
+  margin: 20px 0 6px;
+  padding: 20px;
+  border-radius: 18px;
+  background: var(--vp-c-bg-soft);
+  overflow-x: auto;
+  text-align: center;
+}
+/* o texto das caixas não herda o tamanho dos parágrafos (o Mermaid mede antes do CSS) */
+.vp-doc .mermaid p, .vp-doc .mermaid span {
+  font-size: inherit !important;
+  line-height: 1.35 !important;
+  margin: 0 !important;
+}
+.vp-doc .mermaid svg { max-width: 760px !important; width: 100% !important; height: auto; }
+.vp-doc .cv-legenda { font-size: 13px !important; color: var(--vp-c-text-2); margin-top: 6px; }
+/* rótulos das setas no fundo do cartão, sem o lilás padrão do Mermaid */
+.vp-doc .mermaid .edgeLabel,
+.vp-doc .mermaid .edgeLabel p,
+.vp-doc .mermaid .labelBkg { background-color: var(--vp-c-bg-soft) !important; }
+.vp-doc .mermaid .edgeLabel rect { fill: var(--vp-c-bg-soft) !important; }
+.vp-doc .mermaid .edgeLabel { color: var(--vp-c-text-2) !important; }

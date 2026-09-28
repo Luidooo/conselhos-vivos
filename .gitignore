@@ -25,5 +25,7 @@ venv/
 
 # site de documentação (VitePress)
 site/node_modules/
+# link criado pelo npm run dev: o Vite resolve as dependências a partir da raiz (srcDir: ..)
+/node_modules
 site/.vitepress/dist/
 site/.vitepress/cache/
