@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
 // As páginas são os .md do próprio repositório (fonte única): o site só as organiza.
 const REPO = 'https://github.com/Luidooo/conselhos-vivos'
@@ -28,7 +29,7 @@ function linkParaGithub(href: string, arquivoFonte: string): string | null {
   return `${REPO}/blob/main/${relativo}${ancora ? '#' + ancora : ''}`
 }
 
-export default defineConfig({
+export default withMermaid(defineConfig({
   lang: 'pt-BR',
   title: 'Conselhos Vivos',
   description: 'Plataforma de dados que mede a vitalidade dos conselhos nacionais de participação social.',
@@ -75,6 +76,9 @@ export default defineConfig({
   // Os .md ficam fora de site/: o Vite procuraria o vue a partir da raiz do repositório,
   // onde não há node_modules. Aponta para o de site/.
   vite: {
+    // o plugin do Mermaid não declara estas dependências CommonJS; sem pré-processar,
+    // o modo dev quebra com "does not provide an export named 'default'"
+    optimizeDeps: { include: ['mermaid', 'fastdom'] },
     resolve: {
       alias: [{ find: /^vue(\/.*)?$/, replacement: path.join(RAIZ, 'site/node_modules/vue$1') }],
     },
@@ -153,4 +157,14 @@ export default defineConfig({
       copyright: 'Dados da pesquisa: SERAFIM, Lizandra e colaboradores (UFPB/Cebrap).',
     },
   },
-})
+
+  // diagramas Mermaid no tom do site (o plugin troca para o tema escuro sozinho)
+  mermaid: {
+    theme: 'base',
+    themeVariables: {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif',
+      fontSize: '17px',
+    },
+    flowchart: { nodeSpacing: 36, rankSpacing: 46, padding: 14, wrappingWidth: 320 },
+  },
+}))

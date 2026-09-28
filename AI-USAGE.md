@@ -167,3 +167,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** a página inteira. O limite de validação (só 4 dos 215 atos são de 2020 em diante, quando o INLABS começa) foi medido no banco e entrou na página como decisão pendente da E2.
 - **Como foi verificado:** consulta ao banco para o período dos atos por conselho; distribuição da tipologia conferida no relatório da carga; build sem link quebrado; página conferida no navegador.
 - **Quem revisou:** pendente — a squad, no PR.
+
+### 2026-09-28 — Diagrama da jornada do dado (Mermaid) e etapa do RAG
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `site/jornada-do-dado.md`, `site/.vitepress/config.mts`, `site/.vitepress/theme/custom.css`, `site/package.json`, `.gitignore`
+- **O que foi pedido:** um diagrama Mermaid vertical e grande da jornada do dado, com nomes compreensíveis para leigos, terminando num assistente de perguntas (RAG); e tirar do fluxo a etapa em que a pesquisadora valida a classificação da IA.
+- **O que foi aproveitado:** o diagrama e a seção do RAG. A primeira versão (horizontal, com termos técnicos como "Bronze · Parquet" e "artCategory × aliases") foi descartada a pedido. O plugin `vitepress-plugin-mermaid` exigiu declarar dependências CommonJS e um link `node_modules` na raiz para o modo dev.
+- **Como foi verificado:** build sem link quebrado; no navegador, em claro e escuro, conferido que nenhum rótulo do diagrama fica cortado e que o Mermaid não acusa erro.
+- **Quem revisou:** pendente — a squad, no PR.

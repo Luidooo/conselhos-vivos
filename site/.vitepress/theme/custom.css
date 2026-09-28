@@ -211,3 +211,27 @@ body {
 }
 .cv-jornada-plataforma .cv-passo { background: var(--vp-c-brand-soft); }
 .cv-jornada-plataforma .cv-rotulo { color: var(--vp-c-brand-1); }
+
+/* diagramas Mermaid: largura total, rolagem no celular, legenda discreta */
+.vp-doc .mermaid {
+  margin: 20px 0 6px;
+  padding: 20px;
+  border-radius: 18px;
+  background: var(--vp-c-bg-soft);
+  overflow-x: auto;
+  text-align: center;
+}
+/* o texto das caixas não herda o tamanho dos parágrafos (o Mermaid mede antes do CSS) */
+.vp-doc .mermaid p, .vp-doc .mermaid span {
+  font-size: inherit !important;
+  line-height: 1.35 !important;
+  margin: 0 !important;
+}
+.vp-doc .mermaid svg { max-width: 760px !important; width: 100% !important; height: auto; }
+.vp-doc .cv-legenda { font-size: 13px !important; color: var(--vp-c-text-2); margin-top: 6px; }
+/* rótulos das setas no fundo do cartão, sem o lilás padrão do Mermaid */
+.vp-doc .mermaid .edgeLabel,
+.vp-doc .mermaid .edgeLabel p,
+.vp-doc .mermaid .labelBkg { background-color: var(--vp-c-bg-soft) !important; }
+.vp-doc .mermaid .edgeLabel rect { fill: var(--vp-c-bg-soft) !important; }
+.vp-doc .mermaid .edgeLabel { color: var(--vp-c-text-2) !important; }
