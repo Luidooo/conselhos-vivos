@@ -158,3 +158,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** o site inteiro. As páginas são os `.md` do próprio repositório; só a página inicial e a "Entrega E1" foram escritas para o site, a partir do `main` (números conferidos nos relatórios de carga). Links para `.csv`, `.py`, `.sql` e pastas são reescritos para o GitHub.
 - **Como foi verificado:** `npm run build` sem link quebrado (14 páginas); links reescritos conferidos no HTML gerado; navegação conferida no navegador, em claro e escuro; YAML do workflow validado.
 - **Quem revisou:** pendente — a squad, no PR.
+
+### 2026-09-28 — Página "Jornada do dado" no site
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `site/jornada-do-dado.md`, `site/.vitepress/config.mts`, `site/.vitepress/theme/custom.css`, `site/index.md`
+- **O que foi pedido:** uma página sobre a jornada do dado: replicar a planilha feita hoje à mão e depois enriquecê-la com a tipologia da pesquisadora, usando IA classificatória.
+- **O que foi aproveitado:** a página inteira. O limite de validação (só 4 dos 215 atos são de 2020 em diante, quando o INLABS começa) foi medido no banco e entrou na página como decisão pendente da E2.
+- **Como foi verificado:** consulta ao banco para o período dos atos por conselho; distribuição da tipologia conferida no relatório da carga; build sem link quebrado; página conferida no navegador.
+- **Quem revisou:** pendente — a squad, no PR.

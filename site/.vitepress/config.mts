@@ -44,6 +44,7 @@ export default defineConfig({
   rewrites: {
     'site/index.md': 'index.md',
     'site/entrega-e1.md': 'entrega-e1.md',
+    'site/jornada-do-dado.md': 'jornada-do-dado.md',
     'README.md': 'visao-geral.md',
     'docs/adr/README.md': 'docs/adr/index.md',
   },
@@ -85,6 +86,7 @@ export default defineConfig({
     siteTitle: 'Conselhos Vivos',
     nav: [
       { text: 'Entrega E1', link: '/entrega-e1' },
+      { text: 'Jornada do dado', link: '/jornada-do-dado' },
       { text: 'Visão geral', link: '/visao-geral' },
       { text: 'Decisões', link: '/docs/adr/' },
       { text: 'Dados', link: '/docs/carga/relatorio-planilha' },
@@ -95,6 +97,7 @@ export default defineConfig({
         text: 'Comece aqui',
         items: [
           { text: 'Entrega E1', link: '/entrega-e1' },
+          { text: 'Jornada do dado', link: '/jornada-do-dado' },
           { text: 'Visão geral e como rodar', link: '/visao-geral' },
         ],
       },

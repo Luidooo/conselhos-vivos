@@ -184,3 +184,30 @@ body {
   max-width: 720px;
   line-height: 1.55;
 }
+
+/* jornada do dado: hoje (à mão) × plataforma, em cartões lado a lado */
+.cv-jornada {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 20px 0 8px;
+}
+@media (max-width: 640px) { .cv-jornada { grid-template-columns: 1fr; } }
+.cv-passo {
+  position: relative;
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: var(--vp-c-bg-soft);
+  box-shadow: var(--cv-card-shadow);
+}
+.cv-passo strong { display: block; font-size: 17px; letter-spacing: -0.015em; margin: 4px 0 2px; }
+.cv-passo p { margin: 0 !important; font-size: 14px !important; line-height: 1.45 !important; color: var(--vp-c-text-2); }
+.cv-rotulo {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-2);
+}
+.cv-jornada-plataforma .cv-passo { background: var(--vp-c-brand-soft); }
+.cv-jornada-plataforma .cv-rotulo { color: var(--vp-c-brand-1); }
