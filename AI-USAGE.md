@@ -213,3 +213,21 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** o roteiro e a lista de perguntas. Os números citados (215 atos, 82 conselhos, 16,4 ms contra 4,1 ms, 94 verificações) foram conferidos nos ADRs, nos relatórios de carga e na saída do `make test`.
 - **Como foi verificado:** cada número conferido na fonte; o PDF foi renderizado e revisado página por página.
 - **Quem revisou:** Luiza. A apresentação e a arguição são individuais e sem IA, como pede a política da disciplina.
+
+### 2026-10-02 — Configuração do comando fetch por ambiente
+
+- **Ferramenta:** Claude Code (Claude Opus 5)
+- **Onde:** `src/ingestor/internal/config/`, `src/ingestor/cmd/fetch/main.go`, `src/ingestor/go.mod`, `src/ingestor/justfile`, `.env.example`
+- **O que foi pedido:** ler as credenciais do INLABS do ambiente, com um arquivo `.env` opcional para o uso local e o ambiente ganhando dele. Registro em retrospecto: o pedido foi feito em sessão anterior e não foi anotado na hora.
+- **O que foi aproveitado:** o pacote `internal/config` e o esqueleto do comando `fetch` (commit `7917176`). Somar `caarlos0/env` e `joho/godotenv` em vez de escrever o parser de `.env` à mão foi decisão do Iago, que rejeitou o parser que a IA havia escrito. A mensagem do commit foi redigida pela IA nesta sessão.
+- **Como foi verificado:** `go test ./...` no dev shell do `flake.nix` (Go 1.26.8): 7 testes em `internal/config` passando, sem rede e sem credenciais.
+- **Quem revisou:** Iago, que escolheu as bibliotecas e fez o commit.
+
+### 2026-10-02 — Cliente de login do INLABS e seus testes
+
+- **Ferramenta:** Claude Code (Claude Opus 5)
+- **Onde:** `src/ingestor/internal/inlabs/inlabsclient.go`, `src/ingestor/internal/inlabs/inlabsclient_test.go`, `src/ingestor/cmd/fetch/main.go`
+- **O que foi pedido:** explicar o `script.sh` de referência do INLABS (o `curl` do login, o que é header de requisição, o que é cookie e por que o jar entra no `http.Client`), traduzir o login para Go, revisar a implementação escrita pelo Iago e escrever os testes.
+- **O que foi aproveitado:** a explicação do protocolo — o header `origem: 736372697074` é a palavra "script" em hexadecimal, e o cookie `inlabs_session_cookie` é a única prova de login, porque o `logar.php` responde 200 com HTML quando a credencial é recusada. O cliente foi escrito pelo Iago a partir dessa tradução; da IA são os cinco testes com `httptest`, o `baseURL` como campo do `Client` (sem isso não há como exercitar o 200-com-HTML) e o wiring no `main`. Na revisão a IA apontou dois bugs reais — URL sem a barra antes de `logar.php` e o header escrito `origin` em vez de `origem` —, mas afirmou que ainda estavam no arquivo quando já tinham sido corrigidos; o erro só apareceu porque o Iago pediu confirmação. A IA também apontou que `script.sh` e `cookies.iakim` estavam no diretório fora do `.gitignore`, com senha e sessão ativa em texto puro: o `cookies.iakim` foi removido, o `script.sh` segue pendente.
+- **Como foi verificado:** `gofmt -l` sem saída, `go vet ./...` limpo e `go test -race -count=1 ./...` verde no dev shell do `flake.nix` (Go 1.26.8): `internal/config` 7/7 e `internal/inlabs` 5/5. Os testes rodam contra `httptest.NewServer`, sem rede e sem credenciais. Rodar foi o que pegou dois deadlocks no teste de cancelamento, ambos escritos pela IA: esperar em `r.Context().Done()` dentro do handler, quando o servidor só detecta a desconexão depois que o corpo da requisição é lido, e liberar o handler em `t.Cleanup`, que roda LIFO e portanto depois do `server.Close`.
+- **Quem revisou:** Iago, que escreveu o cliente e acompanhou cada passo da sessão.

@@ -23,6 +23,12 @@ venv/
 .DS_Store
 *.swp
 
+# sandbox local de ferramentas de IA
+.ai-jail
+
+# git workflow
+.worktrees
+
 # site de documentação (VitePress)
 site/node_modules/
 # link criado pelo npm run dev: o Vite resolve as dependências a partir da raiz (srcDir: ..)
