@@ -110,6 +110,7 @@ func (c *Client) FetchDay(ctx context.Context, date Date, dest Saver) (Summary, 
 	return summary, nil
 }
 
+// TODO: no fucking reason for it to be a method ??
 // downloadSection is one edition: ask, classify, stream to dest. A missing
 // edition is an outcome, not an error: most days have no extra one.
 func (c *Client) downloadSection(ctx context.Context, dest Saver,
