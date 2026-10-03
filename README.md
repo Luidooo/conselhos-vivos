@@ -41,7 +41,7 @@ Um conselho que só produz `AUTO` está se auto-administrando, não incidindo em
 
 ## Como rodar
 
-Pré-requisitos: Docker com Compose v2 (`docker compose version`) e `make`.
+Pré-requisitos: Docker com Compose v2 (`docker compose version`), `make` e `jq`.
 
 ```bash
 make setup     # cria o .env (se faltar), sobe tudo, aplica as migrações de sql/ e carrega a planilha
@@ -61,7 +61,9 @@ Os dados ficam no volume `pgdata` e sobrevivem a `docker compose down`.
 > **`db` ou `localhost`?** Dentro do compose (pgAdmin, ingestores) o banco é `db:5432`. Fora dele, no seu terminal ou no DBeaver, é `localhost:5432`. Dentro de um container, `localhost` é o próprio container.
 
 ```bash
-make test      # testes: infra, esquema do OLTP, leitura da planilha, identidade dos conselhos e carga
+make test      # testes: Go do ingestor, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos e carga
+make test-go   # só os testes do ingestor em Go, em container (sem rede, sem credencial)
+make fetch     # baixa as edições do DOU de hoje em Brasília; DATA=AAAA-MM-DD para outro dia
 make migrate   # aplica as migrações de sql/ que ainda não rodaram
 make carga     # carrega os conselhos e a planilha da pesquisadora (idempotente) e atualiza os relatórios
 make siorg     # baixa o SIORG (precisa de rede) e atualiza o recorte em data/referencia/
@@ -86,6 +88,21 @@ make           # lista todos os comandos
 **Identidade dos conselhos:** antes dos atos, o `make carga` junta os 125 nomes da aba "Conselhos mapeados no DOU" em **82 órgãos** ([ADR 0004](docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md)). Nomes que só diferem em caixa, acento ou sigla se juntam sozinhos; o resto é decisão registrada em [`data/referencia/conselhos-decisoes.csv`](data/referencia/conselhos-decisoes.csv) (grafia, renomeação com o ato legal, nome, indefinido ou ambíguo), que abre em qualquer planilha. Para corrigir uma decisão, edite o CSV e rode `make carga`. O resultado, com a conta que chega a 82, está em [`docs/carga/relatorio-conselhos.md`](docs/carga/relatorio-conselhos.md).
 
 **Migrações:** cada arquivo `sql/NNN_*.sql` roda uma vez, em ordem e em transação, e fica registrado em `schema_migrations`. Depois de mergeado no `main`, um arquivo de migração **não se edita**: mudança nova vira o próximo número.
+
+## Baixar o DOU
+
+O `make fetch` baixa do INLABS as edições da Seção 1 — `DO1` e a edição extra `DO1E` — de um dia, e grava os ZIPs em `data/bronze/inlabs/`, que precisa existir: o comando não cria o diretório. Precisa das credenciais do INLABS no `.env` (cadastro gratuito em <https://inlabs.in.gov.br/>).
+
+```bash
+make fetch                    # hoje, no horário de Brasília
+make fetch DATA=2026-10-01    # um dia específico
+```
+
+Um arquivo só aparece com o nome final quando o conteúdo é um ZIP que abre: sessão expirada devolve a página de login.
+
+**Não há retomada.** Cada execução baixa o dia de novo, sobrescrevendo o que estiver em disco. Para vários dias:
+
+O código de saída diz o que aconteceu: `0` nada falhou, `1` a execução foi abortada ou alguma seção falhou, `2` erro de uso (`-date` ausente ou malformado). Uma data que o INLABS não pode ter — futura, ou anterior a 2020-01-01, que é desde quando ele serve — aborta a execução com `1` e nenhuma requisição: é regra do INLABS, e não do argumento.
 
 ## Estrutura
 
