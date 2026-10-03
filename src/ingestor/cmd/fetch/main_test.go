@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"flag"
+	"os"
 	"testing"
 
 	"cloud.google.com/go/civil"
@@ -8,56 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDatesToFetch(t *testing.T) {
-	today := mustParse(t, "2026-10-02")
-
-	t.Run("no flags means today alone", func(t *testing.T) {
-		dates, err := datesToFetch(today, today, today)
-		require.NoError(t, err)
-
-		require.Len(t, dates, 1)
-		assert.Equal(t, "2026-10-02", dates[0].String())
-	})
-
-	t.Run("an interval ending today", func(t *testing.T) {
-		dates, err := datesToFetch(mustParse(t, "2026-09-30"), today, today)
-		require.NoError(t, err)
-
-		assert.Len(t, dates, 3)
-		assert.Equal(t, "2026-09-30", dates[0].String())
-		assert.Equal(t, "2026-10-02", dates[2].String())
-	})
-
-	t.Run("an inverted interval is a usage error", func(t *testing.T) {
-		_, err := datesToFetch(today, mustParse(t, "2026-09-30"), today)
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "starts after it ends")
-	})
-
-	t.Run("a day after today is a usage error", func(t *testing.T) {
-		_, err := datesToFetch(today, mustParse(t, "2026-10-03"), today)
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "after today")
-	})
-
-	t.Run("a whole interval in the future is a usage error", func(t *testing.T) {
-		_, err := datesToFetch(mustParse(t, "2026-10-05"), mustParse(t, "2026-10-07"), today)
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "-from is 2026-10-05")
-	})
-}
-
-func mustParse(t *testing.T, value string) civil.Date {
-	t.Helper()
-
-	date, err := civil.ParseDate(value)
-	require.NoError(t, err)
-	return date
-}
-
+// Only the command line is tested here; the download is the inlabs package's,
+// and is tested there against a real client.
 func TestDateFlagTakesOneFormatOnly(t *testing.T) {
 	var date civil.Date
 	flag := dateFlag{&date}
@@ -79,4 +34,48 @@ func TestDateFlagTakesOneFormatOnly(t *testing.T) {
 			assert.Contains(t, err.Error(), "YYYY-MM-DD", "the error should name the one format")
 		})
 	}
+}
+
+// A date the archive cannot have still parses; inlabs is what turns it down.
+func TestDateFlagAcceptsAWellSpelledImpossibleDate(t *testing.T) {
+	var date civil.Date
+
+	require.NoError(t, dateFlag{&date}.Set("1900-01-01"))
+	assert.Equal(t, "1900-01-01", date.String())
+}
+
+func TestUsageSaysThereIsNoResume(t *testing.T) {
+	var captured bytes.Buffer
+	flag.CommandLine.SetOutput(&captured)
+	t.Cleanup(func() { flag.CommandLine.SetOutput(os.Stderr) })
+
+	usage()
+
+	assert.Contains(t, captured.String(), "no resume")
+}
+
+func TestTheDateIsRequired(t *testing.T) {
+	var missing civil.Date
+
+	err := requireDate(missing)
+
+	require.Error(t, err, "a run with no -date must not fall back to a guessed day")
+	assert.Contains(t, err.Error(), "required")
+}
+
+func TestAGivenDatePassesTheRequirement(t *testing.T) {
+	var date civil.Date
+	require.NoError(t, dateFlag{&date}.Set("2026-10-02"))
+
+	assert.NoError(t, requireDate(date))
+}
+
+func TestUsageSaysTheDateIsRequired(t *testing.T) {
+	var captured bytes.Buffer
+	flag.CommandLine.SetOutput(&captured)
+	t.Cleanup(func() { flag.CommandLine.SetOutput(os.Stderr) })
+
+	usage()
+
+	assert.Contains(t, captured.String(), "-date is required")
 }

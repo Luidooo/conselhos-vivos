@@ -1,65 +1,107 @@
-// Command fetch downloads the Diário Oficial da União editions from INLABS.
+// Command fetch downloads a day's Diário Oficial da União editions from INLABS.
+//
+// It only orchestrates: arguments, configuration, log, exit code. Which dates
+// can have an edition, when to log in and which sections exist belong to the
+// inlabs package.
 package main
 
 import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
-	"time"
-	_ "time/tzdata" // a distroless image carries no zoneinfo; see inlabs.TimeZone
 
 	"cloud.google.com/go/civil"
 
 	"conselhos-vivos/internal/config"
 	"conselhos-vivos/internal/inlabs"
+	"conselhos-vivos/internal/store"
 )
 
-// loginTimeout covers connecting and the login round trip, nothing else: the
-// downloads get their own deadlines, sized by the edition.
-const loginTimeout = 30 * time.Second
-
 func main() {
-	log.SetFlags(0)
-	log.SetPrefix("fetch: ")
+	// TODO: use a lib to validate those args so we don't have to it ourselves
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
-	location, err := inlabs.LoadLocation()
-	if err != nil {
-		log.Fatal(err)
-	}
-	today := inlabs.Today(time.Now(), location)
-
-	// A misspelled date fails here, as a usage error, before any request.
-	from, to := today, today
-	flag.Var(dateFlag{&from}, "from", "first day to download (`YYYY-MM-DD`)")
-	flag.Var(dateFlag{&to}, "to", "last day to download (`YYYY-MM-DD`)")
+	// No default day: the container runs in UTC, where "today" turns over three
+	// hours before it does in Brasília.
+	var date inlabs.Date
+	flag.Var(dateFlag{&date}, "date", "day to download (`YYYY-MM-DD`); required")
 	envFile := flag.String("env", "", "path to a .env file with the INLABS credentials; the environment wins over it")
+	flag.Usage = usage
 	flag.Parse()
 
-	dates, err := datesToFetch(from, to, today)
-	if err != nil {
+	if err := requireDate(date); err != nil {
 		fmt.Fprintf(flag.CommandLine.Output(), "fetch: %v\n\n", err)
 		flag.Usage()
 		os.Exit(2)
 	}
 
-	if err := run(*envFile, dates); err != nil {
-		log.Fatal(err)
+	summary, err := run(logger, *envFile, date)
+	if err != nil {
+		logger.Error("run aborted", "err", err)
+		os.Exit(1)
+	}
+
+	logger.Info("done",
+		"baixadas", summary.Downloaded,
+		"sem-edicao", summary.NoEdition,
+		"falhou", summary.Failed)
+
+	if summary.Failed > 0 {
+		os.Exit(1)
 	}
 }
 
-// dateFlag accepts one spelling of a date and no other: YYYY-MM-DD.
+func run(logger *slog.Logger, envFile string, date inlabs.Date) (inlabs.Summary, error) {
+	var cfg config.Fetch
+	if err := config.Load(envFile, &cfg); err != nil {
+		return inlabs.Summary{}, err
+	}
+
+	client, err := inlabs.New(inlabs.Credentials{Email: cfg.Email, Password: cfg.Password}, logger)
+	if err != nil {
+		return inlabs.Summary{}, err
+	}
+
+	logger.Info("iniciando", "data", date.String(), "destino", cfg.OutputDir)
+
+	// TODO: mabye start the context inside the fetch itself, if it don't make test
+	// harder to maintain.
+	return client.FetchDay(context.Background(), date, store.New(cfg.OutputDir))
+}
+
+// requireDate refuses a run with no -date; the zero Date is how its absence
+// shows, with no second variable to track whether the flag was set.
+func requireDate(date inlabs.Date) error {
+	if !date.IsValid() {
+		return fmt.Errorf("-date is required, as YYYY-MM-DD, like 2026-10-02")
+	}
+	return nil
+}
+
+func usage() {
+	out := flag.CommandLine.Output()
+	fmt.Fprintf(out, "Usage of %s:\n", os.Args[0])
+	flag.PrintDefaults()
+	fmt.Fprint(out, "\n-date is required: this command never guesses the day. A caller that wants\n"+
+		"today asks its own clock for it, in the time zone it means.\n\n"+
+		"There is no resume: every run downloads the day again, overwriting what is\n"+
+		"already on disk. Backfill is a shell loop over -date.\n")
+}
+
+// dateFlag accepts one spelling of a date and no other: YYYY-MM-DD. Whether
+// that day can have an edition is inlabs's question, not the flag's.
 //
-// civil.ParseDate is already this strict — it turns down 2026-10-2, 02/10/2026,
-// 20261002 and a trailing space alike. What this type adds is the message:
+// civil.ParseDate is already this strict; what this type adds is the message.
 // flag.TextVar would report the failure in time.Parse's own words ("cannot
-// parse \"02/10/2026\" as \"2006\""), which describes a layout string the person
-// running the command has never seen.
+// parse \"02/10/2026\" as \"2006\""), a layout string the caller never saw.
 type dateFlag struct{ date *inlabs.Date }
 
+// String is empty until a date is set, so -h does not print "(default
+// 0000-00-00)" under a flag whose help line says it is required.
 func (f dateFlag) String() string {
-	if f.date == nil {
+	if f.date == nil || !f.date.IsValid() {
 		return ""
 	}
 	return f.date.String()
@@ -71,52 +113,5 @@ func (f dateFlag) Set(raw string) error {
 		return fmt.Errorf("want a date as YYYY-MM-DD, like 2026-10-02")
 	}
 	*f.date = date
-	return nil
-}
-
-// datesToFetch turns the interval the flags asked for into the days to
-// download. A day after today cannot have an edition yet, and asking for it
-// would record a 404 for a date that does not exist — so it is a usage error,
-// not a day that simply comes back empty.
-func datesToFetch(from, to, today inlabs.Date) ([]inlabs.Date, error) {
-	if from.After(today) {
-		return nil, fmt.Errorf("-from is %s, after today (%s)", from, today)
-	}
-	if to.After(today) {
-		return nil, fmt.Errorf("-to is %s, after today (%s)", to, today)
-	}
-	return inlabs.Range(from, to)
-}
-
-func run(envFile string, dates []inlabs.Date) error {
-	var cfg config.Fetch
-	if err := config.Load(envFile, &cfg); err != nil {
-		return err
-	}
-
-	if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
-		return fmt.Errorf("preparing the output directory: %w", err)
-	}
-
-	client, err := inlabs.New()
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), loginTimeout)
-	defer cancel()
-
-	if err := client.Login(ctx, cfg.Email, cfg.Password); err != nil {
-		return err
-	}
-
-	log.Printf("logged in as %s, writing to %s", cfg.Email, cfg.OutputDir)
-	log.Printf("%d day(s) to download, from %s to %s", len(dates), dates[0], dates[len(dates)-1])
-
-	for _, date := range dates {
-		log.Printf("%s: pending", date)
-		// TODO: Fetch the edition and hand the body to the store.
-	}
-
 	return nil
 }
