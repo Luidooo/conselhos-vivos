@@ -3,25 +3,19 @@ package inlabs
 import (
 	"fmt"
 	"time"
+	_ "time/tzdata" // the zone database, embedded; see TimeZone
 
 	"cloud.google.com/go/civil"
 )
 
-// TimeZone is where the DOU's day begins and ends. It is not a preference: the
-// official images run in UTC and the compose file sets no TZ, so between 9pm
-// and midnight in Brasília "today" inside a container is already tomorrow —
-// and tomorrow is a guaranteed 404 that would read as "there was no edition".
+// TimeZone is where the DOU's day begins and ends. Containers run in UTC, so
+// between 9pm and midnight in Brasília "today" there is already tomorrow — a
+// guaranteed 404 that would read as "there was no edition".
 //
-// It is America/Sao_Paulo because that is the name the tz database gives the
-// zone Brasília sits in; there is no America/Brasilia. A fixed -03:00 offset
-// would be wrong for any date before 2019, when the country still had DST.
-//
-// The command that loads it must also import _ "time/tzdata": a distroless
-// image carries no zoneinfo, so LoadLocation would pass in a local test and
-// fail in production.
+// There is no America/Brasilia in the tz database, and a fixed -03:00 would be
+// wrong before 2019, when the country still had DST.
 const TimeZone = "America/Sao_Paulo"
 
-// LoadLocation returns the DOU's time zone.
 func LoadLocation() (*time.Location, error) {
 	location, err := time.LoadLocation(TimeZone)
 	if err != nil {
@@ -30,27 +24,30 @@ func LoadLocation() (*time.Location, error) {
 	return location, nil
 }
 
+// Date is a calendar day, with no time of day inside: editions are keyed by day,
+// and hours would make two days compare equal or not depending on when the
+// program ran. An alias, so civil's own API comes with it.
 type Date = civil.Date
 
-// Today is the current day in loc. The instant comes in as an argument so the
-// time zone is something the tests can exercise instead of something only
-// production finds out about.
+// Today is the current day in loc; the instant is an argument so a test can pin
+// it.
 func Today(now time.Time, loc *time.Location) Date {
 	return civil.DateOf(now.In(loc))
 }
 
-// Range lists every day from first to last, both included.
-func Range(first, last Date) ([]Date, error) {
-	if first.After(last) {
-		return nil, fmt.Errorf("the range starts after it ends: %s to %s", first, last)
-	}
+// firstServed is the oldest day INLABS serves, per issue #6.
+var firstServed = Date{Year: 2020, Month: time.January, Day: 1}
 
-	// AddDays walks in UTC, which is what keeps this honest: a day that starts
-	// on a DST transition has no midnight, and adding days in a zone that has
-	// one can repeat or skip a day.
-	var dates []Date
-	for date := first; !date.After(last); date = date.AddDays(1) {
-		dates = append(dates, date)
+// checkDate refuses the days that cannot have an edition: letting one through
+// would record its 404 as "no edition", indistinguishable from a holiday.
+func checkDate(date, today Date) error {
+	if date.After(today) {
+		return fmt.Errorf("%w: %s is after today (%s), so that edition cannot exist yet",
+			ErrDateOutOfRange, date, today)
 	}
-	return dates, nil
+	if date.Before(firstServed) {
+		return fmt.Errorf("%w: %s is before %s, the oldest day it serves",
+			ErrDateOutOfRange, date, firstServed)
+	}
+	return nil
 }

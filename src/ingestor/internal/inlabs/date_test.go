@@ -5,15 +5,14 @@ import (
 	"time"
 
 	"cloud.google.com/go/civil"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// The trap this package exists to avoid: the container runs in UTC, and after
-// 9pm in Brasília the UTC day is already the next one. Asking INLABS for
-// tomorrow is a guaranteed 404, which would be recorded as "no edition" for a
-// working day.
+// The trap this file exists to avoid: the container runs in UTC, and after 9pm
+// in Brasília the UTC day is already the next one. Asking INLABS for tomorrow
+// is a guaranteed 404, which would be recorded as "no edition" for a working
+// day.
 func TestTodayUsesTheDOUTimeZone(t *testing.T) {
 	location, err := LoadLocation()
 	require.NoError(t, err)
@@ -26,17 +25,17 @@ func TestTodayUsesTheDOUTimeZone(t *testing.T) {
 			instant: "2026-10-02T01:30:00Z",
 			want:    "2026-10-01",
 		},
-		"the same wall clock read in UTC would have said the 2nd": {
-			instant: "2026-10-02T12:00:00Z",
-			want:    "2026-10-02",
+		"one second before midnight in Brasília": {
+			instant: "2026-10-02T02:59:59Z",
+			want:    "2026-10-01",
 		},
 		"right at midnight in Brasília": {
 			instant: "2026-10-02T03:00:00Z",
 			want:    "2026-10-02",
 		},
-		"one second before midnight in Brasília": {
-			instant: "2026-10-02T02:59:59Z",
-			want:    "2026-10-01",
+		"midday leaves no room for doubt": {
+			instant: "2026-10-02T12:00:00Z",
+			want:    "2026-10-02",
 		},
 	}
 
@@ -50,83 +49,41 @@ func TestTodayUsesTheDOUTimeZone(t *testing.T) {
 	}
 }
 
-func TestDateOrdering(t *testing.T) {
-	second := mustParse(t, "2026-10-02")
-	third := mustParse(t, "2026-10-03")
-	nextMonth := mustParse(t, "2026-11-01")
-	nextYear := mustParse(t, "2027-01-01")
+func TestTheServedDateWindow(t *testing.T) {
+	today := mustParse(t, "2026-10-02")
 
-	assert.True(t, second.Before(third))
-	assert.True(t, third.After(second))
-	assert.True(t, second.Before(nextMonth))
-	assert.True(t, nextMonth.Before(nextYear))
+	t.Run("today is accepted", func(t *testing.T) {
+		require.NoError(t, checkDate(today, today))
+	})
 
-	assert.False(t, second.Before(second))
-	assert.False(t, second.After(second))
-	assert.Zero(t, second.Compare(second))
-}
+	t.Run("a past day inside the served window is accepted", func(t *testing.T) {
+		require.NoError(t, checkDate(mustParse(t, "2024-06-15"), today))
+	})
 
-func TestRange(t *testing.T) {
-	tests := map[string]struct {
-		first, last string
-		want        []string
-	}{
-		"a single day": {
-			first: "2026-10-02", last: "2026-10-02",
-			want: []string{"2026-10-02"},
-		},
-		"a few days": {
-			first: "2026-10-02", last: "2026-10-05",
-			want: []string{"2026-10-02", "2026-10-03", "2026-10-04", "2026-10-05"},
-		},
-		"across a month": {
-			first: "2026-10-30", last: "2026-11-02",
-			want: []string{"2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02"},
-		},
-		"across a year": {
-			first: "2026-12-31", last: "2027-01-01",
-			want: []string{"2026-12-31", "2027-01-01"},
-		},
-		"across the end of February in a leap year": {
-			first: "2024-02-28", last: "2024-03-01",
-			want: []string{"2024-02-28", "2024-02-29", "2024-03-01"},
-		},
-	}
+	t.Run("the floor itself is accepted", func(t *testing.T) {
+		require.NoError(t, checkDate(mustParse(t, "2020-01-01"), today))
+	})
 
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			dates, err := Range(mustParse(t, test.first), mustParse(t, test.last))
-			require.NoError(t, err)
+	t.Run("the day before the floor is refused", func(t *testing.T) {
+		err := checkDate(mustParse(t, "2019-12-31"), today)
 
-			got := make([]string, 0, len(dates))
-			for _, date := range dates {
-				got = append(got, date.String())
-			}
-			assert.Equal(t, test.want, got)
-		})
-	}
-}
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "2020-01-01", "the message should name the limit")
+	})
 
-func TestRangeRejectsAnInvertedInterval(t *testing.T) {
-	_, err := Range(mustParse(t, "2026-10-05"), mustParse(t, "2026-10-02"))
+	t.Run("tomorrow is refused", func(t *testing.T) {
+		err := checkDate(mustParse(t, "2026-10-03"), today)
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "starts after it ends")
-}
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "after today")
+	})
 
-// A four month backfill is the real use, so the walk has to survive it without
-// losing or repeating a day.
-func TestRangeOverFourMonths(t *testing.T) {
-	dates, err := Range(mustParse(t, "2026-06-01"), mustParse(t, "2026-09-30"))
-	require.NoError(t, err)
+	t.Run("a far past typo is refused, not silently fetched", func(t *testing.T) {
+		err := checkDate(mustParse(t, "1900-01-01"), today)
 
-	assert.Len(t, dates, 30+31+31+30)
-	assert.Equal(t, "2026-06-01", dates[0].String())
-	assert.Equal(t, "2026-09-30", dates[len(dates)-1].String())
-
-	for i := 1; i < len(dates); i++ {
-		require.True(t, dates[i-1].Before(dates[i]), "the dates should come out in order, with no repeats")
-	}
+		require.ErrorIs(t, err, ErrDateOutOfRange)
+		assert.Contains(t, err.Error(), "1900-01-01", "the message should name the date it refused")
+	})
 }
 
 func mustParse(t *testing.T, value string) Date {
