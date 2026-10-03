@@ -25,12 +25,11 @@ const (
 	inlabsSessionCookie = "inlabs_session_cookie"
 	userAgent           = "conselhos-vivos-fetch/0.1"
 
-	// loginPage is where INLABS redirects a request with no live session. The
-	// Location it sends is relative, so the comparison is on the path only.
+	// loginPage is where INLABS redirects a session-less request. The Location
+	// comes relative, so the comparison is on the path only.
 	loginPage = "acessar.php"
 
-	// maxAttempts counts the first try, so the retry cap is maxAttempts-1. The
-	// script this replaces recurses without a cap; a number here is the fix.
+	// maxAttempts counts the first try, so the retry cap is maxAttempts-1.
 	maxAttempts = 3
 
 	retryWaitMin = 200 * time.Millisecond
@@ -40,60 +39,54 @@ const (
 	loginTimeout = 30 * time.Second
 )
 
-// What a request can mean other than success. None of them is a program error:
-// a missing edition is an ordinary answer.
+// What a request can mean other than success. None is a program error.
 var (
 	ErrNoEdition = errors.New("no edition published for this date and section")
 
-	// ErrDateOutOfRange is a day INLABS cannot have published: after today, or
-	// before the archive begins. It costs no request.
+	// ErrDateOutOfRange is a day INLABS cannot have published, and costs no
+	// request.
 	ErrDateOutOfRange = errors.New("INLABS serves no edition for this date")
 
 	// ErrSessionExpired escapes only after a re-login failed to restore the
-	// session, so the next edition would be answered the same way.
+	// session.
 	ErrSessionExpired = errors.New("the INLABS session is no longer valid")
 
-	// ErrLoginRejected is a dead end of the same kind: wrong or expired
-	// credentials, or a blocked account.
+	// ErrLoginRejected: wrong or expired credentials, or a blocked account.
 	ErrLoginRejected = errors.New("INLABS refused the credentials")
 
 	ErrTransient = errors.New("INLABS failed in a way worth retrying")
 )
 
-// Credentials are the INLABS sign-in (free, at https://inlabs.in.gov.br/). They
-// are given once, to New, and never travel through a call.
+// Credentials are the INLABS sign-in (free, at https://inlabs.in.gov.br/),
+// given once to New.
 type Credentials struct {
 	Email    string
 	Password string
 }
 
 // Client talks to INLABS, session included: it logs in when it has none and
-// renews one that is refused, so no caller ever logs in itself.
-//
-// One Client serves one run at a time — nothing here guards the session against
-// two concurrent renewals.
+// renews one that is refused. One Client serves one run at a time — nothing
+// guards the session against two concurrent renewals.
 type Client struct {
 	http  *http.Client
 	retry *retryablehttp.Client
 	creds Credentials
 
-	// clock and location decide which day it is in Brasília, and so which dates
-	// can have an edition yet. Fields, so a test can pin the day.
+	// clock and location decide which day it is in Brasília. Fields, so a test
+	// can pin the day.
 	clock    func() time.Time
 	location *time.Location
 
-	// logger reports each edition as the day is walked: a run lasts minutes, so
-	// the progress has to show before the summary does.
+	// logger reports each edition as the day is walked; a run lasts minutes.
 	logger *slog.Logger
 
-	// baseURL is a field, and not the const, so the tests can point a real
-	// client at a test server without reaching the network.
+	// baseURL is a field, not the const, so a test can point a real client at a
+	// test server.
 	baseURL string
 }
 
-// New builds a client for these credentials, logging its progress to logger; a
-// nil logger discards it. Empty credentials are refused here, where the error is
-// still a configuration error rather than a failed download.
+// New builds a client for these credentials; a nil logger discards the progress.
+// Empty credentials are refused here, where it is still a configuration error.
 func New(creds Credentials, logger *slog.Logger) (*Client, error) {
 	if creds.Email == "" || creds.Password == "" {
 		return nil, fmt.Errorf("the INLABS credentials are incomplete: %w", ErrLoginRejected)
@@ -115,13 +108,12 @@ func New(creds Credentials, logger *slog.Logger) (*Client, error) {
 	inner := &http.Client{
 		Jar: jar,
 		// Do not follow the 302 to the login page: followed, an expired session
-		// becomes a 200 whose body is HTML, which would be written out as a
-		// corrupt zip. This is what lets Fetch see the redirect itself.
+		// becomes a 200 whose HTML body would be written out as a corrupt zip.
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-		// Phase deadlines only. A global Client.Timeout would abort a
-		// legitimate download of a large edition partway through.
+		// Phase deadlines only: a global Client.Timeout would cut a large
+		// download short.
 		Transport: &http.Transport{
 			Proxy:                 http.ProxyFromEnvironment,
 			DialContext:           (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
@@ -151,9 +143,8 @@ func New(creds Credentials, logger *slog.Logger) (*Client, error) {
 	}, nil
 }
 
-// backoff is ours because neither of the library's ready-made ones satisfies
-// the requirement on its own: DefaultBackoff honours Retry-After but has no
-// jitter, and LinearJitterBackoff has jitter and ignores the header.
+// backoff is ours because neither ready-made one does both: DefaultBackoff
+// honours Retry-After without jitter, LinearJitterBackoff the reverse.
 func backoff(min, max time.Duration, attempt int, resp *http.Response) time.Duration {
 	if wait, ok := retryAfter(resp); ok {
 		if wait > max {
@@ -166,13 +157,12 @@ func backoff(min, max time.Duration, attempt int, resp *http.Response) time.Dura
 	if exponential > float64(max) {
 		exponential = float64(max)
 	}
-	// Jitter between half and all of the computed wait, so retries from several
-	// runs do not line up on the same instant.
+	// Half to all of the computed wait, so several runs do not line up.
 	return time.Duration(exponential * (0.5 + 0.5*rand.Float64()))
 }
 
-// retryAfter reads the header for the statuses that carry it. Only the
-// delay-seconds form is honoured; an HTTP-date falls through to the curve.
+// retryAfter honours only the delay-seconds form; an HTTP-date falls through to
+// the curve.
 func retryAfter(resp *http.Response) (time.Duration, bool) {
 	if resp == nil {
 		return 0, false
@@ -189,7 +179,7 @@ func retryAfter(resp *http.Response) (time.Duration, bool) {
 
 // TODO: may remove this is okay to fail after the request anyway
 // hasSession reports whether the jar holds a session cookie — the same proof
-// login accepts, asked before a request instead of after one.
+// login accepts.
 func (c *Client) hasSession() bool {
 	site, err := url.Parse(c.baseURL)
 	if err != nil {
@@ -203,11 +193,9 @@ func (c *Client) hasSession() bool {
 	return false
 }
 
-// login authenticates and leaves the session cookie in the jar. It is
-// unexported: the session is this package's to keep.
-//
-// It carves its own deadline out of ctx, so one unanswered POST cannot stall a
-// run for as long as a legitimate download may take.
+// login authenticates and leaves the session cookie in the jar; unexported,
+// because the session is this package's to keep. Its own deadline out of ctx
+// keeps one unanswered POST from stalling a run for a download's worth of time.
 func (c *Client) login(ctx context.Context) error {
 	site, err := url.Parse(c.baseURL)
 	if err != nil {
@@ -217,9 +205,8 @@ func (c *Client) login(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, loginTimeout)
 	defer cancel()
 
-	// Drop the previous session before asking for a new one. Without this, a
-	// refused re-login would look like a success: the old cookie is still in
-	// the jar, and the check below would find it.
+	// Drop the previous session first: otherwise a refused re-login looks like a
+	// success, because the check below finds the old cookie still in the jar.
 	c.http.Jar.SetCookies(site, []*http.Cookie{
 		{Name: inlabsSessionCookie, Value: "", Path: "/", MaxAge: -1},
 	})
@@ -244,9 +231,9 @@ func (c *Client) login(ctx context.Context) error {
 	defer resp.Body.Close()
 	_, _ = io.Copy(io.Discard, resp.Body)
 
-	// The cookie is the only proof of a login: with wrong credentials INLABS
-	// still answers 200, with an HTML page. No body and no e-mail in the error,
-	// which goes to the log.
+	// The cookie is the only proof: with wrong credentials INLABS still answers
+	// 200, with an HTML page. No body and no e-mail in the error, which is
+	// logged.
 	for _, cookie := range c.http.Jar.Cookies(resp.Request.URL) {
 		if cookie.Name == inlabsSessionCookie {
 			return nil
@@ -256,10 +243,8 @@ func (c *Client) login(ctx context.Context) error {
 }
 
 // fetchSection asks for one edition and returns its body for the caller to
-// stream; it writes nothing.
-//
-// The session is handled here: it logs in when the jar is empty, and when INLABS
-// answers that the session is gone it logs in again and asks once more.
+// stream; it writes nothing. The session is handled here: it logs in when the
+// jar is empty, and renews once when INLABS says the session is gone.
 func (c *Client) fetchSection(ctx context.Context, date Date, section Section) (io.ReadCloser, error) {
 	if !c.hasSession() {
 		if err := c.login(ctx); err != nil {
@@ -272,7 +257,7 @@ func (c *Client) fetchSection(ctx context.Context, date Date, section Section) (
 		return body, err
 	}
 
-	// One renewal, never a loop: a session minted seconds ago being refused too
+	// One renewal, never a loop: a session minted seconds ago being refused
 	// means the session is not what is wrong.
 	if err := c.login(ctx); err != nil {
 		return nil, err
@@ -324,8 +309,7 @@ func (c *Client) request(ctx context.Context, date Date, section Section) (io.Re
 	return resp.Body, nil
 }
 
-// redirectsToLogin reports the answer INLABS gives a request with no live
-// session: a 302 whose Location is the login page, sent relative.
+// redirectsToLogin: a 302 whose relative Location is the login page.
 func redirectsToLogin(resp *http.Response) bool {
 	// TODO: no builtins for it ?
 	if resp.StatusCode < 300 || resp.StatusCode > 399 {
@@ -339,14 +323,14 @@ func redirectsToLogin(resp *http.Response) bool {
 }
 
 // looksLikeAPage catches the other shape of an expired session: a 200 whose
-// body is the login page. An edition is a zip, never HTML.
+// body is the login page.
 func looksLikeAPage(resp *http.Response) bool {
 	return resp.StatusCode == http.StatusOK &&
 		strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html")
 }
 
-// drain empties and closes a body we are not handing to the caller, so the
-// connection goes back to the pool instead of being thrown away.
+// drain empties and closes a body we are not handing over, so the connection
+// goes back to the pool.
 func drain(resp *http.Response) {
 	_, _ = io.Copy(io.Discard, resp.Body)
 	_ = resp.Body.Close()

@@ -12,12 +12,11 @@ import (
 )
 
 // sectionTimeout covers one edition end to end, body included. A global
-// http.Client.Timeout would instead abort a legitimate large download.
+// http.Client.Timeout would abort a legitimate large download instead.
 const sectionTimeout = 10 * time.Minute
 
-// Section is one of the Diário Oficial's sections. DO1E is the extra edition of
-// the same day, published as a file of its own, so the unit of work is a date
-// and a section.
+// Section is one of the Diário Oficial's sections. DO1E is the same day's extra
+// edition, published as a file of its own.
 type Section string
 
 const (
@@ -25,12 +24,11 @@ const (
 	SectionDO1E Section = "DO1E"
 )
 
-// sections is what a day is made of here, in download order. A slice cannot be
-// a const, and unexported it needs no accessor to keep it from being rewritten.
+// sections is a day, in download order. A slice cannot be a const.
 var sections = []Section{SectionDO1, SectionDO1E}
 
-// ZipName is the edition's file name, both in the download URL and on disk. One
-// function owns this string so the two cannot drift apart.
+// ZipName is the edition's file name, in the download URL and on disk alike, so
+// the two cannot drift apart.
 func ZipName(d Date, s Section) string {
 	return fmt.Sprintf("%s-%s.zip", d, s)
 }
@@ -49,8 +47,7 @@ const (
 	Failed     Outcome = "falhou"
 )
 
-// Summary is a day's outcomes, counted: what the command reports, and what
-// decides its exit code.
+// Summary is a day's outcomes, counted: what the command reports and exits on.
 type Summary struct {
 	Downloaded int
 	NoEdition  int
@@ -69,12 +66,10 @@ func (s *Summary) add(result Outcome) {
 }
 
 // FetchDay downloads one day of the Diário Oficial into dest: it checks the
-// date, logs in when there is no session, and walks the day's sections. A caller
-// supplies the day, the destination and nothing else.
+// date, logs in when there is no session, and walks the day's sections.
 //
-// A failure the next section would not inherit is counted and the day goes on —
-// the extra edition is worth asking for even when the ordinary one failed. Any
-// other failure stops the day; see survivable for which is which.
+// A failure the next section would not inherit is counted and the day goes on;
+// any other stops it. See survivable.
 func (c *Client) FetchDay(ctx context.Context, date Date, dest Saver) (Summary, error) {
 	var summary Summary
 
@@ -111,8 +106,8 @@ func (c *Client) FetchDay(ctx context.Context, date Date, dest Saver) (Summary, 
 }
 
 // TODO: no fucking reason for it to be a method ??
-// downloadSection is one edition: ask, classify, stream to dest. A missing
-// edition is an outcome, not an error: most days have no extra one.
+// downloadSection is one edition: ask, classify, stream to dest. A missing one
+// is an outcome, not an error — most days have no extra edition.
 func (c *Client) downloadSection(ctx context.Context, dest Saver,
 	date Date, section Section) (Outcome, error) {
 	body, err := c.fetchSection(ctx, date, section)
