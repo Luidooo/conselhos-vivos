@@ -1,0 +1,8 @@
+# Recipes for the Go ingestor. Run them from src/ingestor.
+
+_default:
+    @just --list
+
+# run the test suite
+test:
+    go test ./...
