@@ -64,6 +64,7 @@ Os dados ficam no volume `pgdata` e sobrevivem a `docker compose down`.
 make test      # testes: Go do ingestor, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos e carga
 make test-go   # só os testes do ingestor em Go, em container (sem rede, sem credencial)
 make fetch     # baixa as edições do DOU de hoje em Brasília; DATA=AAAA-MM-DD para outro dia
+make extract   # lê as matérias dos ZIPs já baixados de DATA e imprime uma por linha, em JSON
 make migrate   # aplica as migrações de sql/ que ainda não rodaram
 make carga     # carrega os conselhos e a planilha da pesquisadora (idempotente) e atualiza os relatórios
 make siorg     # baixa o SIORG (precisa de rede) e atualiza o recorte em data/referencia/
@@ -91,7 +92,7 @@ make           # lista todos os comandos
 
 ## Baixar o DOU
 
-O `make fetch` baixa do INLABS as edições da Seção 1 — `DO1` e a edição extra `DO1E` — de um dia, e grava os ZIPs em `data/bronze/inlabs/`, que precisa existir: o comando não cria o diretório. Precisa das credenciais do INLABS no `.env` (cadastro gratuito em <https://inlabs.in.gov.br/>).
+O `make fetch` baixa do INLABS as edições da Seção 1 — `DO1` e a edição extra `DO1E` — de um dia, e grava os ZIPs em `data/bronze/inlabs/` (o `make fetch` cria o diretório; o comando Go, chamado direto, exige que ele exista). Precisa das credenciais do INLABS no `.env` (cadastro gratuito em <https://inlabs.in.gov.br/>).
 
 ```bash
 make fetch                    # hoje, no horário de Brasília
@@ -103,6 +104,22 @@ Um arquivo só aparece com o nome final quando o conteúdo é um ZIP que abre: s
 **Não há retomada.** Cada execução baixa o dia de novo, sobrescrevendo o que estiver em disco. Para vários dias:
 
 O código de saída diz o que aconteceu: `0` nada falhou, `1` a execução foi abortada ou alguma seção falhou, `2` erro de uso (`-date` ausente ou malformado). Uma data que o INLABS não pode ter — futura, ou anterior a 2020-01-01, que é desde quando ele serve — aborta a execução com `1` e nenhuma requisição: é regra do INLABS, e não do argumento.
+
+## Ler as matérias
+
+O `make extract` abre os ZIPs que o `make fetch` deixou em `data/bronze/inlabs/` para um dia (`DO1` e, se houver, `DO1E`) e imprime **uma matéria por linha, em JSON**, no stdout. Não fala com o banco nem com a rede, e não precisa de credencial.
+
+```bash
+make extract DATA=2026-10-01 > materias.jsonl   # o log e o resumo vão para o stderr
+make extract DATA=2026-10-01 | jq -r '.artCategory[-1]' | sort | uniq -c | sort -rn   # quem mais publicou
+```
+
+Cada linha traz os atributos do `<article>` (`id`, `idMateria`, `artType`, `pubDate`, `pubName`, `numberPage`, `editionNumber`, `artClass`), os campos do `<body>` (`identifica`, `ementa`, `titulo`, `subTitulo`) e:
+
+- **`artCategory` já partido na hierarquia**, do ministério para baixo. O último nível é o órgão que publicou — o conselho, quando é um. A resolução é só `split('/')`; casar o nome com um dos 82 conselhos é trabalho da persistência (#19).
+- **`texto`, o `<Texto>` em texto puro:** um parágrafo por linha, entidades HTML decodificadas, células de tabela separadas por ` | `. O HTML como publicado sai com `HTML=1` (`make extract DATA=... HTML=1`) e é a fonte da verdade: as marcas `<p class="assina">` e `<p class="identifica">` só existem nele, e o texto puro é derivado dele sem perda de palavras.
+
+Uma entrada que não é XML — a imagem de uma matéria — é ignorada e logada. Um XML que não lê como matéria (malformado, sem `id`, sem `pubDate`, sem `artCategory`) é logado com o nome do arquivo e o resto do ZIP segue; nesse caso o código de saída é `1`.
 
 ## Estrutura
 
