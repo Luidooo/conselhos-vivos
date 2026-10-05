@@ -32,6 +32,7 @@ siorg: ## baixa o SIORG (com rede) e atualiza o recorte em data/referencia/; rod
 	mv data/referencia/siorg-conselhos.csv.novo data/referencia/siorg-conselhos.csv
 
 fetch: .env ## baixa DO1 e DO1E do DOU (DATA=AAAA-MM-DD; sem DATA, hoje em Brasília). Sem retomada: rebaixa o que já existe
+	mkdir -p data/bronze/inlabs
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T ingestor -date $(DATA)
 
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
