@@ -98,6 +98,22 @@ services:
       - ./data/bronze:/data/bronze
     entrypoint: ["sh", "-c", "go build -o /tmp/fetch ./cmd/fetch && exec /tmp/fetch \"$$@\"", "--"]
 
+  # Lê as matérias dos ZIPs que o ingestor já baixou. Sem credencial e com o
+  # bronze só para leitura: daqui nada volta para o disco além do stdout.
+  extract:
+    image: golang:1.26.8-alpine
+    profiles: [ingestor]
+    working_dir: /app
+    environment:
+      GOCACHE: /gocache
+      GOMODCACHE: /gomodcache
+    volumes:
+      - ./src/ingestor:/app:ro
+      - ./data/bronze:/data/bronze:ro
+      - gocache:/gocache
+      - gomodcache:/gomodcache
+    entrypoint: ["sh", "-c", "go build -o /tmp/extract ./cmd/extract && exec /tmp/extract \"$$@\"", "--"]
+
   # Testes do ingestor. Tudo :ro e sem credencial no ambiente. Mantém rede — ao
   # contrário do carga — porque o GOMODCACHE nasce vazio e a primeira execução
   # precisa baixar os módulos; o que é hermético é o código de teste, que só fala

@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch test test-go vet-go reset pgadmin-reset psql logs
+.PHONY: help docs setup up down migrate carga siorg fetch extract test test-go vet-go reset pgadmin-reset psql logs
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -7,6 +7,8 @@ help: ## lista os comandos
 # O dia que o make fetch baixa. O comando Go exige -date e não adivinha: quem
 # quer "hoje" diz de qual fuso, e aqui é o de Brasília, onde a edição sai.
 DATA ?= $(shell TZ=America/Sao_Paulo date +%F)
+# As edições do dia que o make extract lê: as que existem, DO1 e DO1E.
+EDICOES = $(wildcard data/bronze/inlabs/$(DATA)-DO1.zip data/bronze/inlabs/$(DATA)-DO1E.zip)
 
 .env:
 	cp .env.example .env
@@ -34,6 +36,10 @@ siorg: ## baixa o SIORG (com rede) e atualiza o recorte em data/referencia/; rod
 fetch: .env ## baixa DO1 e DO1E do DOU (DATA=AAAA-MM-DD; sem DATA, hoje em Brasília). Sem retomada: rebaixa o que já existe
 	mkdir -p data/bronze/inlabs
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T ingestor -date $(DATA)
+
+extract: ## lê as matérias dos ZIPs de DATA já baixados e imprime uma por linha, em JSON (HTML=1 inclui o HTML do texto)
+	@test -n "$(EDICOES)" || { echo "nenhum ZIP de $(DATA) em data/bronze/inlabs/ — rode make fetch DATA=$(DATA)"; exit 1; }
+	docker compose --progress quiet run --rm -T extract $(if $(HTML),-html) $(EDICOES:data/%=/data/%)
 
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
 	docker compose --progress quiet run --rm -T ingestor-test go test -count=1 ./...
