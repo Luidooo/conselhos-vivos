@@ -78,6 +78,44 @@ services:
       - ./data/raw:/app/data/raw:ro
     entrypoint: [python, -m, conselhos, siorg]
 
+  # Baixa as edições do DOU do INLABS.
+  ingestor:
+    image: golang:1.26.8-alpine
+    profiles: [ingestor]
+    working_dir: /app
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
+    environment:
+      INLABS_EMAIL: ${INLABS_EMAIL}
+      INLABS_SENHA: ${INLABS_SENHA}
+      INLABS_OUTPUT_DIR: /data/bronze/inlabs
+      GOCACHE: /tmp/gocache
+      GOMODCACHE: /tmp/gomodcache
+      GOFLAGS: -mod=mod
+    volumes:
+      - ./src/ingestor:/app:ro
+      # Fora do /app de propósito: aninhado nele, o runc precisaria criar
+      # /app/data dentro de um bind :ro, e o container não sobe.
+      - ./data/bronze:/data/bronze
+    entrypoint: ["sh", "-c", "go build -o /tmp/fetch ./cmd/fetch && exec /tmp/fetch \"$$@\"", "--"]
+
+  # Testes do ingestor. Tudo :ro e sem credencial no ambiente. Mantém rede — ao
+  # contrário do carga — porque o GOMODCACHE nasce vazio e a primeira execução
+  # precisa baixar os módulos; o que é hermético é o código de teste, que só fala
+  # com httptest. Aqui os caches ficam em volume nomeado (nada é gravado no host,
+  # então o dono dos arquivos não importa) e as execuções seguintes não baixam nada.
+  ingestor-test:
+    image: golang:1.26.8-alpine
+    profiles: [ingestor]
+    working_dir: /app
+    environment:
+      GOCACHE: /gocache
+      GOMODCACHE: /gomodcache
+    volumes:
+      - ./src/ingestor:/app:ro
+      - gocache:/gocache
+      - gomodcache:/gomodcache
+    entrypoint: []
+
 # servers.json e pgpass gerados a partir do .env: o pgAdmin já abre conectado no banco.
 # O servers.json só é importado na 1ª subida do volume `pgadmin`; se mudar
 # POSTGRES_USER ou POSTGRES_DB, rode `make pgadmin-reset`. Senha sem `:` nem `\`
@@ -102,3 +140,5 @@ configs:
 volumes:
   pgdata:
   pgadmin:
+  gocache:
+  gomodcache:
