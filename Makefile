@@ -39,7 +39,11 @@ fetch: .env ## baixa DO1 e DO1E do DOU (DATA=AAAA-MM-DD; sem DATA, hoje em Bras�
 
 extract: ## lê as matérias dos ZIPs de DATA já baixados e imprime uma por linha, em JSON (HTML=1 inclui o HTML do texto)
 	@test -n "$(EDICOES)" || { echo "nenhum ZIP de $(DATA) em data/bronze/inlabs/ — rode make fetch DATA=$(DATA)"; exit 1; }
-	docker compose --progress quiet run --rm -T extract $(if $(HTML),-html) $(EDICOES:data/%=/data/%)
+	@# Uma execução por edição: o comando lê um ZIP só. A segunda roda mesmo se a
+	@# primeira falhar, e o make sai com erro se qualquer uma falhou.
+	@falhou=0; for zip in $(EDICOES:data/%=/data/%); do \
+		docker compose --progress quiet run --rm -T extract $(if $(HTML),-html) $$zip || falhou=1; \
+	done; exit $$falhou
 
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
 	docker compose --progress quiet run --rm -T ingestor-test go test -count=1 ./...

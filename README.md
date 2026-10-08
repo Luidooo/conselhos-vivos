@@ -119,7 +119,9 @@ Cada linha traz os atributos do `<article>` (`id`, `idMateria`, `artType`, `pubD
 - **`artCategory` já partido na hierarquia**, do ministério para baixo. O último nível é o órgão que publicou — o conselho, quando é um. A resolução é só `split('/')`; casar o nome com um dos 82 conselhos é trabalho da persistência (#19).
 - **`texto`, o `<Texto>` em texto puro:** um parágrafo por linha, entidades HTML decodificadas, células de tabela separadas por ` | `. O HTML como publicado sai com `HTML=1` (`make extract DATA=... HTML=1`) e é a fonte da verdade: as marcas `<p class="assina">` e `<p class="identifica">` só existem nele, e o texto puro é derivado dele sem perda de palavras.
 
-Uma entrada que não é XML — a imagem de uma matéria — é ignorada e logada. Um XML que não lê como matéria (malformado, sem `id`, sem `pubDate`, sem `artCategory`) é logado com o nome do arquivo e o resto do ZIP segue; nesse caso o código de saída é `1`.
+O comando Go lê **um ZIP por execução**; o `make extract` o roda uma vez por edição do dia, e a segunda roda mesmo se a primeira falhar.
+
+Uma entrada que não é XML — a imagem de uma matéria, ou uma pasta, que não deveria aparecer — é ignorada e logada. Um XML que não lê como matéria (malformado, sem `id`, sem `pubDate`, sem `artCategory`) é logado com o nome do arquivo e o resto do ZIP segue; nesse caso o código de saída é `1`.
 
 ## Estrutura
 

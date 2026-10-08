@@ -155,6 +155,23 @@ func TestReadFindsXMLAtAnyDepth(t *testing.T) {
 	assert.Equal(t, "2021-06-01-DO2/529_20210601_13490090.xml", articles[0].Entry)
 }
 
+// A directory should not be in an edition; when one is, it is reported like
+// any other entry that is not a matéria, so the caller logs it.
+func TestReadReportsADirectory(t *testing.T) {
+	articles, errs := collect(edition(t,
+		entry{name: "2021-06-01-DO2/"},
+		sample(t, "529_20210601_13490090.xml"),
+	))
+
+	require.Len(t, articles, 1, "the directory does not stop the walk")
+	require.Len(t, errs, 1)
+
+	var dir *EntryError
+	require.ErrorAs(t, errs[0], &dir)
+	assert.Equal(t, "2021-06-01-DO2/", dir.Entry)
+	assert.ErrorIs(t, errs[0], ErrNotXML)
+}
+
 func TestReadStopsWhenTheCallerDoes(t *testing.T) {
 	zipped := edition(t,
 		sample(t, "515_20190507_11615606.xml"),
@@ -182,7 +199,7 @@ func TestParseRefusesIncompleteArticles(t *testing.T) {
 	}
 	for name, xml := range cases {
 		t.Run(name, func(t *testing.T) {
-			_, err := Parse(strings.NewReader(xml))
+			_, err := parse(strings.NewReader(xml))
 			assert.ErrorIs(t, err, ErrMalformed)
 		})
 	}

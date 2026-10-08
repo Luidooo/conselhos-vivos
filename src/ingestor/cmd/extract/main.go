@@ -1,6 +1,9 @@
-// Command extract reads the matérias out of editions already on disk and prints
-// them, one JSON object per line, so a zip can be inspected with no database.
-// The reading itself belongs to the article package.
+// Command extract reads the matérias out of one edition already on disk and
+// prints them, one JSON object per line, so a zip can be inspected with no
+// database. The reading itself belongs to the article package.
+//
+// One zip per run: a day's DO1 and DO1E are two runs, and so is a range of
+// days. Each run then only has one zip's partial failures to report.
 package main
 
 import (
@@ -23,13 +26,13 @@ func main() {
 	flag.Usage = usage
 	flag.Parse()
 
-	if flag.NArg() == 0 {
-		fmt.Fprint(flag.CommandLine.Output(), "extract: at least one zip is required\n\n")
+	if flag.NArg() != 1 {
+		fmt.Fprintf(flag.CommandLine.Output(), "extract: want exactly one zip, got %d\n\n", flag.NArg())
 		flag.Usage()
 		os.Exit(2)
 	}
 
-	summary, err := extract(os.Stdout, logger, flag.Args(), *withHTML)
+	summary, err := extract(os.Stdout, logger, flag.Arg(0), *withHTML)
 	if err != nil {
 		logger.Error("run aborted", "err", err)
 		os.Exit(1)
@@ -45,7 +48,7 @@ func main() {
 	}
 }
 
-// Summary counts the entries of every zip in the run.
+// Summary counts the entries of the zip.
 type Summary struct {
 	// Read is a matéria printed.
 	Read int
@@ -56,27 +59,17 @@ type Summary struct {
 	Failed int
 }
 
-// extract prints every matéria of every zip to out. A bad entry is logged and
+// extract prints every matéria of the zip to out. A bad entry is logged and
 // counted; a zip that does not open, or an out that stops taking lines, ends
 // the run.
-func extract(out io.Writer, logger *slog.Logger, paths []string, withHTML bool) (Summary, error) {
+func extract(out io.Writer, logger *slog.Logger, path string, withHTML bool) (Summary, error) {
 	var summary Summary
 	encoder := json.NewEncoder(out)
 	encoder.SetEscapeHTML(false)
 
-	for _, path := range paths {
-		if err := extractZip(encoder, logger, path, withHTML, &summary); err != nil {
-			return summary, err
-		}
-	}
-	return summary, nil
-}
-
-func extractZip(encoder *json.Encoder, logger *slog.Logger, path string,
-	withHTML bool, summary *Summary) error {
 	edition, err := zip.OpenReader(path)
 	if err != nil {
-		return fmt.Errorf("opening %s: %w", path, err)
+		return summary, fmt.Errorf("opening %s: %w", path, err)
 	}
 	defer edition.Close()
 
@@ -96,16 +89,16 @@ func extractZip(encoder *json.Encoder, logger *slog.Logger, path string,
 			item.HTML = ""
 		}
 		if err := encoder.Encode(item); err != nil {
-			return fmt.Errorf("printing %s from %s: %w", item.Entry, path, err)
+			return summary, fmt.Errorf("printing %s from %s: %w", item.Entry, path, err)
 		}
 		summary.Read++
 	}
-	return nil
+	return summary, nil
 }
 
 func usage() {
 	out := flag.CommandLine.Output()
-	fmt.Fprintf(out, "Usage of %s: [-html] EDITION.zip...\n", os.Args[0])
+	fmt.Fprintf(out, "Usage of %s: [-html] EDITION.zip\n", os.Args[0])
 	flag.PrintDefaults()
 	fmt.Fprint(out, "\nPrints one JSON object per matéria to stdout; the log and the summary go to\n"+
 		"stderr. An entry that is not XML is skipped; one that is XML but not a matéria\n"+

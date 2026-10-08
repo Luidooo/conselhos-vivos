@@ -68,7 +68,7 @@ func TestExtractPrintsOneLinePerArticle(t *testing.T) {
 		map[string]string{"figura.jpg": "not an article"})
 
 	var out bytes.Buffer
-	summary, err := extract(&out, quiet(), []string{path}, false)
+	summary, err := extract(&out, quiet(), path, false)
 	require.NoError(t, err)
 
 	assert.Equal(t, Summary{Read: 2, Skipped: 1, Failed: 1}, summary)
@@ -86,7 +86,7 @@ func TestExtractPrintsTheHTMLWhenAsked(t *testing.T) {
 	path := writeEdition(t, []string{"conselho-construido.xml"}, nil)
 
 	var out bytes.Buffer
-	_, err := extract(&out, quiet(), []string{path}, true)
+	_, err := extract(&out, quiet(), path, true)
 	require.NoError(t, err)
 
 	printed := lines(t, &out)
@@ -99,7 +99,7 @@ func TestExtractStopsOnAZipThatDoesNotOpen(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "login.zip")
 	require.NoError(t, os.WriteFile(path, []byte("<html>faca login</html>"), 0o644))
 
-	_, err := extract(io.Discard, quiet(), []string{path}, false)
+	_, err := extract(io.Discard, quiet(), path, false)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), path)

@@ -20,7 +20,8 @@ import (
 var (
 	// ErrNotXML marks a zip entry that is not a matéria. INLABS ships each
 	// article's images in the same zip, so this is routine: count it, log it,
-	// move on.
+	// move on. A directory entry gets it too: it should not happen, and this
+	// way the caller logs it instead of the walk hiding it.
 	ErrNotXML = errors.New("not an XML file")
 	// ErrMalformed marks an XML that does not read as one DOU article.
 	ErrMalformed = errors.New("not a DOU article")
@@ -88,10 +89,6 @@ func (e *EntryError) Unwrap() error { return e.Err }
 func Read(edition *zip.Reader) iter.Seq2[Article, error] {
 	return func(yield func(Article, error) bool) {
 		for _, file := range edition.File {
-			if file.FileInfo().IsDir() {
-				continue
-			}
-
 			article, err := readEntry(file)
 			if err != nil {
 				err = &EntryError{Entry: file.Name, Err: err}
@@ -115,7 +112,7 @@ func readEntry(file *zip.File) (Article, error) {
 	}
 	defer contents.Close()
 
-	article, err := Parse(contents)
+	article, err := parse(contents)
 	if err != nil {
 		return Article{}, err
 	}
@@ -149,9 +146,9 @@ type rawArticle struct {
 // pubDateLayout is pubDate as INLABS writes it: day first.
 const pubDateLayout = "02/01/2006"
 
-// Parse reads one article's XML. It refuses what the persistence could not key
+// parse reads one article's XML. It refuses what the persistence could not key
 // or attribute: no id, no publication date, no artCategory.
-func Parse(r io.Reader) (Article, error) {
+func parse(r io.Reader) (Article, error) {
 	var doc document
 	if err := xml.NewDecoder(r).Decode(&doc); err != nil {
 		return Article{}, fmt.Errorf("%w: %w", ErrMalformed, err)
