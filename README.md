@@ -61,8 +61,9 @@ Os dados ficam no volume `pgdata` e sobrevivem a `docker compose down`.
 > **`db` ou `localhost`?** Dentro do compose (pgAdmin, ingestores) o banco é `db:5432`. Fora dele, no seu terminal ou no DBeaver, é `localhost:5432`. Dentro de um container, `localhost` é o próprio container.
 
 ```bash
-make test      # testes: Go do ingestor, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos e carga
+make test      # testes: Go do ingestor, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos, carga e persistência do DOU
 make test-go   # só os testes do ingestor em Go, em container (sem rede, sem credencial)
+make test-db-go  # só os testes do ingestor que gravam no banco, em transação desfeita (banco no ar e migrado)
 make fetch     # baixa as edições do DOU de hoje em Brasília; DATA=AAAA-MM-DD para outro dia
 make extract   # lê as matérias dos ZIPs já baixados de DATA e imprime uma por linha, em JSON
 make migrate   # aplica as migrações de sql/ que ainda não rodaram
@@ -116,12 +117,31 @@ make extract DATA=2026-10-01 | jq -r '.artCategory[-1]' | sort | uniq -c | sort 
 
 Cada linha traz os atributos do `<article>` (`id`, `idMateria`, `artType`, `pubDate`, `pubName`, `numberPage`, `editionNumber`, `artClass`), os campos do `<body>` (`identifica`, `ementa`, `titulo`, `subTitulo`) e:
 
-- **`artCategory` já partido na hierarquia**, do ministério para baixo. O último nível é o órgão que publicou — o conselho, quando é um. A resolução é só `split('/')`; casar o nome com um dos 82 conselhos é trabalho da persistência (#19).
+- **`artCategory` já partido na hierarquia**, do ministério para baixo. O último nível é o órgão que publicou — o conselho, quando é um. A resolução é só `split('/')`; casar o nome com um dos 82 conselhos é trabalho da persistência (abaixo).
 - **`texto`, o `<Texto>` em texto puro:** um parágrafo por linha, entidades HTML decodificadas, células de tabela separadas por ` | `. O HTML como publicado sai com `HTML=1` (`make extract DATA=... HTML=1`) e é a fonte da verdade: as marcas `<p class="assina">` e `<p class="identifica">` só existem nele, e o texto puro é derivado dele sem perda de palavras.
 
 O comando Go lê **um ZIP por execução**; o `make extract` o roda uma vez por edição do dia, e a segunda roda mesmo se a primeira falhar.
 
 Uma entrada que não é XML — a imagem de uma matéria, ou uma pasta, que não deveria aparecer — é ignorada e logada. Um XML que não lê como matéria (malformado, sem `id`, sem `pubDate`, sem `artCategory`) é logado com o nome do arquivo e o resto do ZIP segue; nesse caso o código de saída é `1`.
+
+## Gravar uma matéria no banco
+
+O pacote `src/ingestor/internal/oltp` grava uma matéria em `ato` com `origem = 'DOU'`, insert-only ([ADR 0001](docs/adr/0001-adotar-sistema-de-curadoria-insert-only-como-oltp.md)). **Ainda não há comando nem alvo do `make` que o chame:** por enquanto ele é exercitado pelos testes (`make test-db-go`), e ligá-lo a um ZIP inteiro depende da idempotência (#20).
+
+| Coluna de `ato` | De onde vem |
+|---|---|
+| `id_dou` | o `id` do `<article>`, e não o `idMateria`: é o que a extração já exige em todo XML |
+| `versao` | `1` |
+| `orgao_id` | o último nível do `artCategory`, casado com um órgão conhecido |
+| `data_publicacao` | `pubDate` |
+| `ementa` | `<Ementa>`; nula quando vem vazia |
+| `conteudo` | o `<Texto>` como publicado, em HTML. Matéria com `<Texto>` vazio é recusada |
+
+**Como o órgão é encontrado.** O nome do último nível do `artCategory` vira a chave normalizada do [ADR 0004](docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md) (sem caixa, acento, espaços repetidos e sigla no fim) e é procurado entre os nomes que os órgãos têm ou já tiveram (`orgao_nome`) e as grafias resolvidas (`orgao_alias` com `status = 'RESOLVIDO'`). A chave é calculada em Go (`oltp.Key`) e em Python (`chave()` em `src/conselhos`); um teste confere que as duas dão o mesmo resultado nos 125 nomes que a carga gravou.
+
+**Órgão desconhecido.** A maioria das ~300 matérias de um dia não é de conselho. A matéria de um órgão que não é um dos conhecidos **não entra em `ato`**, e o nome do órgão entra uma vez em `orgao_alias`, com `fonte = 'DOU'`, `status = 'INDEFINIDO'`, sem órgão e com o `artCategory` inteiro no motivo: é a fila de decisão do ADR 0004. Quando alguém resolver o nome, a matéria é gravada reingerindo o ZIP, que continua em `data/bronze/`. Se a chave casar com **mais de um** órgão, nenhum é escolhido: o nome entra na fila como `AMBIGUO`.
+
+Gravar a mesma matéria duas vezes é erro (`uq_ato_dou_versao`); rodar de novo sem duplicar é a #20. A classificação não é tocada: continua da planilha e da curadoria ([ADR 0003](docs/adr/0003-carregar-a-planilha-como-rotulo-da-curadoria.md)).
 
 ## Estrutura
 

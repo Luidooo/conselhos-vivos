@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch extract test test-go vet-go reset pgadmin-reset psql logs
+.PHONY: help docs setup up down migrate carga siorg fetch extract test test-go test-db-go vet-go reset pgadmin-reset psql logs
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -48,16 +48,20 @@ extract: ## lê as matérias dos ZIPs de DATA já baixados e imprime uma por lin
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
 	docker compose --progress quiet run --rm -T ingestor-test go test -count=1 ./...
 
+test-db-go: ## testes do ingestor que gravam no banco, em transação desfeita (precisa do banco no ar e migrado)
+	docker compose --progress quiet run --rm -T ingestor-db-test go test -count=1 ./internal/oltp/
+
 vet-go: ## gofmt e go vet do ingestor, em container
 	docker compose --progress quiet run --rm -T ingestor-test sh -c 'test -z "$$(gofmt -l .)" || { gofmt -l .; echo "FALHOU: arquivos fora do gofmt"; exit 1; }; go vet ./...'
 
-test: .env test-go ## testes: Go do ingestor, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos e carga
+test: .env test-go ## testes: Go do ingestor, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos, carga e persistência do DOU
 	bash tests/infra/test_compose.sh
 	bash scripts/migrate.sh
 	bash tests/db/test_schema.sh
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/planilha
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/conselhos
 	bash tests/db/test_carga.sh
+	$(MAKE) --no-print-directory test-db-go
 
 reset: ## APAGA o banco, sobe do zero, migra e carrega a planilha
 	docker compose down -v

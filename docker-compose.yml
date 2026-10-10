@@ -132,6 +132,29 @@ services:
       - gomodcache:/gomodcache
     entrypoint: []
 
+  # Testes do ingestor que gravam no banco (#19). Igual ao ingestor-test, mais o
+  # endereço do db nas variáveis PG* que o pgx lê. Cada teste roda numa transação
+  # desfeita no fim: o banco fica como estava.
+  ingestor-db-test:
+    image: golang:1.26.8-alpine
+    profiles: [ingestor]
+    working_dir: /app
+    environment:
+      GOCACHE: /gocache
+      GOMODCACHE: /gomodcache
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+    volumes:
+      - ./src/ingestor:/app:ro
+      - gocache:/gocache
+      - gomodcache:/gomodcache
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: []
+
 # servers.json e pgpass gerados a partir do .env: o pgAdmin já abre conectado no banco.
 # O servers.json só é importado na 1ª subida do volume `pgadmin`; se mudar
 # POSTGRES_USER ou POSTGRES_DB, rode `make pgadmin-reset`. Senha sem `:` nem `\`
