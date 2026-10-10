@@ -81,7 +81,21 @@ func TestFetchDayCountsAMissingEdition(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, Summary{Downloaded: 1, NoEdition: 1}, summary)
-	assert.Equal(t, []string{"2026-10-02-DO1.zip"}, dest.saved, "a missing edition writes nothing")
+	assert.Equal(t, []string{"2026-10-02-DO1.zip"}, dest.saved, "a missing edition saves no zip")
+	assert.Equal(t, []string{"2026-10-02-DO1E.zip"}, dest.marked, "and is recorded as missing")
+}
+
+// A missing edition that cannot be recorded would be a day that looks fetched
+// in the log and forgotten on disk. It is a disk failure like any other.
+func TestFetchDayStopsWhenAMissingEditionCannotBeRecorded(t *testing.T) {
+	client := douServer(t, nil)
+	dest := &fakeStore{markErr: syscall.ENOSPC}
+
+	summary, err := client.FetchDay(context.Background(), testDate(t), dest)
+
+	require.ErrorIs(t, err, syscall.ENOSPC)
+	assert.Equal(t, Summary{}, summary)
+	assert.Equal(t, []string{"2026-10-02-DO1.zip"}, dest.marked, "the next section is not tried")
 }
 
 func TestFetchDayKeepsGoingAfterASectionFails(t *testing.T) {

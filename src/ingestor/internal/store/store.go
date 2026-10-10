@@ -1,13 +1,20 @@
 // Package store writes the downloaded editions to disk, so that a file under
 // its final name is always a whole, readable zip.
+//
+// The directory is also the record of what was asked of INLABS: for an edition
+// there is its zip, a marker saying there was none, or nothing, which means
+// nobody fetched it. Never the zip and the marker together.
 package store
 
 import (
 	"archive/zip"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Store writes into one directory.
@@ -73,11 +80,48 @@ func (s *Store) Save(name string, r io.Reader) (Receipt, error) {
 		return Receipt{}, fmt.Errorf("publishing %s: %w", name, err)
 	}
 
+	// The edition exists now, whatever an earlier run was told.
+	if err := os.Remove(filepath.Join(s.dir, MarkerName(name))); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return Receipt{}, fmt.Errorf("removing the no-edition marker of %s: %w", name, err)
+	}
+
 	if err := syncDir(s.dir); err != nil {
 		return Receipt{}, fmt.Errorf("flushing the directory %s: %w", s.dir, err)
 	}
 
 	return Receipt{Path: final, Size: size}, nil
+}
+
+// markerSuffix ends the name of the file that says an edition does not exist.
+const markerSuffix = ".sem-edicao"
+
+// MarkerName is the marker's file name for the edition whose zip is name:
+// 2026-10-04-DO1.zip gives 2026-10-04-DO1.sem-edicao.
+func MarkerName(name string) string {
+	return strings.TrimSuffix(name, ".zip") + markerSuffix
+}
+
+// MarkNoEdition records that the edition whose zip would be name does not
+// exist, as an empty file. Without it, a day with no edition and a day nobody
+// fetched look the same on disk.
+//
+// A zip already there wins: an edition that was downloaded once existed, and
+// one later "not found" does not unpublish it. Then nothing is written.
+func (s *Store) MarkNoEdition(name string) error {
+	if _, err := os.Stat(filepath.Join(s.dir, name)); err == nil {
+		return nil
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("looking for %s: %w", name, err)
+	}
+
+	marker := MarkerName(name)
+	if err := os.WriteFile(filepath.Join(s.dir, marker), nil, 0o644); err != nil {
+		return fmt.Errorf("writing %s: %w", marker, err)
+	}
+	if err := syncDir(s.dir); err != nil {
+		return fmt.Errorf("flushing the directory %s: %w", s.dir, err)
+	}
+	return nil
 }
 
 // syncDir makes the rename itself durable: without it, a crash can leave the

@@ -33,9 +33,12 @@ func ZipName(d Date, s Section) string {
 	return fmt.Sprintf("%s-%s.zip", d, s)
 }
 
-// Saver is where a downloaded edition lands, under the name ZipName gives it.
+// Saver is where a downloaded edition lands, under the name ZipName gives it,
+// and where an edition that does not exist is recorded as such, under the same
+// name.
 type Saver interface {
 	Save(name string, body io.Reader) (store.Receipt, error)
+	MarkNoEdition(name string) error
 }
 
 // Outcome is what happened to one (date, section).
@@ -107,12 +110,16 @@ func (c *Client) FetchDay(ctx context.Context, date Date, dest Saver) (Summary, 
 
 // TODO: no fucking reason for it to be a method ??
 // downloadSection is one edition: ask, classify, stream to dest. A missing one
-// is an outcome, not an error — most days have no extra edition.
+// is an outcome, not an error — most days have no extra edition — and it is
+// recorded in dest, so the day reads as fetched and not as forgotten.
 func (c *Client) downloadSection(ctx context.Context, dest Saver,
 	date Date, section Section) (Outcome, error) {
 	body, err := c.fetchSection(ctx, date, section)
 	switch {
 	case errors.Is(err, ErrNoEdition):
+		if err := dest.MarkNoEdition(ZipName(date, section)); err != nil {
+			return Failed, err
+		}
 		return NoEdition, nil
 	case err != nil:
 		return Failed, err

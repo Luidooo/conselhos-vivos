@@ -106,6 +106,16 @@ Um arquivo só aparece com o nome final quando o conteúdo é um ZIP que abre: s
 
 **Não há retomada.** Cada execução baixa o dia de novo, sobrescrevendo o que estiver em disco. Para vários dias:
 
+**Dia sem edição fica marcado.** Quando o INLABS responde que uma edição não existe (domingo, feriado, ou um dia sem edição extra), o `fetch` deixa um arquivo vazio no lugar do ZIP: `2026-10-04-DO1.sem-edicao`. Assim o diretório diz o que foi pedido ao INLABS:
+
+| Em `data/bronze/inlabs/` | Quer dizer |
+|---|---|
+| `2026-10-02-DO1.zip` | houve edição, e ela foi baixada |
+| `2026-10-04-DO1.sem-edicao` | o dia foi buscado e não houve edição |
+| nada | ninguém buscou esse dia |
+
+Nunca os dois para a mesma edição: um ZIP que chega apaga o marcador (a edição extra sai à tarde, depois de uma busca de manhã), e um ZIP que já está em disco não é desmentido por um "não existe" posterior. O registro fica no bronze, e não no banco, para o `fetch` continuar sem falar com o banco; por isso ele não é consultável por SQL.
+
 O código de saída diz o que aconteceu: `0` nada falhou, `1` a execução foi abortada ou alguma seção falhou, `2` erro de uso (`-date` ausente ou malformado). Uma data que o INLABS não pode ter — futura, ou anterior a 2020-01-01, que é desde quando ele serve — aborta a execução com `1` e nenhuma requisição: é regra do INLABS, e não do argumento.
 
 ## Ler as matérias

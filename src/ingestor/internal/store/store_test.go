@@ -157,3 +157,53 @@ type failingReader struct{}
 func (failingReader) Read([]byte) (int, error) {
 	return 0, errors.New("the connection died mid-transfer")
 }
+
+func TestMarkNoEditionLeavesAnEmptyMarker(t *testing.T) {
+	dir := t.TempDir()
+
+	require.NoError(t, mustOpen(t, dir).MarkNoEdition("2026-10-04-DO1E.zip"))
+
+	assert.Equal(t, []string{"2026-10-04-DO1E.sem-edicao"}, entries(t, dir))
+	info, err := os.Stat(filepath.Join(dir, "2026-10-04-DO1E.sem-edicao"))
+	require.NoError(t, err)
+	assert.Zero(t, info.Size())
+}
+
+// Fetching the same empty day again changes nothing.
+func TestMarkNoEditionTwiceIsTheSameAsOnce(t *testing.T) {
+	dir := t.TempDir()
+	store := mustOpen(t, dir)
+
+	require.NoError(t, store.MarkNoEdition("2026-10-04-DO1.zip"))
+	require.NoError(t, store.MarkNoEdition("2026-10-04-DO1.zip"))
+
+	assert.Equal(t, []string{"2026-10-04-DO1.sem-edicao"}, entries(t, dir))
+}
+
+// An edition downloaded once existed: a later "not found" does not unpublish it.
+func TestMarkNoEditionLeavesAZipAlreadyThereAlone(t *testing.T) {
+	dir := t.TempDir()
+	store := mustOpen(t, dir)
+	archive := zipWith(t, "DO1.xml", "<article/>")
+	_, err := store.Save("2026-10-02-DO1.zip", bytes.NewReader(archive))
+	require.NoError(t, err)
+
+	require.NoError(t, store.MarkNoEdition("2026-10-02-DO1.zip"))
+
+	assert.Equal(t, []string{"2026-10-02-DO1.zip"}, entries(t, dir), "no marker beside the zip")
+}
+
+// The extra edition of the day comes out in the afternoon: the morning's run
+// marks it missing, the evening's finds it.
+func TestSaveRemovesTheMarkerOfItsEdition(t *testing.T) {
+	dir := t.TempDir()
+	store := mustOpen(t, dir)
+	require.NoError(t, store.MarkNoEdition("2026-10-02-DO1E.zip"))
+	require.NoError(t, store.MarkNoEdition("2026-10-02-DO1.zip"))
+
+	_, err := store.Save("2026-10-02-DO1E.zip", bytes.NewReader(zipWith(t, "DO1E.xml", "<article/>")))
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"2026-10-02-DO1.sem-edicao", "2026-10-02-DO1E.zip"}, entries(t, dir),
+		"only its own marker goes")
+}
