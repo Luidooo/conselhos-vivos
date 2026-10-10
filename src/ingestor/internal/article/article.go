@@ -30,8 +30,8 @@ var (
 // Article is one matéria, with the attributes of <article> and the fields of
 // its <body>, under their XML names.
 //
-// The identifiers stay strings: ato.id_dou is a VARCHAR, and whether id or
-// idMateria becomes it is for the persistence to decide (issue #19).
+// The identifiers stay strings: ato.id_dou is a VARCHAR, and it is id that the
+// persistence writes there (package oltp).
 // editionNumber is a string because extra editions are numbered like "185-A".
 type Article struct {
 	// Entry is the file inside the zip, so any problem downstream can point at it.
