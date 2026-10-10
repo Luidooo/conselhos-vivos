@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch extract test test-go test-db-go vet-go reset pgadmin-reset psql logs
+.PHONY: help docs setup up down migrate carga siorg fetch extract persist test test-go test-db-go vet-go reset pgadmin-reset psql logs
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -7,7 +7,7 @@ help: ## lista os comandos
 # O dia que o make fetch baixa. O comando Go exige -date e não adivinha: quem
 # quer "hoje" diz de qual fuso, e aqui é o de Brasília, onde a edição sai.
 DATA ?= $(shell TZ=America/Sao_Paulo date +%F)
-# As edições do dia que o make extract lê: as que existem, DO1 e DO1E.
+# As edições do dia que o make extract e o make persist leem: as que existem, DO1 e DO1E.
 EDICOES = $(wildcard data/bronze/inlabs/$(DATA)-DO1.zip data/bronze/inlabs/$(DATA)-DO1E.zip)
 
 .env:
@@ -45,11 +45,18 @@ extract: ## lê as matérias dos ZIPs de DATA já baixados e imprime uma por lin
 		docker compose --progress quiet run --rm -T extract $(if $(HTML),-html) $$zip || falhou=1; \
 	done; exit $$falhou
 
+persist: ## grava no banco as matérias dos ZIPs de DATA já baixados; pode rodar de novo, não duplica
+	@test -n "$(EDICOES)" || { echo "nenhum ZIP de $(DATA) em data/bronze/inlabs/ — rode make fetch DATA=$(DATA)"; exit 1; }
+	@# Como no extract: uma execução por edição, e a segunda roda mesmo se a primeira falhar.
+	@falhou=0; for zip in $(EDICOES:data/%=/data/%); do \
+		docker compose --progress quiet run --rm -T persist $$zip || falhou=1; \
+	done; exit $$falhou
+
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
 	docker compose --progress quiet run --rm -T ingestor-test go test -count=1 ./...
 
 test-db-go: .env ## testes do ingestor que gravam no banco, em transação desfeita (precisa do banco no ar e migrado)
-	docker compose --progress quiet run --rm -T ingestor-db-test go test -count=1 ./internal/oltp/
+	docker compose --progress quiet run --rm -T ingestor-db-test go test -count=1 ./internal/oltp/ ./cmd/persist/
 
 vet-go: ## gofmt e go vet do ingestor, em container
 	docker compose --progress quiet run --rm -T ingestor-test sh -c 'test -z "$$(gofmt -l .)" || { gofmt -l .; echo "FALHOU: arquivos fora do gofmt"; exit 1; }; go vet ./...'

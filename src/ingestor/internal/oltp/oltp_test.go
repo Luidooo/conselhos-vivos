@@ -15,31 +15,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"conselhos-vivos/internal/article"
+	"conselhos-vivos/internal/dbtest"
 )
 
-// begin opens a transaction on the compose Postgres that is never committed,
-// as tests/db does: the test leaves the database as it found it.
-//
-// The connection comes from the PG* variables, which the ingestor-db-test
-// service sets. Without them the test is skipped, so `go test ./...` stays
-// runnable with no database; `make test-db-go` is what runs it.
-func begin(t *testing.T) pgx.Tx {
-	t.Helper()
-	if os.Getenv("PGHOST") == "" {
-		t.Skip("no PGHOST: run make test-db-go, with the database up and migrated")
-	}
-
-	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, "")
-	require.NoError(t, err)
-	tx, err := conn.Begin(ctx)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		_ = tx.Rollback(ctx)
-		_ = conn.Close(ctx)
-	})
-	return tx
-}
+func begin(t *testing.T) pgx.Tx { return dbtest.Begin(t) }
 
 // handmade is a matéria built by hand: the persistence is exercised with no
 // zip and no extraction. Its id starts at 900000000, like the built sample, so
@@ -264,6 +243,62 @@ func TestSaveDoesNotChooseBetweenTwoOrgans(t *testing.T) {
 	assert.Equal(t, 1, count(t, tx, `
 		SELECT count(*) FROM orgao_alias
 		 WHERE fonte = 'DOU' AND nome = 'Conselho de Teste Repetido' AND status = 'AMBIGUO' AND orgao_id IS NULL`))
+}
+
+func TestSaveAgainWritesNothing(t *testing.T) {
+	tx := begin(t)
+	ctx := context.Background()
+	item := builtSample(t)
+
+	writer, err := Open(ctx, tx)
+	require.NoError(t, err)
+	first, err := writer.Save(ctx, item)
+	require.NoError(t, err)
+	require.Equal(t, Saved, first)
+
+	again, err := writer.Save(ctx, item)
+	require.NoError(t, err)
+	assert.Equal(t, Unchanged, again)
+	assert.Equal(t, 1, count(t, tx, `SELECT count(*) FROM ato WHERE id_dou = $1`, item.ID))
+}
+
+func TestSaveKeepsARepublishedMateriaAsANewVersion(t *testing.T) {
+	changes := map[string]func(*article.Article){
+		"the text":   func(a *article.Article) { a.HTML += "<p>Republicada por incorreção.</p>" },
+		"the ementa": func(a *article.Article) { a.Ementa = "Ementa republicada." },
+		"the date":   func(a *article.Article) { a.PubDate = a.PubDate.AddDays(1) },
+	}
+	for name, change := range changes {
+		t.Run(name, func(t *testing.T) {
+			tx := begin(t)
+			ctx := context.Background()
+			original := builtSample(t)
+
+			writer, err := Open(ctx, tx)
+			require.NoError(t, err)
+			_, err = writer.Save(ctx, original)
+			require.NoError(t, err)
+
+			republished := original
+			change(&republished)
+			outcome, err := writer.Save(ctx, republished)
+			require.NoError(t, err)
+			assert.Equal(t, NewVersion, outcome)
+
+			// And once more: the republished one is now the latest, so it is unchanged.
+			outcome, err = writer.Save(ctx, republished)
+			require.NoError(t, err)
+			assert.Equal(t, Unchanged, outcome)
+
+			var versions string
+			require.NoError(t, tx.QueryRow(ctx, `
+				SELECT string_agg(versao::text, ',' ORDER BY versao) FROM ato WHERE id_dou = $1`, original.ID).
+				Scan(&versions))
+			assert.Equal(t, "1,2", versions)
+			assert.Equal(t, 1, count(t, tx, `SELECT count(*) FROM ato WHERE id_dou = $1 AND versao = 1 AND conteudo = $2`,
+				original.ID, original.HTML), "the first version stays as it was")
+		})
+	}
 }
 
 func TestSaveRefusesAMateriaWithNoContent(t *testing.T) {
