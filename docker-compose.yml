@@ -114,7 +114,7 @@ services:
       - gomodcache:/gomodcache
     entrypoint: ["sh", "-c", "go build -o /tmp/extract ./cmd/extract && exec /tmp/extract \"$$@\"", "--"]
 
-  # Grava no banco as matérias de um ZIP que o ingestor já baixou (#20). Bronze só
+  # Grava no banco as matérias de um ZIP que o ingestor já baixou (#24). Bronze só
   # para leitura; o endereço do db vai nas variáveis PG*, que o pgx lê.
   persist:
     image: golang:1.26.8-alpine

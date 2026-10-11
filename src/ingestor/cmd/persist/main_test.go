@@ -5,8 +5,10 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -25,7 +27,7 @@ func sample(t *testing.T, name string) string {
 }
 
 // writeEdition puts a zip on disk with the given entries, the way fetch leaves
-// one.
+// one. They go in by name, so a test knows which comes first.
 func writeEdition(t *testing.T, entries map[string]string) string {
 	t.Helper()
 
@@ -35,7 +37,8 @@ func writeEdition(t *testing.T, entries map[string]string) string {
 	defer file.Close()
 
 	writer := zip.NewWriter(file)
-	for name, contents := range entries {
+	for _, name := range slices.Sorted(maps.Keys(entries)) {
+		contents := entries[name]
 		entry, err := writer.Create(name)
 		require.NoError(t, err)
 		_, err = io.WriteString(entry, contents)
@@ -89,7 +92,7 @@ func TestPersistSavesTheEdition(t *testing.T) {
 	assert.Len(t, state(t, tx), len(before)+2)
 }
 
-// The acceptance of issue #20: the same day twice leaves the database
+// The acceptance of issue #24: the same day twice leaves the database
 // identical.
 func TestPersistTwiceLeavesTheDatabaseIdentical(t *testing.T) {
 	tx := dbtest.Begin(t)
@@ -132,6 +135,34 @@ func TestPersistKeepsARepublishedEditionAsNewVersions(t *testing.T) {
 		SELECT string_agg(versao || ':' || (conteudo LIKE '%60 dias%'), ',' ORDER BY versao)
 		  FROM ato WHERE id_dou = '900000001'`).Scan(&versions))
 	assert.Equal(t, "1:false,2:true", versions)
+}
+
+// The same id twice in a zip, saying different things: the first is the
+// matéria, the other is left out, and the rest of the zip goes on. Run again,
+// nothing is written — saving both would add two versions on every run.
+func TestPersistSavesOnlyTheFirstOfARepeatedID(t *testing.T) {
+	tx := dbtest.Begin(t)
+	ctx := context.Background()
+
+	edition := anEdition(t)
+	edition["repetida.xml"] = strings.Replace(edition["conselho-construido.xml"], "30 dias", "60 dias", 1)
+	path := writeEdition(t, edition)
+
+	summary, err := persist(ctx, tx, quiet(), path)
+	require.NoError(t, err)
+	assert.Equal(t, Summary{Saved: 1, UnknownOrgan: 1, Repeated: 1, Skipped: 1, Failed: 1}, summary)
+	afterFirst := state(t, tx)
+
+	var versions string
+	require.NoError(t, tx.QueryRow(ctx, `
+		SELECT string_agg(versao || ':' || (conteudo LIKE '%30 dias%'), ',' ORDER BY versao)
+		  FROM ato WHERE id_dou = '900000001'`).Scan(&versions))
+	assert.Equal(t, "1:true", versions, "the entry that comes first in the zip is the one saved")
+
+	summary, err = persist(ctx, tx, quiet(), path)
+	require.NoError(t, err)
+	assert.Equal(t, Summary{Unchanged: 1, UnknownOrgan: 1, Repeated: 1, Skipped: 1, Failed: 1}, summary)
+	assert.Equal(t, afterFirst, state(t, tx))
 }
 
 // A zip that does not open is not a bad entry: there is nothing to go on with.

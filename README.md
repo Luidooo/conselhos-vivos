@@ -66,6 +66,8 @@ make test-go   # só os testes do ingestor em Go, em container (sem rede, sem cr
 make test-db-go  # só os testes do ingestor que gravam no banco, em transação desfeita (banco no ar e migrado)
 make fetch     # baixa as edições do DOU de hoje em Brasília; DATA=AAAA-MM-DD para outro dia
 make extract   # lê as matérias dos ZIPs já baixados de DATA e imprime uma por linha, em JSON
+make persist   # grava no banco as matérias dos ZIPs já baixados de DATA; pode rodar de novo, não duplica
+make ingest    # fetch e persist de DATA, de ponta a ponta: baixa o dia e grava as matérias de conselho
 make migrate   # aplica as migrações de sql/ que ainda não rodaram
 make carga     # carrega os conselhos e a planilha da pesquisadora (idempotente) e atualiza os relatórios
 make siorg     # baixa o SIORG (precisa de rede) e atualiza o recorte em data/referencia/
@@ -124,14 +126,40 @@ O comando Go lê **um ZIP por execução**; o `make extract` o roda uma vez por 
 
 Uma entrada que não é XML — a imagem de uma matéria, ou uma pasta, que não deveria aparecer — é ignorada e logada. Um XML que não lê como matéria (malformado, sem `id`, sem `pubDate`, sem `artCategory`) é logado com o nome do arquivo e o resto do ZIP segue; nesse caso o código de saída é `1`.
 
-## Gravar uma matéria no banco
+## Gravar as matérias no banco
 
-O pacote `src/ingestor/internal/oltp` grava uma matéria em `ato` com `origem = 'DOU'`, insert-only ([ADR 0001](docs/adr/0001-adotar-sistema-de-curadoria-insert-only-como-oltp.md)). **Ainda não há comando nem alvo do `make` que o chame:** por enquanto ele é exercitado pelos testes (`make test-db-go`), e ligá-lo a um ZIP inteiro depende da idempotência (#20).
+O `make ingest` leva um dia do DOU do INLABS até o banco, de ponta a ponta:
+
+```bash
+make ingest DATA=2026-10-01   # baixa DO1 e DO1E do dia e grava as matérias de conselho em ato
+```
+
+Ele encadeia o `make fetch` e o `make persist`, e para no primeiro que falhar. A extração acontece dentro do `persist`, com o mesmo pacote que o `make extract` usa para imprimir. Se o `fetch` passa e não deixa ZIP, o dia não teve edição e nada é gravado. O `make persist` sozinho grava os ZIPs que já estão em `data/bronze/inlabs/`, sem rede:
+
+```bash
+make persist DATA=2026-10-01   # o resumo vai para o stderr
+```
+
+O comando Go lê **um ZIP por execução**, como o `extract`, e grava tudo numa transação: a edição entra inteira ou não entra.
+
+**Pode rodar de novo.** Cada matéria é comparada com a última versão dela no banco, em tudo que é gravado (órgão, data, ementa e conteúdo):
+
+| A matéria | O que acontece | No resumo |
+|---|---|---|
+| nunca foi vista | entra com `versao = 1` | `gravadas` |
+| já está lá, igual | nada é gravado | `inalteradas` |
+| já está lá, diferente (a edição foi republicada) | entra com a `versao` seguinte; as anteriores ficam | `versoes-novas` |
+| é de órgão desconhecido | fica de fora, e o órgão vai para a fila | `orgao-desconhecido` |
+| tem o `id` de outra entrada do mesmo ZIP | fica de fora; vale a primeira | `repetidas` |
+
+Um `id` repetido no mesmo ZIP não derruba as demais matérias e é logado com as duas entradas. Só a primeira é gravada: gravar as duas faria da segunda uma versão nova da primeira, e cada execução seguinte criaria mais duas versões.
+
+Quem grava é o pacote `src/ingestor/internal/oltp`, em `ato` com `origem = 'DOU'`, insert-only ([ADR 0001](docs/adr/0001-adotar-sistema-de-curadoria-insert-only-como-oltp.md)):
 
 | Coluna de `ato` | De onde vem |
 |---|---|
 | `id_dou` | o `id` do `<article>`, e não o `idMateria`: é o que a extração já exige em todo XML |
-| `versao` | `1` |
+| `versao` | `1` na primeira vez; a seguinte a cada republicação com conteúdo diferente |
 | `orgao_id` | o último nível do `artCategory`, casado com um órgão conhecido |
 | `data_publicacao` | `pubDate` |
 | `ementa` | `<Ementa>`; nula quando vem vazia |
@@ -141,7 +169,7 @@ O pacote `src/ingestor/internal/oltp` grava uma matéria em `ato` com `origem = 
 
 **Órgão desconhecido.** A maioria das ~300 matérias de um dia não é de conselho. A matéria de um órgão que não é um dos conhecidos **não entra em `ato`**, e o nome do órgão entra uma vez em `orgao_alias`, com `fonte = 'DOU'`, `status = 'INDEFINIDO'`, sem órgão e com o `artCategory` inteiro no motivo: é a fila de decisão do ADR 0004. Quando alguém resolver o nome, a matéria é gravada reingerindo o ZIP, que continua em `data/bronze/`. Se a chave casar com **mais de um** órgão, nenhum é escolhido: o nome entra na fila como `AMBIGUO`.
 
-Gravar a mesma matéria duas vezes é erro (`uq_ato_dou_versao`); rodar de novo sem duplicar é a #20. A classificação não é tocada: continua da planilha e da curadoria ([ADR 0003](docs/adr/0003-carregar-a-planilha-como-rotulo-da-curadoria.md)).
+A classificação não é tocada: continua da planilha e da curadoria ([ADR 0003](docs/adr/0003-carregar-a-planilha-como-rotulo-da-curadoria.md)).
 
 ## Estrutura
 

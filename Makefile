@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch extract persist test test-go test-db-go vet-go reset pgadmin-reset psql logs
+.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest test test-go test-db-go vet-go reset pgadmin-reset psql logs
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -51,6 +51,14 @@ persist: ## grava no banco as matérias dos ZIPs de DATA já baixados; pode roda
 	@falhou=0; for zip in $(EDICOES:data/%=/data/%); do \
 		docker compose --progress quiet run --rm -T persist $$zip || falhou=1; \
 	done; exit $$falhou
+
+ingest: .env ## baixa as edições de DATA e grava as matérias de conselho no banco, de ponta a ponta; pode rodar de novo, não duplica
+	@$(MAKE) --no-print-directory fetch DATA=$(DATA)
+	@# O persist vai num make à parte: a lista de ZIPs dele tem de ser montada
+	@# depois do fetch. Se o fetch passou e não deixou ZIP, o dia não teve edição.
+	@if [ -e data/bronze/inlabs/$(DATA)-DO1.zip ] || [ -e data/bronze/inlabs/$(DATA)-DO1E.zip ]; then \
+		$(MAKE) --no-print-directory persist DATA=$(DATA); \
+	else echo "$(DATA) não teve edição do DOU: nada a gravar"; fi
 
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
 	docker compose --progress quiet run --rm -T ingestor-test go test -count=1 ./...

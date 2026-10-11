@@ -57,6 +57,9 @@ type Writer struct {
 	// is in ambiguous instead: it never resolves by itself.
 	organs    map[string]int32
 	ambiguous map[string]bool
+	// queued has the names this Writer already sent to orgao_alias. Most of an
+	// edition is of unknown organs, and the same few hundred times over.
+	queued map[string]bool
 }
 
 // Open reads the identity of the organs: every name an organ has or had
@@ -71,7 +74,7 @@ func Open(ctx context.Context, db DB) (*Writer, error) {
 	}
 	defer rows.Close()
 
-	writer := &Writer{db: db, organs: map[string]int32{}, ambiguous: map[string]bool{}}
+	writer := &Writer{db: db, organs: map[string]int32{}, ambiguous: map[string]bool{}, queued: map[string]bool{}}
 	for rows.Next() {
 		var (
 			id   int32
@@ -152,6 +155,10 @@ func (w *Writer) Save(ctx context.Context, a article.Article) (Outcome, error) {
 // and the reason. A name already there is left as it is: someone may have
 // decided on it since.
 func (w *Writer) queue(ctx context.Context, a article.Article, organ, key string) error {
+	if w.queued[organ] {
+		return nil
+	}
+
 	status, reason := "INDEFINIDO", "órgão não reconhecido na ingestão do DOU"
 	if w.ambiguous[key] {
 		status, reason = "AMBIGUO", "a chave casa com mais de um órgão"
@@ -166,5 +173,6 @@ func (w *Writer) queue(ctx context.Context, a article.Article, organ, key string
 	if err != nil {
 		return fmt.Errorf("queueing the organ %q of %s: %w", organ, a.Entry, err)
 	}
+	w.queued[organ] = true
 	return nil
 }

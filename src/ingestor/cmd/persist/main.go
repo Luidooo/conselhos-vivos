@@ -4,7 +4,7 @@
 //
 // One zip per run, as in extract, and one transaction per zip: an edition is
 // in the database whole or not at all. It can be run again: what is already
-// there is left alone.
+// there is left alone, and an id that comes twice in the zip counts once.
 package main
 
 import (
@@ -45,6 +45,7 @@ func main() {
 		"versoes-novas", summary.NewVersions,
 		"inalteradas", summary.Unchanged,
 		"orgao-desconhecido", summary.UnknownOrgan,
+		"repetidas", summary.Repeated,
 		"ignoradas", summary.Skipped,
 		"falhou", summary.Failed)
 
@@ -91,6 +92,9 @@ type Summary struct {
 	// UnknownOrgan is a matéria of an organ that is none of the known ones:
 	// left out, with the organ queued for a decision.
 	UnknownOrgan int
+	// Repeated is a matéria whose id an earlier entry of the zip already had:
+	// left out, whatever it says.
+	Repeated int
 	// Skipped is an entry that is not XML, like an article's image.
 	Skipped int
 	// Failed is an XML that did not read as a matéria, or one with no <Texto>.
@@ -100,6 +104,11 @@ type Summary struct {
 // persist saves every matéria of the zip through db. A bad entry is logged and
 // counted; a zip that does not open, or a database that refuses a write, ends
 // the run.
+//
+// Of two entries with the same id, the first in the zip is the matéria and the
+// other is left out. Saving both would make the second a new version of the
+// first, and the next run a new version of the second: the same zip would
+// never stop writing.
 func persist(ctx context.Context, db oltp.DB, logger *slog.Logger, path string) (Summary, error) {
 	var summary Summary
 
@@ -114,6 +123,9 @@ func persist(ctx context.Context, db oltp.DB, logger *slog.Logger, path string) 
 		return summary, err
 	}
 
+	// seen maps an id to the entry that had it first.
+	seen := make(map[string]string)
+
 	for item, err := range article.Read(&edition.Reader) {
 		switch {
 		case errors.Is(err, article.ErrNotXML):
@@ -125,6 +137,13 @@ func persist(ctx context.Context, db oltp.DB, logger *slog.Logger, path string) 
 			logger.Warn("falhou", "zip", path, "erro", err)
 			continue
 		}
+
+		if first, repeated := seen[item.ID]; repeated {
+			summary.Repeated++
+			logger.Warn("repetida", "zip", path, "entrada", item.Entry, "id", item.ID, "primeira", first)
+			continue
+		}
+		seen[item.ID] = item.Entry
 
 		outcome, err := writer.Save(ctx, item)
 		switch {
@@ -159,5 +178,6 @@ func usage() {
 		"the one the PG* variables point at. It can be run again: a matéria already\n"+
 		"there is left alone, and one that came back different goes in as a new\n"+
 		"version. A matéria of an unknown organ is left out and the organ is queued in\n"+
-		"orgao_alias. An XML that is not a matéria is a failure, and the exit code is 1.\n")
+		"orgao_alias. Of two entries with the same id, only the first is saved. An XML\n"+
+		"that is not a matéria is a failure, and the exit code is 1.\n")
 }
