@@ -48,7 +48,7 @@ extract: ## lê as matérias dos ZIPs de DATA já baixados e imprime uma por lin
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
 	docker compose --progress quiet run --rm -T ingestor-test go test -count=1 ./...
 
-test-db-go: ## testes do ingestor que gravam no banco, em transação desfeita (precisa do banco no ar e migrado)
+test-db-go: .env ## testes do ingestor que gravam no banco, em transação desfeita (precisa do banco no ar e migrado)
 	docker compose --progress quiet run --rm -T ingestor-db-test go test -count=1 ./internal/oltp/
 
 vet-go: ## gofmt e go vet do ingestor, em container

@@ -89,7 +89,8 @@ func Open(ctx context.Context, db DB) (*Writer, error) {
 
 // Save writes one matéria. With a known organ it becomes a row in ato:
 // origem DOU, version 1, the article's id as id_dou and <Texto> as published
-// as conteudo. With an unknown one it is left out and its organ is queued.
+// as conteudo; an <Ementa> with only blanks is stored as NULL, as an empty one.
+// With an unknown one it is left out and its organ is queued.
 //
 // Saving the same matéria twice is an error, from uq_ato_dou_versao: running
 // again without duplicating is issue #20.
@@ -111,7 +112,7 @@ func (w *Writer) Save(ctx context.Context, a article.Article) (Outcome, error) {
 	_, err := w.db.Exec(ctx, `
 		INSERT INTO ato (origem, id_dou, versao, orgao_id, data_publicacao, ementa, conteudo)
 		VALUES ('DOU', $1, 1, $2, $3, NULLIF($4, ''), $5)`,
-		a.ID, id, a.PubDate.In(time.UTC), a.Ementa, a.HTML)
+		a.ID, id, a.PubDate.In(time.UTC), strings.TrimSpace(a.Ementa), a.HTML)
 	if err != nil {
 		return 0, fmt.Errorf("saving %s (id %s): %w", a.Entry, a.ID, err)
 	}

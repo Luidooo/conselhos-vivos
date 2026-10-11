@@ -150,6 +150,25 @@ func TestSaveLeavesAnEmptyEmentaNull(t *testing.T) {
 	assert.Equal(t, 1, count(t, tx, `SELECT count(*) FROM ato WHERE id_dou = '900000010' AND ementa IS NULL`))
 }
 
+// An <Ementa> with only spaces or line breaks is as empty as no <Ementa>: the
+// same rule <Texto> follows (TrimSpace) before ErrNoContent.
+func TestSaveLeavesABlankEmentaNull(t *testing.T) {
+	tx := begin(t)
+	ctx := context.Background()
+	newOrgan(t, tx, "Conselho Nacional de Teste da Persistência")
+
+	item := handmade("900000012", "Ministério de Teste", "Conselho Nacional de Teste da Persistência")
+	item.Ementa = " \n\t "
+
+	writer, err := Open(ctx, tx)
+	require.NoError(t, err)
+	outcome, err := writer.Save(ctx, item)
+	require.NoError(t, err)
+	assert.Equal(t, Saved, outcome)
+
+	assert.Equal(t, 1, count(t, tx, `SELECT count(*) FROM ato WHERE id_dou = '900000012' AND ementa IS NULL`))
+}
+
 func TestSaveFindsTheOrgan(t *testing.T) {
 	const published = "CONSELHO  NACIONAL DE TESTE DA PERSISTÊNCIA (CNTP)"
 
