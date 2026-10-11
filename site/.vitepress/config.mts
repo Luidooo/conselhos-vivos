@@ -127,6 +127,9 @@ export default withMermaid(defineConfig({
         items: [
           { text: 'Diário · 25/09', link: '/docs/diario/2026-09-25' },
           { text: 'Diário · 26/09', link: '/docs/diario/2026-09-26' },
+          { text: 'Diário · semana 8 (29/09)', link: '/docs/diario/2026-09-29' },
+          { text: 'Diário · semana 9 (06/10)', link: '/docs/diario/2026-10-06' },
+          { text: 'Diário · semana 10 (13/10)', link: '/docs/diario/2026-10-13' },
           { text: 'Uso de IA', link: '/AI-USAGE' },
         ],
       },

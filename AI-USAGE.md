@@ -294,3 +294,13 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** dois ajustes. (1) `test-db-go` passou a depender do `.env`, como o `up` e o `test`: sem ele, o serviço `ingestor-db-test` sobe com `PGUSER` vazio e o erro é de autenticação. (2) Uma `<Ementa>` só com espaços ou quebras de linha passou a ser gravada como `NULL`, com `strings.TrimSpace` no Go. A primeira tentativa, `btrim` no SQL, foi descartada: sem argumento, o `btrim` do Postgres só remove espaços, e o teste continuou falhando com `\n` e `\t`. O achado da ementa ficou **mais fraco do que a revisão disse**: a extração já faz `TrimSpace` na ementa (`article.go`), então o problema só aparece para quem montar um `Article` à mão. O terceiro achado, a transação abortada por uma matéria repetida, ficou para a #20, junto com a idempotência.
 - **Como foi verificado:** teste novo (`TestSaveLeavesABlankEmentaNull`) visto falhando antes da correção e passando depois; `make test-db-go` com os 9 testes do pacote verdes; `make vet-go` e `make test-go` limpos.
 - **Quem revisou:** pendente — o Luis (autor do PR) e o Iago, no PR.
+
+### 2026-10-11 — Diários de bordo das semanas 8, 9 e 10 (#26)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `docs/diario/2026-09-29.md`, `docs/diario/2026-10-06.md`, `docs/diario/2026-10-13.md`, `site/.vitepress/config.mts` (menu "Processo")
+- **O que foi pedido:** escrever os diários que faltavam para o checklist da E2, no formato dos anteriores (medido, surpreendeu, decidido), a partir do histórico.
+- **O que foi aproveitado:** os três textos, ainda sem revisão da squad. **Decidido pela IA**, a revisar: um arquivo por semana, com a data de referência da issue no nome; o cabeçalho traz "Quem trabalhou", tirado dos autores de PRs, revisões e issues, em vez de "Presentes", porque não há ata das reuniões; cada diário ganhou uma seção "O que ficou em aberto"; e o da semana 10 foi escrito em 11/10, antes de a semana fechar, e diz isso no cabeçalho.
+- **Como foi verificado:** os números das tabelas foram conferidos na API do GitHub (arquivos, linhas e commits de cada PR; datas de criação, merge e fechamento; responsáveis das issues), no texto dos PRs #17, #22, #23 e #35 e nas entradas deste arquivo. A contagem de testes em Go (87, dos quais 11 só com banco) foi obtida rodando-os na branch do PR #35. `npm run build` do site sem link quebrado, com os três diários no menu. **Não** foi verificado: quem esteve em cada reunião, nem nada do que não deixou rastro em PR, issue ou neste arquivo — conversas da squad fora do GitHub não entraram.
+- **Quem revisou:** pendente — cada pessoa citada deveria conferir a parte que é dela.
+
