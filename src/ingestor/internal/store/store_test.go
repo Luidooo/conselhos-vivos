@@ -207,3 +207,53 @@ func TestSaveRemovesTheMarkerOfItsEdition(t *testing.T) {
 	assert.Equal(t, []string{"2026-10-02-DO1.sem-edicao", "2026-10-02-DO1E.zip"}, entries(t, dir),
 		"only its own marker goes")
 }
+
+// A fetch that failed leaves its own marker: the edition was asked for, and it
+// is the one to fetch again.
+func TestMarkFailedLeavesAnEmptyMarker(t *testing.T) {
+	dir := t.TempDir()
+
+	require.NoError(t, mustOpen(t, dir).MarkFailed("2026-10-02-DO1.zip"))
+
+	assert.Equal(t, []string{"2026-10-02-DO1.falhou"}, entries(t, dir))
+	info, err := os.Stat(filepath.Join(dir, "2026-10-02-DO1.falhou"))
+	require.NoError(t, err)
+	assert.Zero(t, info.Size())
+}
+
+// The record is what the last fetch found: one marker per edition, never both.
+func TestTheLastMarkerIsTheOneThatStays(t *testing.T) {
+	dir := t.TempDir()
+	store := mustOpen(t, dir)
+
+	require.NoError(t, store.MarkNoEdition("2026-10-02-DO1E.zip"))
+	require.NoError(t, store.MarkFailed("2026-10-02-DO1E.zip"))
+	assert.Equal(t, []string{"2026-10-02-DO1E.falhou"}, entries(t, dir))
+
+	require.NoError(t, store.MarkNoEdition("2026-10-02-DO1E.zip"))
+	assert.Equal(t, []string{"2026-10-02-DO1E.sem-edicao"}, entries(t, dir))
+}
+
+// A zip on disk is still the edition, even if fetching it again failed.
+func TestMarkFailedLeavesAZipAlreadyThereAlone(t *testing.T) {
+	dir := t.TempDir()
+	store := mustOpen(t, dir)
+	_, err := store.Save("2026-10-02-DO1.zip", bytes.NewReader(zipWith(t, "DO1.xml", "<article/>")))
+	require.NoError(t, err)
+
+	require.NoError(t, store.MarkFailed("2026-10-02-DO1.zip"))
+
+	assert.Equal(t, []string{"2026-10-02-DO1.zip"}, entries(t, dir), "no marker beside the zip")
+}
+
+// The edition that failed yesterday and arrives today is no longer a failure.
+func TestSaveRemovesTheFailedMarkerOfItsEdition(t *testing.T) {
+	dir := t.TempDir()
+	store := mustOpen(t, dir)
+	require.NoError(t, store.MarkFailed("2026-10-02-DO1.zip"))
+
+	_, err := store.Save("2026-10-02-DO1.zip", bytes.NewReader(zipWith(t, "DO1.xml", "<article/>")))
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"2026-10-02-DO1.zip"}, entries(t, dir))
+}

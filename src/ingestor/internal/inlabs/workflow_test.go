@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"sync/atomic"
 	"syscall"
 	"testing"
@@ -16,6 +17,8 @@ import (
 	"cloud.google.com/go/civil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"conselhos-vivos/internal/store"
 )
 
 // douServer answers the login, then routes each edition request to the handler
@@ -96,6 +99,7 @@ func TestFetchDayStopsWhenAMissingEditionCannotBeRecorded(t *testing.T) {
 	require.ErrorIs(t, err, syscall.ENOSPC)
 	assert.Equal(t, Summary{}, summary)
 	assert.Equal(t, []string{"2026-10-02-DO1.zip"}, dest.marked, "the next section is not tried")
+	assert.Equal(t, []string{"2026-10-02-DO1.zip"}, dest.failed, "and the day is at least tried to be left as failed")
 }
 
 func TestFetchDayKeepsGoingAfterASectionFails(t *testing.T) {
@@ -112,6 +116,68 @@ func TestFetchDayKeepsGoingAfterASectionFails(t *testing.T) {
 
 	assert.Equal(t, Summary{Downloaded: 1, Failed: 1}, summary)
 	assert.Equal(t, []string{"2026-10-02-DO1E.zip"}, dest.saved)
+	assert.Equal(t, []string{"2026-10-02-DO1.zip"}, dest.failed, "the failed one is recorded as failed")
+}
+
+// A failure that cannot be recorded would be a day that looks failed in the
+// log and forgotten on disk.
+func TestFetchDayStopsWhenAFailedEditionCannotBeRecorded(t *testing.T) {
+	client := douServer(t, map[Section]http.HandlerFunc{
+		SectionDO1: func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusBadGateway)
+		},
+		SectionDO1E: servesAZip,
+	})
+	dest := &fakeStore{failErr: syscall.EROFS}
+
+	_, err := client.FetchDay(context.Background(), testDate(t), dest)
+
+	require.ErrorIs(t, err, syscall.EROFS)
+	assert.Empty(t, dest.saved, "the next section is not tried")
+}
+
+// The record of the day, on a real directory, in its three cases: an edition
+// that does not exist, one that failed and is fetched again, and a day nobody
+// asked for.
+func TestTheDirectoryRecordsWhatBecameOfEachEdition(t *testing.T) {
+	dir := t.TempDir()
+	dest, err := store.New(dir)
+	require.NoError(t, err)
+
+	list := func() []string {
+		found, err := os.ReadDir(dir)
+		require.NoError(t, err)
+		var names []string
+		for _, entry := range found {
+			names = append(names, entry.Name())
+		}
+		return names
+	}
+
+	// INLABS is down for DO1, and there is no DO1E: a failure and a no-edition.
+	var up atomic.Bool
+	client := douServer(t, map[Section]http.HandlerFunc{
+		SectionDO1: func(w http.ResponseWriter, r *http.Request) {
+			if !up.Load() {
+				w.WriteHeader(http.StatusBadGateway)
+				return
+			}
+			servesAZip(w, r)
+		},
+	})
+
+	summary, err := client.FetchDay(context.Background(), testDate(t), dest)
+	require.NoError(t, err)
+	assert.Equal(t, Summary{NoEdition: 1, Failed: 1}, summary)
+	assert.Equal(t, []string{"2026-10-02-DO1.falhou", "2026-10-02-DO1E.sem-edicao"}, list(),
+		"and of 2026-10-01, which nobody fetched, there is nothing")
+
+	// The next run of the day fetches the failed edition again, and it arrives.
+	up.Store(true)
+	summary, err = client.FetchDay(context.Background(), testDate(t), dest)
+	require.NoError(t, err)
+	assert.Equal(t, Summary{Downloaded: 1, NoEdition: 1}, summary)
+	assert.Equal(t, []string{"2026-10-02-DO1.zip", "2026-10-02-DO1E.sem-edicao"}, list())
 }
 
 func TestFetchDayStopsWhenTheDiskIsFull(t *testing.T) {

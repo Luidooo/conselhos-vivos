@@ -2,8 +2,9 @@
 // its final name is always a whole, readable zip.
 //
 // The directory is also the record of what was asked of INLABS: for an edition
-// there is its zip, a marker saying there was none, or nothing, which means
-// nobody fetched it. Never the zip and the marker together.
+// there is its zip, a marker saying there was none, a marker saying the fetch
+// failed, or nothing, which means nobody fetched it. Never two of them
+// together.
 package store
 
 import (
@@ -81,8 +82,8 @@ func (s *Store) Save(name string, r io.Reader) (Receipt, error) {
 	}
 
 	// The edition exists now, whatever an earlier run was told.
-	if err := os.Remove(filepath.Join(s.dir, MarkerName(name))); err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return Receipt{}, fmt.Errorf("removing the no-edition marker of %s: %w", name, err)
+	if err := s.unmark(name, noEditionSuffix, failedSuffix); err != nil {
+		return Receipt{}, err
 	}
 
 	if err := syncDir(s.dir); err != nil {
@@ -92,34 +93,75 @@ func (s *Store) Save(name string, r io.Reader) (Receipt, error) {
 	return Receipt{Path: final, Size: size}, nil
 }
 
-// markerSuffix ends the name of the file that says an edition does not exist.
-const markerSuffix = ".sem-edicao"
+// The suffixes of the two markers. A marker is an empty file under the
+// edition's name, with the suffix in place of ".zip".
+const (
+	// noEditionSuffix says INLABS answered that the edition does not exist.
+	noEditionSuffix = ".sem-edicao"
+	// failedSuffix says the edition was asked for and did not arrive.
+	failedSuffix = ".falhou"
+)
 
-// MarkerName is the marker's file name for the edition whose zip is name:
-// 2026-10-04-DO1.zip gives 2026-10-04-DO1.sem-edicao.
-func MarkerName(name string) string {
-	return strings.TrimSuffix(name, ".zip") + markerSuffix
+// NoEditionName is the name of the marker MarkNoEdition leaves for the edition
+// whose zip is name: 2026-10-04-DO1.zip gives 2026-10-04-DO1.sem-edicao.
+func NoEditionName(name string) string {
+	return strings.TrimSuffix(name, ".zip") + noEditionSuffix
+}
+
+// FailedName is the name of the marker MarkFailed leaves for the edition whose
+// zip is name: 2026-10-04-DO1.zip gives 2026-10-04-DO1.falhou.
+func FailedName(name string) string {
+	return strings.TrimSuffix(name, ".zip") + failedSuffix
 }
 
 // MarkNoEdition records that the edition whose zip would be name does not
-// exist, as an empty file. Without it, a day with no edition and a day nobody
-// fetched look the same on disk.
-//
-// A zip already there wins: an edition that was downloaded once existed, and
-// one later "not found" does not unpublish it. Then nothing is written.
+// exist. Without it, a day with no edition and a day nobody fetched look the
+// same on disk.
 func (s *Store) MarkNoEdition(name string) error {
+	return s.mark(name, noEditionSuffix, failedSuffix)
+}
+
+// MarkFailed records that the edition whose zip would be name was asked for
+// and did not arrive, so it is not mistaken for one nobody fetched: it is the
+// one to fetch again.
+func (s *Store) MarkFailed(name string) error {
+	return s.mark(name, failedSuffix, noEditionSuffix)
+}
+
+// mark leaves the marker with suffix for the edition, and removes the one with
+// the other suffix: the record is what the last fetch found.
+//
+// A zip already there wins over both: an edition that was downloaded once
+// existed, and neither a later "not found" nor a later failure takes it back.
+// Then nothing is written.
+func (s *Store) mark(name, suffix, other string) error {
 	if _, err := os.Stat(filepath.Join(s.dir, name)); err == nil {
 		return nil
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("looking for %s: %w", name, err)
 	}
 
-	marker := MarkerName(name)
+	marker := strings.TrimSuffix(name, ".zip") + suffix
 	if err := os.WriteFile(filepath.Join(s.dir, marker), nil, 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", marker, err)
 	}
+	if err := s.unmark(name, other); err != nil {
+		return err
+	}
 	if err := syncDir(s.dir); err != nil {
 		return fmt.Errorf("flushing the directory %s: %w", s.dir, err)
+	}
+	return nil
+}
+
+// unmark removes the edition's markers with the given suffixes. One that is
+// not there is not an error.
+func (s *Store) unmark(name string, suffixes ...string) error {
+	for _, suffix := range suffixes {
+		marker := strings.TrimSuffix(name, ".zip") + suffix
+		if err := os.Remove(filepath.Join(s.dir, marker)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("removing %s: %w", marker, err)
+		}
 	}
 	return nil
 }

@@ -69,9 +69,17 @@ func newSignedInClient(t *testing.T, handler http.HandlerFunc) *Client {
 type fakeStore struct {
 	saved  []string
 	marked []string
+	failed []string
 	err    error
-	// markErr is the failure of recording a missing edition.
+	// markErr is the failure of recording a missing edition, and failErr of
+	// recording a failed one.
 	markErr error
+	failErr error
+}
+
+func (s *fakeStore) MarkFailed(name string) error {
+	s.failed = append(s.failed, name)
+	return s.failErr
 }
 
 func (s *fakeStore) MarkNoEdition(name string) error {

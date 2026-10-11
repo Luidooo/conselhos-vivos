@@ -34,11 +34,12 @@ func ZipName(d Date, s Section) string {
 }
 
 // Saver is where a downloaded edition lands, under the name ZipName gives it,
-// and where an edition that does not exist is recorded as such, under the same
-// name.
+// and where an edition that does not exist, or that did not arrive, is
+// recorded as such, under the same name.
 type Saver interface {
 	Save(name string, body io.Reader) (store.Receipt, error)
 	MarkNoEdition(name string) error
+	MarkFailed(name string) error
 }
 
 // Outcome is what happened to one (date, section).
@@ -72,7 +73,11 @@ func (s *Summary) add(result Outcome) {
 // date, logs in when there is no session, and walks the day's sections.
 //
 // A failure the next section would not inherit is counted and the day goes on;
-// any other stops it. See survivable.
+// any other stops it. See survivable. Either way the edition is recorded in
+// dest as failed, so the day does not read as one nobody fetched.
+//
+// A run that was cancelled or ran out of time records nothing: the edition was
+// not refused, it was not waited for.
 func (c *Client) FetchDay(ctx context.Context, date Date, dest Saver) (Summary, error) {
 	var summary Summary
 
@@ -90,8 +95,14 @@ func (c *Client) FetchDay(ctx context.Context, date Date, dest Saver) (Summary, 
 			if ctx.Err() != nil {
 				return summary, ctx.Err()
 			}
+			markErr := dest.MarkFailed(ZipName(date, section))
 			if !survivable(err) {
-				return summary, err
+				// What stopped the day is the first error; a record that could
+				// not be written rides along.
+				return summary, errors.Join(err, markErr)
+			}
+			if markErr != nil {
+				return summary, markErr
 			}
 		}
 

@@ -9,11 +9,15 @@ help: ## lista os comandos
 DATA ?= $(shell TZ=America/Sao_Paulo date +%F)
 # As edições do dia que o make extract e o make persist leem: as que existem, DO1 e DO1E.
 EDICOES = $(wildcard data/bronze/inlabs/$(DATA)-DO1.zip data/bronze/inlabs/$(DATA)-DO1E.zip)
-# O marcador que o fetch deixa quando o INLABS diz que não houve DO1 em DATA.
+# Os marcadores que o fetch deixa no lugar do ZIP: o INLABS disse que não houve
+# DO1 em DATA, ou a busca do DO1 falhou.
 SEM_EDICAO = $(wildcard data/bronze/inlabs/$(DATA)-DO1.sem-edicao)
-# Sem ZIP, um dia sem edição não é erro; um dia que ninguém buscou é.
-TEM_EDICAO = test -n "$(EDICOES)" || { test -n "$(SEM_EDICAO)" && echo "$(DATA) não teve edição do DOU (marcador em data/bronze/inlabs/)" >&2; } \
-	|| { echo "nenhum ZIP de $(DATA) em data/bronze/inlabs/ — rode make fetch DATA=$(DATA)"; exit 1; }
+FALHOU = $(wildcard data/bronze/inlabs/$(DATA)-DO1.falhou)
+# Sem ZIP, um dia sem edição não é erro; um que falhou ou que ninguém buscou é.
+TEM_EDICAO = if [ -n "$(EDICOES)" ]; then :; \
+	elif [ -n "$(SEM_EDICAO)" ]; then echo "$(DATA) não teve edição do DOU (marcador em data/bronze/inlabs/)" >&2; \
+	elif [ -n "$(FALHOU)" ]; then echo "a busca de $(DATA) falhou (marcador em data/bronze/inlabs/) — rode make fetch DATA=$(DATA) de novo"; exit 1; \
+	else echo "nenhum ZIP de $(DATA) em data/bronze/inlabs/ — rode make fetch DATA=$(DATA)"; exit 1; fi
 
 .env:
 	cp .env.example .env
@@ -38,7 +42,7 @@ siorg: ## baixa o SIORG (com rede) e atualiza o recorte em data/referencia/; rod
 	docker compose --progress quiet run --rm -T siorg > data/referencia/siorg-conselhos.csv.novo
 	mv data/referencia/siorg-conselhos.csv.novo data/referencia/siorg-conselhos.csv
 
-fetch: .env ## baixa DO1 e DO1E do DOU (DATA=AAAA-MM-DD; sem DATA, hoje em Brasília). Sem retomada: rebaixa o que já existe; edição que não houve fica marcada
+fetch: .env ## baixa DO1 e DO1E do DOU (DATA=AAAA-MM-DD; sem DATA, hoje em Brasília). Sem retomada: rebaixa o que já existe; edição que não houve ou que falhou fica marcada
 	mkdir -p data/bronze/inlabs
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T ingestor -date $(DATA)
 
@@ -59,11 +63,9 @@ persist: ## grava no banco as matérias dos ZIPs de DATA já baixados; pode roda
 
 ingest: .env ## baixa as edições de DATA e grava as matérias de conselho no banco, de ponta a ponta; pode rodar de novo, não duplica
 	@$(MAKE) --no-print-directory fetch DATA=$(DATA)
-	@# O persist vai num make à parte: a lista de ZIPs dele tem de ser montada
-	@# depois do fetch. Se o fetch passou e não deixou ZIP, o dia não teve edição.
-	@if [ -e data/bronze/inlabs/$(DATA)-DO1.zip ] || [ -e data/bronze/inlabs/$(DATA)-DO1E.zip ]; then \
-		$(MAKE) --no-print-directory persist DATA=$(DATA); \
-	else echo "$(DATA) não teve edição do DOU: nada a gravar"; fi
+	@# O persist vai num make à parte: a lista de ZIPs e de marcadores dele tem de
+	@# ser montada depois do fetch.
+	@$(MAKE) --no-print-directory persist DATA=$(DATA)
 
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
 	docker compose --progress quiet run --rm -T ingestor-test go test -count=1 ./...

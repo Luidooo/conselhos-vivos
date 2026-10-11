@@ -106,15 +106,27 @@ Um arquivo só aparece com o nome final quando o conteúdo é um ZIP que abre: s
 
 **Não há retomada.** Cada execução baixa o dia de novo, sobrescrevendo o que estiver em disco. Para vários dias:
 
-**Dia sem edição fica marcado.** Quando o INLABS responde que uma edição não existe (domingo, feriado, ou um dia sem edição extra), o `fetch` deixa um arquivo vazio no lugar do ZIP: `2026-10-04-DO1.sem-edicao`. Assim o diretório diz o que foi pedido ao INLABS:
+**O diretório é o registro do dia.** No lugar do ZIP que não veio, o `fetch` deixa um arquivo vazio com o mesmo nome e outra extensão. Assim `data/bronze/inlabs/` diz o que foi pedido ao INLABS e o que ele respondeu, por data e por seção:
 
 | Em `data/bronze/inlabs/` | Quer dizer |
 |---|---|
 | `2026-10-02-DO1.zip` | houve edição, e ela foi baixada |
-| `2026-10-04-DO1.sem-edicao` | o dia foi buscado e não houve edição |
-| nada | ninguém buscou esse dia |
+| `2026-10-04-DO1.sem-edicao` | a edição foi buscada e o INLABS respondeu que ela não existe (domingo, feriado, dia sem edição extra) |
+| `2026-10-02-DO1.falhou` | a edição foi buscada e não chegou: é a que falta buscar de novo |
+| nada | ninguém buscou |
 
-Nunca os dois para a mesma edição: um ZIP que chega apaga o marcador (a edição extra sai à tarde, depois de uma busca de manhã), e um ZIP que já está em disco não é desmentido por um "não existe" posterior. O registro fica no bronze, e não no banco, para o `fetch` continuar sem falar com o banco; por isso ele não é consultável por SQL.
+```bash
+ls data/bronze/inlabs/*.falhou   # o que falta buscar de novo
+```
+
+Para cada edição há no máximo um dos três arquivos, e ele diz o que a última busca encontrou:
+
+- **Um ZIP que chega apaga o marcador.** A edição extra sai à tarde, depois de uma busca de manhã; e a edição que falhou ontem e chega hoje deixa de ser falha.
+- **Um ZIP em disco vence.** Nem um "não existe" nem uma falha posteriores desmentem uma edição já baixada.
+- **A falha é buscada de novo quando o dia roda de novo**: `make fetch DATA=...` rebaixa o dia inteiro, e não só o que falhou. Nada refaz sozinho um dia que falhou.
+- **Execução interrompida não deixa registro.** Uma busca cancelada ou que estourou o prazo da execução não foi recusada, só não foi esperada.
+
+O registro fica no bronze, e não numa tabela do banco, para o `fetch` continuar sem falar com o banco: ele roda sem o Postgres no ar. O custo é que o registro não é consultável por SQL.
 
 O código de saída diz o que aconteceu: `0` nada falhou, `1` a execução foi abortada ou alguma seção falhou, `2` erro de uso (`-date` ausente ou malformado). Uma data que o INLABS não pode ter — futura, ou anterior a 2020-01-01, que é desde quando ele serve — aborta a execução com `1` e nenhuma requisição: é regra do INLABS, e não do argumento.
 
@@ -144,7 +156,7 @@ O `make ingest` leva um dia do DOU do INLABS até o banco, de ponta a ponta:
 make ingest DATA=2026-10-01   # baixa DO1 e DO1E do dia e grava as matérias de conselho em ato
 ```
 
-Ele encadeia o `make fetch` e o `make persist`, e para no primeiro que falhar. A extração acontece dentro do `persist`, com o mesmo pacote que o `make extract` usa para imprimir. Se o `fetch` passa e não deixa ZIP, o dia não teve edição e nada é gravado. O `make persist` sozinho grava os ZIPs que já estão em `data/bronze/inlabs/`, sem rede:
+Ele encadeia o `make fetch` e o `make persist`, e para no primeiro que falhar. A extração acontece dentro do `persist`, com o mesmo pacote que o `make extract` usa para imprimir. Um dia que o `fetch` marcou como sem edição não é erro, e nada é gravado; um dia cuja busca falhou é. O `make persist` sozinho grava os ZIPs que já estão em `data/bronze/inlabs/`, sem rede:
 
 ```bash
 make persist DATA=2026-10-01   # o resumo vai para o stderr

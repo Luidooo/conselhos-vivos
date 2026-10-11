@@ -92,7 +92,8 @@ func usage() {
 		"There is no resume: every run downloads the day again, overwriting what is\n"+
 		"already on disk. Backfill is a shell loop over -date.\n\n"+
 		"An edition INLABS says does not exist leaves an empty .sem-edicao file where\n"+
-		"its zip would be, so a day with no edition is told apart from one never fetched.\n")
+		"its zip would be, and one that failed leaves a .falhou file, so both are told\n"+
+		"apart from a day never fetched. A zip that arrives removes either.\n")
 }
 
 // dateFlag accepts one spelling of a date and no other: YYYY-MM-DD.
