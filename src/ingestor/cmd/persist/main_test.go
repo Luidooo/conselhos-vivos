@@ -165,6 +165,37 @@ func TestPersistSavesOnlyTheFirstOfARepeatedID(t *testing.T) {
 	assert.Equal(t, afterFirst, state(t, tx))
 }
 
+// Late data: the edition of a day already saved comes back with a matéria it
+// did not have. Running that day again takes the new one and leaves the rest
+// alone, and the new one is filed under the day it was published, not the day
+// it arrived.
+func TestPersistTakesAMateriaThatArrivedLate(t *testing.T) {
+	tx := dbtest.Begin(t)
+	ctx := context.Background()
+
+	_, err := persist(ctx, tx, quiet(), writeEdition(t, anEdition(t)))
+	require.NoError(t, err)
+	afterFirst := state(t, tx)
+
+	later := anEdition(t)
+	later["conselho-atrasada.xml"] = strings.Replace(later["conselho-construido.xml"],
+		`id="900000001"`, `id="900000777"`, 1)
+	require.NotEqual(t, later["conselho-construido.xml"], later["conselho-atrasada.xml"])
+
+	summary, err := persist(ctx, tx, quiet(), writeEdition(t, later))
+	require.NoError(t, err)
+	assert.Equal(t, Summary{Saved: 1, Unchanged: 1, UnknownOrgan: 1, Skipped: 1, Failed: 1}, summary)
+
+	after := state(t, tx)
+	require.Len(t, after, len(afterFirst)+1)
+	assert.Subset(t, after, afterFirst, "what was there is untouched")
+
+	var published string
+	require.NoError(t, tx.QueryRow(ctx,
+		`SELECT data_publicacao::text FROM ato WHERE id_dou = '900000777'`).Scan(&published))
+	assert.Equal(t, "2026-10-02", published)
+}
+
 // A zip that does not open is not a bad entry: there is nothing to go on with.
 // It is refused before the database is asked anything.
 func TestPersistStopsOnAZipThatDoesNotOpen(t *testing.T) {
