@@ -129,7 +129,9 @@ func (s *Store) MarkFailed(name string) error {
 }
 
 // mark leaves the marker with suffix for the edition, and removes the one with
-// the other suffix: the record is what the last fetch found.
+// the other suffix: the record is what the last fetch found. The old marker
+// goes first: a crash in between leaves no marker (a day to fetch again), never
+// two that contradict each other.
 //
 // A zip already there wins over both: an edition that was downloaded once
 // existed, and neither a later "not found" nor a later failure takes it back.
@@ -141,12 +143,12 @@ func (s *Store) mark(name, suffix, other string) error {
 		return fmt.Errorf("looking for %s: %w", name, err)
 	}
 
+	if err := s.unmark(name, other); err != nil {
+		return err
+	}
 	marker := strings.TrimSuffix(name, ".zip") + suffix
 	if err := os.WriteFile(filepath.Join(s.dir, marker), nil, 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", marker, err)
-	}
-	if err := s.unmark(name, other); err != nil {
-		return err
 	}
 	if err := syncDir(s.dir); err != nil {
 		return fmt.Errorf("flushing the directory %s: %w", s.dir, err)

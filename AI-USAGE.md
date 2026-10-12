@@ -295,6 +295,15 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:** teste novo (`TestSaveLeavesABlankEmentaNull`) visto falhando antes da correção e passando depois; `make test-db-go` com os 9 testes do pacote verdes; `make vet-go` e `make test-go` limpos.
 - **Quem revisou:** pendente — o Luis (autor do PR) e o Iago, no PR.
 
+### 2026-10-11 — CI rodando `make test` em todo PR
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `.github/workflows/test.yml`, `README.md`
+- **O que foi pedido:** o que mais dava para adiantar na E2; a IA apontou que o único CI era o build do site e que nenhum PR rodava os testes, e o Luis pediu para começar por aí.
+- **O que foi aproveitado:** o workflow inteiro. **Decidido pela IA**, a revisar: roda em todo PR, inclusive os só de documentação, porque os testes em Python leem `docs/adr/medicoes`; roda `make test` antes do `make vet-go`, porque é o `make test` que cria o `.env`; e inclui um passo `git diff --exit-code`, que falha se a carga reescrever os relatórios versionados com conteúdo diferente. Não há cache de imagens nem de módulos Go: cada execução baixa tudo, como um clone limpo.
+- **Como foi verificado:** YAML validado por parsing; os três passos (`make test`, `make vet-go`, `git diff --exit-code`) foram rodados nesta ordem na máquina local e passaram, mas **com** `.env`, volume e imagens já existentes. O que o workflow existe para provar — que passa num runner limpo — só é verificado pela primeira execução no próprio PR.
+- **Quem revisou:** pendente.
+
 ### 2026-10-11 — `make ingest` de ponta a ponta e idempotência (#24, #27)
 
 - **Ferramenta:** Claude Code (Claude Opus 5.5)
@@ -303,6 +312,15 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** a implementação inteira. **Decidido pela IA**, a revisar pela squad: (1) em vez do `ON CONFLICT (id_dou, versao) DO NOTHING` sugerido na revisão do #23, a matéria é comparada com a **última** versão dela em tudo que é gravado (órgão, data, ementa e conteúdo) — igual, nada é gravado; diferente, entra a versão seguinte. Isso já entrega a #27 no mesmo código. (2) De duas entradas com o mesmo `id` no mesmo ZIP, **só a primeira é gravada** e a outra é contada como `repetida`: gravar as duas criava duas versões novas a cada execução. (3) O `make ingest` encadeia `fetch` e `persist`, sem passar pelo `make extract`, porque o `persist` já lê o ZIP com o mesmo pacote; e, se o `fetch` passa sem deixar ZIP, o dia é tratado como sem edição. (4) Um ZIP por execução e uma transação por ZIP. (5) O teste de "rodar duas vezes" é em Go, em transação desfeita, e não em shell como o `tests/db/test_carga.sh`, para não deixar no banco a matéria construída. Da revisão do #23 também entrou o conjunto de nomes já enfileirados, para não ir ao banco uma vez por matéria de órgão desconhecido.
 - **Como foi verificado:** `make test` inteiro e `make vet-go`. Os testes gravam a mesma edição duas vezes e comparam `ato` e `orgao_alias` linha a linha, com `id` e `criado_em`; republicam a edição com o texto alterado e conferem a versão 2 ao lado da 1 intacta; e gravam um ZIP com o mesmo `id` em duas entradas de conteúdo diferente. Este último foi visto **falhando** com a deduplicação desligada (1 versão nova na primeira execução, 2 na segunda) e passando com ela. **Não** foi exercitado: o `make ingest` contra o INLABS nem o `persist` com commit de verdade sobre um ZIP real, por falta de credencial nesta máquina — o critério "três dias de DO1, duas vezes" continua aberto. Também não foi medido se um `id` se repete entre o DO1 e o DO1E do mesmo dia com conteúdo diferente; nesse caso a segunda execução ainda criaria versões.
 - **Quem revisou:** pendente.
+
+### 2026-10-11 — Revisão do PR #35 e ajustes no `make ingest` (#24, #27)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `src/ingestor/internal/oltp/oltp.go`, `src/ingestor/internal/oltp/oltp_test.go`, `src/ingestor/cmd/persist/main.go`, `Makefile` (alvos `persist` e `ingest`), `README.md`
+- **O que foi pedido:** revisar o PR #35 e aplicar na própria branch os seis achados, porque o autor pediu ajuda para destravar a E2.
+- **O que foi aproveitado:** os seis. (1) O `Save` passou a comparar a matéria com **todas** as versões, e não só com a última: o mesmo `id` vindo com dois textos (DO1 e DO1E, ou dois dias da janela de reprocessamento) gerava duas versões a cada execução. (2) O órgão saiu da comparação: ele vem da identidade (ADR 0004), e resolver um nome não é republicação. (3) `persist` depende do `.env`. (4) O código de saída `1` do `persist` com entrada ruim ficou documentado como "a edição foi gravada mesmo assim". (5) O `make ingest` grava o que o `fetch` baixou mesmo quando uma seção falha, e sai com erro no fim; sem falha e sem ZIP, o dia continua sendo "sem edição". (6) O README trocou "sem rede" por "sem acessar o INLABS", porque a primeira execução baixa os módulos Go.
+- **Como foi verificado:** dois testes novos (`TestSaveDoesNotSwapBetweenTwoKnownVersions` e `TestSaveDoesNotVersionAChangeOfOrgan`) vistos falhando antes da correção (4 versões no lugar de 2; versão nova na troca de órgão) e passando depois; `make test-db-go`, `make test-go` e `make vet-go` verdes. O `make ingest` foi simulado nos dois caminhos com data futura, que o `fetch` recusa: sem ZIP, saiu com erro sem dizer "sem edição"; com um ZIP só com uma imagem no bronze, o `persist` rodou e o make saiu com erro no fim. Nada foi gravado no banco. **Não** foi rodado contra o INLABS, que estava em manutenção.
+- **Quem revisou:** pendente — o Luis, no PR.
 
 ### 2026-10-11 — Registro do dia no bronze: sem edição, falhou, não buscado (#28)
 
@@ -313,3 +331,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:** `make test` inteiro e `make vet-go`. Um teste roda o `FetchDay` contra um servidor de teste e um diretório de verdade nos três casos: seção que falha fica com `.falhou`, seção que não existe fica com `.sem-edicao`, dia não pedido não deixa nada; na execução seguinte a seção que falhava chega, e o `.falhou` dá lugar ao ZIP. O `make persist` e o `make extract` foram rodados à mão nos três estados (sai com 0 e avisa no dia sem edição; erro com mensagem própria no dia que falhou e no dia não buscado). Uma primeira versão da condição no `Makefile` saía com erro sem dizer o motivo no dia não buscado; foi reescrita antes de rodar. **Não** foi exercitado contra o INLABS: o `404` como "sem edição" continua sendo a classificação sem evidência que o PR #17 já apontava, e é dela que o marcador `.sem-edicao` depende.
 - **Quem revisou:** pendente.
 
+
+### 2026-10-11 — Revisão do PR #37 e ajustes no registro do dia (#28)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `Makefile` (`TEM_EDICAO`, `extract`, `persist`, `ingest`), `src/ingestor/internal/store/store.go`, `README.md`; merge da branch do #35 nesta
+- **O que foi pedido:** revisar o PR #37 e aplicar na própria branch os achados.
+- **O que foi aproveitado:** (1) A branch do #35 atualizada entrou nesta, e o conflito no `make ingest` foi resolvido mantendo a correção do #35: o que foi baixado é gravado mesmo com uma seção falha. A decisão de "sem edição", "falhou" e "não buscado" ficou com o `TEM_EDICAO`, dentro do `persist`. (2) O `TEM_EDICAO` passou a olhar os marcadores do DO1 **e** do DO1E: a falha de qualquer seção é avisada e vira erro, inclusive quando a outra seção foi baixada ou não teve edição. (4) O `store` apaga o marcador antigo antes de gravar o novo: uma queda no meio deixa nenhum marcador, nunca dois que se contradizem. (5) O README ganhou o exemplo que faltava depois de "Para vários dias:". **Não aplicado:** (3) conferir o que o INLABS devolve em manutenção e para uma data sem edição, porque o INLABS estava em manutenção e não havia credencial; no lugar, o README avisa que o `.sem-edicao` vem de um `404` ainda não conferido.
+- **Como foi verificado:** `make vet-go`, `make test-go` (8 pacotes) e `make test-db-go` verdes. O `make persist` foi rodado com marcadores e ZIPs de teste em datas fictícias, em quatro casos: as duas seções sem edição (sai com 0), DO1 sem edição e DO1E falho (erro), DO1 baixado e DO1E falho (grava o DO1 e sai com erro) e dia não buscado (erro). Os arquivos de teste foram apagados, e o ZIP de teste só tinha uma imagem, então nada foi gravado no banco.
+- **Quem revisou:** pendente — o Luis, no PR.

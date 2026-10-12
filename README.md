@@ -80,6 +80,8 @@ make           # lista todos os comandos
 ```
 
 > **Porta 5432 ocupada?** Se você já tem um Postgres instalado na máquina, o `up` falha com `port is already allocated`. Troque `POSTGRES_PORT` no seu `.env` (ex.: `5433`) — só no `.env`, não no `.env.example`.
+
+**O CI roda os testes.** Em todo PR e a cada push no `main`, o workflow `.github/workflows/test.yml` roda `make test` e `make vet-go` num runner sem `.env`, sem volume do banco e sem imagem em cache — a mesma máquina limpa da entrega. Ele também falha se a carga deixar os relatórios versionados diferentes dos que estão no repositório. Nada no CI usa credencial do INLABS.
 >
 > **Só na sua máquina.** O banco e o pgAdmin escutam apenas em `127.0.0.1`: ninguém na mesma rede (Wi-Fi da UnB, por exemplo) alcança. Não troque isso — o pgAdmin roda **sem login**.
 >
@@ -106,12 +108,16 @@ Um arquivo só aparece com o nome final quando o conteúdo é um ZIP que abre: s
 
 **Não há retomada.** Cada execução baixa o dia de novo, sobrescrevendo o que estiver em disco. Para vários dias:
 
+```bash
+for d in 2026-10-01 2026-10-02 2026-10-03; do make fetch DATA=$d; done
+```
+
 **O diretório é o registro do dia.** No lugar do ZIP que não veio, o `fetch` deixa um arquivo vazio com o mesmo nome e outra extensão. Assim `data/bronze/inlabs/` diz o que foi pedido ao INLABS e o que ele respondeu, por data e por seção:
 
 | Em `data/bronze/inlabs/` | Quer dizer |
 |---|---|
 | `2026-10-02-DO1.zip` | houve edição, e ela foi baixada |
-| `2026-10-04-DO1.sem-edicao` | a edição foi buscada e o INLABS respondeu que ela não existe (domingo, feriado, dia sem edição extra) |
+| `2026-10-04-DO1.sem-edicao` | a edição foi buscada e o INLABS respondeu que ela não existe (domingo, feriado, dia sem edição extra)¹ |
 | `2026-10-02-DO1.falhou` | a edição foi buscada e não chegou: é a que falta buscar de novo |
 | nada | ninguém buscou |
 
@@ -125,6 +131,8 @@ Para cada edição há no máximo um dos três arquivos, e ele diz o que a últi
 - **Um ZIP em disco vence.** Nem um "não existe" nem uma falha posteriores desmentem uma edição já baixada.
 - **A falha é buscada de novo quando o dia roda de novo**: `make fetch DATA=...` rebaixa o dia inteiro, e não só o que falhou. Nada refaz sozinho um dia que falhou.
 - **Execução interrompida não deixa registro.** Uma busca cancelada ou que estourou o prazo da execução não foi recusada, só não foi esperada.
+
+¹ "Respondeu que não existe" é o `404`, e essa leitura **ainda não foi conferida contra o INLABS**: não se sabe o que ele devolve em manutenção nem para uma data sem edição com sessão válida. Até lá, um `.sem-edicao` num dia útil merece desconfiança.
 
 O registro fica no bronze, e não numa tabela do banco, para o `fetch` continuar sem falar com o banco: ele roda sem o Postgres no ar. O custo é que o registro não é consultável por SQL.
 
@@ -156,21 +164,21 @@ O `make ingest` leva um dia do DOU do INLABS até o banco, de ponta a ponta:
 make ingest DATA=2026-10-01   # baixa DO1 e DO1E do dia e grava as matérias de conselho em ato
 ```
 
-Ele encadeia o `make fetch` e o `make persist`, e para no primeiro que falhar. A extração acontece dentro do `persist`, com o mesmo pacote que o `make extract` usa para imprimir. Um dia que o `fetch` marcou como sem edição não é erro, e nada é gravado; um dia cuja busca falhou é. O `make persist` sozinho grava os ZIPs que já estão em `data/bronze/inlabs/`, sem rede:
+Ele encadeia o `make fetch` e o `make persist`. Se o `fetch` falha numa seção, o que foi baixado é gravado mesmo assim, e o `make ingest` sai com erro no fim. A extração acontece dentro do `persist`, com o mesmo pacote que o `make extract` usa para imprimir. Um dia que o `fetch` marcou como sem edição não é erro, e nada é gravado; um dia cuja busca falhou é, em qualquer das duas seções. O `make persist` sozinho grava os ZIPs que já estão em `data/bronze/inlabs/`, sem acessar o INLABS:
 
 ```bash
 make persist DATA=2026-10-01   # o resumo vai para o stderr
 ```
 
-O comando Go lê **um ZIP por execução**, como o `extract`, e grava tudo numa transação: a edição entra inteira ou não entra.
+O comando Go lê **um ZIP por execução**, como o `extract`, e grava tudo numa transação: a edição entra inteira ou não entra. Uma entrada que não lê como matéria é logada e o resto do ZIP é gravado; nesse caso o código de saída é `1` **mesmo com a edição gravada**, como no `extract`.
 
-**Pode rodar de novo.** Cada matéria é comparada com a última versão dela no banco, em tudo que é gravado (órgão, data, ementa e conteúdo):
+**Pode rodar de novo.** Cada matéria é comparada com **todas** as versões dela no banco, no que o DOU publicou (data, ementa e conteúdo). O órgão não entra: ele vem da identidade dos conselhos ([ADR 0004](docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md)), e resolver um nome não é republicação. Comparar só com a última versão faria o mesmo `id` vindo com dois textos (no DO1 e no DO1E, ou em dois dias da janela de reprocessamento) gerar duas versões a cada execução:
 
 | A matéria | O que acontece | No resumo |
 |---|---|---|
 | nunca foi vista | entra com `versao = 1` | `gravadas` |
-| já está lá, igual | nada é gravado | `inalteradas` |
-| já está lá, diferente (a edição foi republicada) | entra com a `versao` seguinte; as anteriores ficam | `versoes-novas` |
+| já está lá, igual a alguma versão | nada é gravado | `inalteradas` |
+| já está lá, diferente de todas (a edição foi republicada) | entra com a `versao` seguinte; as anteriores ficam | `versoes-novas` |
 | é de órgão desconhecido | fica de fora, e o órgão vai para a fila | `orgao-desconhecido` |
 | tem o `id` de outra entrada do mesmo ZIP | fica de fora; vale a primeira | `repetidas` |
 
