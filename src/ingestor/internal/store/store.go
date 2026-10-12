@@ -93,6 +93,20 @@ func (s *Store) Save(name string, r io.Reader) (Receipt, error) {
 	return Receipt{Path: final, Size: size}, nil
 }
 
+// Has reports whether the zip called name is in the directory. Only a whole
+// zip ever gets that name (see Save), so being there is being done.
+func (s *Store) Has(name string) (bool, error) {
+	_, err := os.Stat(filepath.Join(s.dir, name))
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, fs.ErrNotExist):
+		return false, nil
+	default:
+		return false, fmt.Errorf("looking for %s: %w", name, err)
+	}
+}
+
 // The suffixes of the two markers. A marker is an empty file under the
 // edition's name, with the suffix in place of ".zip".
 const (

@@ -257,3 +257,23 @@ func TestSaveRemovesTheFailedMarkerOfItsEdition(t *testing.T) {
 
 	assert.Equal(t, []string{"2026-10-02-DO1.zip"}, entries(t, dir))
 }
+
+func TestHasSeesOnlyTheZip(t *testing.T) {
+	dir := t.TempDir()
+	store := mustOpen(t, dir)
+
+	has, err := store.Has("S01082026.zip")
+	require.NoError(t, err)
+	assert.False(t, has)
+
+	require.NoError(t, store.MarkFailed("S01082026.zip"))
+	has, err = store.Has("S01082026.zip")
+	require.NoError(t, err)
+	assert.False(t, has, "a marker is not the zip")
+
+	_, err = store.Save("S01082026.zip", bytes.NewReader(zipWith(t, "a.xml", "<xml/>")))
+	require.NoError(t, err)
+	has, err = store.Has("S01082026.zip")
+	require.NoError(t, err)
+	assert.True(t, has)
+}

@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest test test-go test-db-go vet-go reset pgadmin-reset psql logs
+.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest fetch-mensal persist-mensal ingest-mensal test test-go test-db-go vet-go reset pgadmin-reset psql logs
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -24,6 +24,13 @@ TEM_EDICAO = if [ -n "$(FALHOU)" ]; then echo "a busca de $(notdir $(FALHOU:.fal
 # O valor inicial do "falhou" dos laços do extract e do persist: com uma seção
 # falha, o alvo processa o ZIP da outra e sai com erro no fim.
 ZIPS_FALHOU = $(if $(FALHOU),1,0)
+
+# O mês que o make fetch-mensal baixa dos dados abertos, AAAA-MM. Sem padrão: o mês
+# corrente nunca está publicado, e o anterior só sai por volta do dia 15.
+MES ?=
+# O ZIP da Seção 1 do MES, com o nome que a Imprensa Nacional dá: 2026-08 é S01082026.zip.
+ZIP_MENSAL = data/bronze/dados-abertos/S01$(word 2,$(subst -, ,$(MES)))$(word 1,$(subst -, ,$(MES))).zip
+TEM_MES = if [ -z "$(MES)" ]; then echo "diga o mês: MES=AAAA-MM, como MES=2026-08" >&2; exit 2; fi
 
 .env:
 	cp .env.example .env
@@ -75,6 +82,21 @@ ingest: .env ## baixa as edições de DATA e grava as matérias de conselho no b
 	@falhou=0; $(MAKE) --no-print-directory fetch DATA=$(DATA) || falhou=1; \
 	$(MAKE) --no-print-directory persist DATA=$(DATA) || falhou=1; \
 	exit $$falhou
+
+fetch-mensal: ## baixa a Seção 1 do DOU de um mês inteiro dos dados abertos, sem login (MES=AAAA-MM); mês já em disco não baixa de novo
+	@$(TEM_MES)
+	mkdir -p data/bronze/dados-abertos
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T fetch-mensal -month $(MES)
+
+persist-mensal: .env ## grava no banco as matérias do ZIP mensal de MES já baixado; pode rodar de novo, não duplica
+	@$(TEM_MES)
+	@if [ ! -f "$(ZIP_MENSAL)" ]; then echo "nenhum $(notdir $(ZIP_MENSAL)) em data/bronze/dados-abertos/ — rode make fetch-mensal MES=$(MES)" >&2; exit 1; fi
+	docker compose --progress quiet run --rm -T persist /$(ZIP_MENSAL)
+
+ingest-mensal: .env ## baixa o mês MES dos dados abertos e grava as matérias de conselho no banco; pode rodar de novo, não duplica
+	@# Sem o ZIP não há o que gravar: se o fetch falha, o persist nem roda.
+	@$(MAKE) --no-print-directory fetch-mensal MES=$(MES) && \
+	$(MAKE) --no-print-directory persist-mensal MES=$(MES)
 
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
 	docker compose --progress quiet run --rm -T ingestor-test go test -count=1 ./...

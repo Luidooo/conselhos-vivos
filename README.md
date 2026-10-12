@@ -33,6 +33,7 @@ Um conselho que só produz `AUTO` está se auto-administrando, não incidindo em
 | Fonte | O que traz | Acesso |
 |---|---|---|
 | [INLABS / Imprensa Nacional](https://inlabs.in.gov.br/) | Edições completas do DOU em XML, desde 01/01/2020 | Gratuito, exige cadastro |
+| [Dados abertos da Imprensa Nacional](https://www.in.gov.br/acesso-a-informacao/dados-abertos/base-de-dados) | O mesmo XML do INLABS, um ZIP por mês e por seção, com o histórico de anos anteriores | Público (CC0), sem login; o mês sai ~2 semanas depois de acabar |
 | Planilhas da pesquisadora | 215 atos já classificados à mão, 2003–2020 — nosso *ground truth* | Pública; cópia versionada em `data/raw/` |
 | [Brasil Participativo](https://brasilparticipativo.presidencia.gov.br/) | Composição, agenda e reuniões de cada conselho | Público (Decidim) |
 | Cadastro de órgãos (SIORG / decretos) | O censo de conselhos existentes — o denominador | Público |
@@ -68,6 +69,7 @@ make fetch     # baixa as edições do DOU de hoje em Brasília; DATA=AAAA-MM-DD
 make extract   # lê as matérias dos ZIPs já baixados de DATA e imprime uma por linha, em JSON
 make persist   # grava no banco as matérias dos ZIPs já baixados de DATA; pode rodar de novo, não duplica
 make ingest    # fetch e persist de DATA, de ponta a ponta: baixa o dia e grava as matérias de conselho
+make ingest-mensal MES=2026-08  # o mês inteiro dos dados abertos, sem login: baixa e grava as matérias de conselho
 make migrate   # aplica as migrações de sql/ que ainda não rodaram
 make carga     # carrega os conselhos e a planilha da pesquisadora (idempotente) e atualiza os relatórios
 make siorg     # baixa o SIORG (precisa de rede) e atualiza o recorte em data/referencia/
@@ -200,6 +202,27 @@ Quem grava é o pacote `src/ingestor/internal/oltp`, em `ato` com `origem = 'DOU
 **Órgão desconhecido.** A maioria das ~300 matérias de um dia não é de conselho. A matéria de um órgão que não é um dos conhecidos **não entra em `ato`**, e o nome do órgão entra uma vez em `orgao_alias`, com `fonte = 'DOU'`, `status = 'INDEFINIDO'`, sem órgão e com o `artCategory` inteiro no motivo: é a fila de decisão do ADR 0004. Quando alguém resolver o nome, a matéria é gravada reingerindo o ZIP, que continua em `data/bronze/`. Se a chave casar com **mais de um** órgão, nenhum é escolhido: o nome entra na fila como `AMBIGUO`.
 
 A classificação não é tocada: continua da planilha e da curadoria ([ADR 0003](docs/adr/0003-carregar-a-planilha-como-rotulo-da-curadoria.md)).
+
+## Ingerir um mês pelos dados abertos
+
+O `make ingest-mensal` faz o mesmo que o `make ingest`, mas para um **mês inteiro**, e a partir dos [dados abertos da Imprensa Nacional](https://www.in.gov.br/acesso-a-informacao/dados-abertos/base-de-dados): público, sem login e sem credencial no `.env`. O ZIP mensal traz o mesmo XML `<article>` do INLABS, com o `DO1` e o `DO1E` de todos os dias do mês, e é gravado pelo mesmo `persist`.
+
+```bash
+make ingest-mensal MES=2026-08   # baixa a Seção 1 de agosto e grava as matérias de conselho em ato
+make fetch-mensal MES=2026-08    # só baixa, para data/bronze/dados-abertos/S01082026.zip
+make persist-mensal MES=2026-08  # só grava o ZIP já baixado, sem acessar a Imprensa Nacional
+```
+
+- **O ZIP fica com o nome que a Imprensa Nacional dá** (`S01MMAAAA.zip`): a Seção 1 de agosto de 2026 é `S01082026.zip`, com cerca de 50 MB e 8.600 matérias.
+- **Mês já em disco não é baixado de novo.** O arquivo de um mês fechado não muda, e o nome só existe depois que o ZIP chegou inteiro. Rodar o `make ingest-mensal` de novo não baixa nem duplica nada; o `persist` compara cada matéria com todas as versões, como no `make ingest`.
+- **Mês ainda não publicado é erro**, e nada é gravado. O mês sai cerca de duas semanas depois de acabar: em meados de outubro, o mais recente é agosto. Para o dia de hoje, a fonte continua sendo o `make ingest`, do INLABS.
+- **Como o link é encontrado.** O endereço de cada ZIP leva um UUID que não dá para montar; o `fetch-mensal` lê a página da base de dados com `ano` e `mes` e pega o link do `S01MMAAAA.zip`. Só aceita link para o próprio `www.in.gov.br`. O pedido vai com `Accept: */*`: sem esse cabeçalho, o site responde `403`.
+
+Para vários meses, um laço no shell:
+
+```bash
+for m in 2026-06 2026-07 2026-08; do make ingest-mensal MES=$m; done
+```
 
 ## Estrutura
 
