@@ -98,6 +98,23 @@ services:
       - ./data/bronze:/data/bronze
     entrypoint: ["sh", "-c", "go build -o /tmp/fetch ./cmd/fetch && exec /tmp/fetch \"$$@\"", "--"]
 
+  # Baixa um mês inteiro do DOU (Seção 1) dos dados abertos da Imprensa Nacional
+  # (#42). Sem credencial: o arquivo é público. Fora isso, igual ao ingestor.
+  fetch-mensal:
+    image: golang:1.26.8-alpine
+    profiles: [ingestor]
+    working_dir: /app
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
+    environment:
+      DADOS_ABERTOS_OUTPUT_DIR: /data/bronze/dados-abertos
+      GOCACHE: /tmp/gocache
+      GOMODCACHE: /tmp/gomodcache
+      GOFLAGS: -mod=mod
+    volumes:
+      - ./src/ingestor:/app:ro
+      - ./data/bronze:/data/bronze
+    entrypoint: ["sh", "-c", "go build -o /tmp/fetch-mensal ./cmd/fetch-mensal && exec /tmp/fetch-mensal \"$$@\"", "--"]
+
   # Lê as matérias dos ZIPs que o ingestor já baixou. Sem credencial e com o
   # bronze só para leitura: daqui nada volta para o disco além do stdout.
   extract:
@@ -113,6 +130,29 @@ services:
       - gocache:/gocache
       - gomodcache:/gomodcache
     entrypoint: ["sh", "-c", "go build -o /tmp/extract ./cmd/extract && exec /tmp/extract \"$$@\"", "--"]
+
+  # Grava no banco as matérias de um ZIP que o ingestor já baixou (#24). Bronze só
+  # para leitura; o endereço do db vai nas variáveis PG*, que o pgx lê.
+  persist:
+    image: golang:1.26.8-alpine
+    profiles: [ingestor]
+    working_dir: /app
+    environment:
+      GOCACHE: /gocache
+      GOMODCACHE: /gomodcache
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+    volumes:
+      - ./src/ingestor:/app:ro
+      - ./data/bronze:/data/bronze:ro
+      - gocache:/gocache
+      - gomodcache:/gomodcache
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "go build -o /tmp/persist ./cmd/persist && exec /tmp/persist \"$$@\"", "--"]
 
   # Testes do ingestor. Tudo :ro e sem credencial no ambiente. Mantém rede — ao
   # contrário do carga — porque o GOMODCACHE nasce vazio e a primeira execução

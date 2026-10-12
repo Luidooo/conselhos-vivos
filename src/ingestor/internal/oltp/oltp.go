@@ -28,14 +28,22 @@ var ErrNoContent = errors.New("matéria has no <Texto>")
 type DB interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
 // Outcome says what Save did with a matéria.
 type Outcome int
 
 const (
-	// Saved is a new row in ato.
+	// Saved is a matéria seen for the first time: version 1 in ato.
 	Saved Outcome = iota + 1
+	// NewVersion is a matéria already there that came back different: the
+	// edition was republished. It is a new row, with the next version; the
+	// earlier ones stay (insert-only, ADR 0001).
+	NewVersion
+	// Unchanged is a matéria already there as it is: nothing is written. It is
+	// what makes running again safe.
+	Unchanged
 	// UnknownOrgan is a matéria whose organ is none of the known ones, which
 	// is most of an edition. Nothing goes into ato; the organ's name goes into
 	// orgao_alias once, waiting for a decision (ADR 0004).
@@ -49,6 +57,9 @@ type Writer struct {
 	// is in ambiguous instead: it never resolves by itself.
 	organs    map[string]int32
 	ambiguous map[string]bool
+	// queued has the names this Writer already sent to orgao_alias. Most of an
+	// edition is of unknown organs, and the same few hundred times over.
+	queued map[string]bool
 }
 
 // Open reads the identity of the organs: every name an organ has or had
@@ -63,7 +74,7 @@ func Open(ctx context.Context, db DB) (*Writer, error) {
 	}
 	defer rows.Close()
 
-	writer := &Writer{db: db, organs: map[string]int32{}, ambiguous: map[string]bool{}}
+	writer := &Writer{db: db, organs: map[string]int32{}, ambiguous: map[string]bool{}, queued: map[string]bool{}}
 	for rows.Next() {
 		var (
 			id   int32
@@ -88,12 +99,17 @@ func Open(ctx context.Context, db DB) (*Writer, error) {
 }
 
 // Save writes one matéria. With a known organ it becomes a row in ato:
-// origem DOU, version 1, the article's id as id_dou and <Texto> as published
-// as conteudo; an <Ementa> with only blanks is stored as NULL, as an empty one.
+// origem DOU, the article's id as id_dou and <Texto> as published as conteudo;
+// an <Ementa> with only blanks is stored as NULL, as an empty one.
 // With an unknown one it is left out and its organ is queued.
 //
-// Saving the same matéria twice is an error, from uq_ato_dou_versao: running
-// again without duplicating is issue #20.
+// It can be run again. The matéria is compared with every version already
+// written, in what the DOU published: date, ementa and content. Equal to any of
+// them, nothing happens; different from all, it goes in as the next version.
+// Comparing with the latest only would swap between two zips that bring the
+// same id with two texts (DO1 and DO1E, or two days of the reprocessing
+// window), adding two versions on every run. The organ is not compared: it is
+// the identity decision (ADR 0004), and resolving a name is not a republication.
 func (w *Writer) Save(ctx context.Context, a article.Article) (Outcome, error) {
 	if strings.TrimSpace(a.HTML) == "" {
 		return 0, fmt.Errorf("%s: %w", a.Entry, ErrNoContent)
@@ -109,12 +125,30 @@ func (w *Writer) Save(ctx context.Context, a article.Article) (Outcome, error) {
 		return UnknownOrgan, nil
 	}
 
-	_, err := w.db.Exec(ctx, `
+	// One statement, so the check and the insert see the same rows. Two runs
+	// racing on a matéria still cannot both win: uq_ato_dou_versao refuses the
+	// second, which fails and is run again.
+	var version int
+	err := w.db.QueryRow(ctx, `
+		WITH versions AS (
+			SELECT versao,
+			       data_publicacao = $3 AND ementa IS NOT DISTINCT FROM NULLIF($4, '')
+			         AND conteudo = $5 AS same
+			  FROM ato
+			 WHERE origem = 'DOU' AND id_dou = $1
+		)
 		INSERT INTO ato (origem, id_dou, versao, orgao_id, data_publicacao, ementa, conteudo)
-		VALUES ('DOU', $1, 1, $2, $3, NULLIF($4, ''), $5)`,
-		a.ID, id, a.PubDate.In(time.UTC), strings.TrimSpace(a.Ementa), a.HTML)
-	if err != nil {
+		SELECT 'DOU', $1, COALESCE((SELECT max(versao) FROM versions), 0) + 1, $2, $3, NULLIF($4, ''), $5
+		 WHERE NOT EXISTS (SELECT 1 FROM versions WHERE same)
+		RETURNING versao`,
+		a.ID, id, a.PubDate.In(time.UTC), strings.TrimSpace(a.Ementa), a.HTML).Scan(&version)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return Unchanged, nil
+	case err != nil:
 		return 0, fmt.Errorf("saving %s (id %s): %w", a.Entry, a.ID, err)
+	case version > 1:
+		return NewVersion, nil
 	}
 	return Saved, nil
 }
@@ -123,6 +157,10 @@ func (w *Writer) Save(ctx context.Context, a article.Article) (Outcome, error) {
 // and the reason. A name already there is left as it is: someone may have
 // decided on it since.
 func (w *Writer) queue(ctx context.Context, a article.Article, organ, key string) error {
+	if w.queued[organ] {
+		return nil
+	}
+
 	status, reason := "INDEFINIDO", "órgão não reconhecido na ingestão do DOU"
 	if w.ambiguous[key] {
 		status, reason = "AMBIGUO", "a chave casa com mais de um órgão"
@@ -137,5 +175,6 @@ func (w *Writer) queue(ctx context.Context, a article.Article, organ, key string
 	if err != nil {
 		return fmt.Errorf("queueing the organ %q of %s: %w", organ, a.Entry, err)
 	}
+	w.queued[organ] = true
 	return nil
 }
