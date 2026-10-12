@@ -295,6 +295,15 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:** teste novo (`TestSaveLeavesABlankEmentaNull`) visto falhando antes da correção e passando depois; `make test-db-go` com os 9 testes do pacote verdes; `make vet-go` e `make test-go` limpos.
 - **Quem revisou:** pendente — o Luis (autor do PR) e o Iago, no PR.
 
+### 2026-10-11 — Diários de bordo das semanas 8, 9 e 10 (#26)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `docs/diario/2026-09-29.md`, `docs/diario/2026-10-06.md`, `docs/diario/2026-10-13.md`, `site/.vitepress/config.mts` (menu "Processo")
+- **O que foi pedido:** escrever os diários que faltavam para o checklist da E2, no formato dos anteriores (medido, surpreendeu, decidido), a partir do histórico.
+- **O que foi aproveitado:** os três textos, ainda sem revisão da squad. **Decidido pela IA**, a revisar: um arquivo por semana, com a data de referência da issue no nome; o cabeçalho traz "Quem trabalhou", tirado dos autores de PRs, revisões e issues, em vez de "Presentes", porque não há ata das reuniões; cada diário ganhou uma seção "O que ficou em aberto"; e o da semana 10 foi escrito em 11/10, antes de a semana fechar, e diz isso no cabeçalho.
+- **Como foi verificado:** os números das tabelas foram conferidos na API do GitHub (arquivos, linhas e commits de cada PR; datas de criação, merge e fechamento; responsáveis das issues), no texto dos PRs #17, #22, #23 e #35 e nas entradas deste arquivo. A contagem de testes em Go (87, dos quais 11 só com banco) foi obtida rodando-os na branch do PR #35. `npm run build` do site sem link quebrado, com os três diários no menu. **Não** foi verificado: quem esteve em cada reunião, nem nada do que não deixou rastro em PR, issue ou neste arquivo — conversas da squad fora do GitHub não entraram.
+- **Quem revisou:** pendente — cada pessoa citada deveria conferir a parte que é dela.
+
 ### 2026-10-11 — CI rodando `make test` em todo PR
 
 - **Ferramenta:** Claude Code (Claude Opus 5.5)
@@ -349,3 +358,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** a investigação e a implementação inteira, ainda sem revisão da squad. **Achados da investigação:** a Imprensa Nacional publica em dados abertos (CC0, sem login) um ZIP por mês e por seção; a API do dados.gov.br exige chave (401), mas a página `in.gov.br/acesso-a-informacao/dados-abertos/base-de-dados?ano=&mes=` lista os links de cada mês; o site responde 403 a pedido sem `Accept` e 200 com `Accept: */*`, mantendo o nosso User-Agent — não é imitação de navegador. **Decidido pela IA**, a revisar: só a Seção 1; o ZIP fica com o nome publicado (`S01MMAAAA.zip`) em `data/bronze/dados-abertos/`; mês já em disco não é pedido de novo (o arquivo de um mês fechado não muda); só aceita link para o próprio host da página; sem marcador de falha no bronze, porque o mês não tem o caso "sem edição" e uma falha não deixa nada sob o nome do ZIP.
 - **Como foi verificado:** com a autorização da Luiza, a amostra `S01082026.zip` (52,6 MB) foi lida pelo `extract` atual sem nenhuma mudança: 8.590 matérias, 0 falhas, 120 imagens ignoradas, DO1 e DO1E, 24 dias de publicação, nenhum `id` repetido. Sete testes novos com `httptest` (link encontrado, mês em disco sem requisição, mês não publicado, download com erro, página no lugar do ZIP, link para outro host, formato do mês) e um no `store`; `make test-go` e `make vet-go` verdes. O `make fetch-mensal` foi rodado de verdade: `MES=2026-08` baixou o ZIP idêntico à amostra em ~9 s, a segunda execução não fez requisição, `MES=2026-09` saiu com "mês ainda não publicado" sem gravar nada, e `MES=2026-9` foi recusado. Num banco limpo (`make reset`), o `make ingest-mensal MES=2026-08` gravou 96 atos de conselho e pôs 8.494 matérias de órgão desconhecido na fila, com 0 falhas; a segunda gravação deu `gravadas=0 inalteradas=96`, e uma foto de `ato`, `orgao_alias` e `classificacao` (contagem e md5 das linhas: 96, 751 e 215) saiu idêntica antes e depois. O `make test` inteiro passou com o banco cheio de agosto, depois de uma correção: o `TestPersistSavesTheEdition` esperava que o órgão desconhecido do teste (uma coordenação da Polícia Federal) entrasse na fila, mas agosto já o tinha posto lá; o teste passou a esperar +1 ou +2 linhas conforme o órgão já esteja na fila.
 - **Quem revisou:** pendente.
+
+### 2026-10-12 — Diário da semana 10 completado e conflito do PR #36 (#26)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `docs/diario/2026-10-13.md`, `AI-USAGE.md` (conflito com o `main`)
+- **O que foi pedido:** fechar o PR #36: resolver o conflito no `AI-USAGE.md` que o Iago apontou e acrescentar ao diário da semana 10, escrito em 11/10, o que aconteceu até 12/10.
+- **O que foi aproveitado:** o conflito foi resolvido mantendo as entradas dos dois lados, em ordem de data. No diário entraram os PRs #35, #38, #41 e #43 com as datas de merge, o login automático do INLABS recusado, a troca da fonte automática para os dados abertos, os números de agosto e a prova de idempotência; o que estava "em revisão" passou para o que foi mergeado (a comparação com todas as versões, sem o órgão); e da lista "em aberto" saíram o registro do dia (decidido no #41) e o `id` repetido entre DO1 e DO1E (0 em agosto). O texto da semana 8 e da semana 9 não foi mexido.
+- **Como foi verificado:** datas, tamanhos e estados dos PRs e issues tirados da API do GitHub em 12/10; os números de agosto são os das execuções registradas no PR #43; o histórico desde 2002 foi conferido na página da base de dados (janeiro de 2002, 2003, 2004 e 2020 listam os três ZIPs), sem baixar os arquivos; build do site sem link quebrado.
+- **Quem revisou:** pendente — a Luiza, antes do push.
