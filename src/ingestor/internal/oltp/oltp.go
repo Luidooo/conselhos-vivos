@@ -103,9 +103,13 @@ func Open(ctx context.Context, db DB) (*Writer, error) {
 // an <Ementa> with only blanks is stored as NULL, as an empty one.
 // With an unknown one it is left out and its organ is queued.
 //
-// It can be run again. The matéria is compared with its latest version, in
-// everything Save writes: organ, date, ementa and content. Equal, nothing
-// happens; different, it goes in as the next version.
+// It can be run again. The matéria is compared with every version already
+// written, in what the DOU published: date, ementa and content. Equal to any of
+// them, nothing happens; different from all, it goes in as the next version.
+// Comparing with the latest only would swap between two zips that bring the
+// same id with two texts (DO1 and DO1E, or two days of the reprocessing
+// window), adding two versions on every run. The organ is not compared: it is
+// the identity decision (ADR 0004), and resolving a name is not a republication.
 func (w *Writer) Save(ctx context.Context, a article.Article) (Outcome, error) {
 	if strings.TrimSpace(a.HTML) == "" {
 		return 0, fmt.Errorf("%s: %w", a.Entry, ErrNoContent)
@@ -126,18 +130,16 @@ func (w *Writer) Save(ctx context.Context, a article.Article) (Outcome, error) {
 	// second, which fails and is run again.
 	var version int
 	err := w.db.QueryRow(ctx, `
-		WITH latest AS (
+		WITH versions AS (
 			SELECT versao,
-			       orgao_id = $2 AND data_publicacao = $3
-			         AND ementa IS NOT DISTINCT FROM NULLIF($4, '') AND conteudo = $5 AS same
+			       data_publicacao = $3 AND ementa IS NOT DISTINCT FROM NULLIF($4, '')
+			         AND conteudo = $5 AS same
 			  FROM ato
 			 WHERE origem = 'DOU' AND id_dou = $1
-			 ORDER BY versao DESC
-			 LIMIT 1
 		)
 		INSERT INTO ato (origem, id_dou, versao, orgao_id, data_publicacao, ementa, conteudo)
-		SELECT 'DOU', $1, COALESCE((SELECT versao FROM latest), 0) + 1, $2, $3, NULLIF($4, ''), $5
-		 WHERE NOT COALESCE((SELECT same FROM latest), FALSE)
+		SELECT 'DOU', $1, COALESCE((SELECT max(versao) FROM versions), 0) + 1, $2, $3, NULLIF($4, ''), $5
+		 WHERE NOT EXISTS (SELECT 1 FROM versions WHERE same)
 		RETURNING versao`,
 		a.ID, id, a.PubDate.In(time.UTC), strings.TrimSpace(a.Ementa), a.HTML).Scan(&version)
 	switch {

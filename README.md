@@ -134,21 +134,21 @@ O `make ingest` leva um dia do DOU do INLABS até o banco, de ponta a ponta:
 make ingest DATA=2026-10-01   # baixa DO1 e DO1E do dia e grava as matérias de conselho em ato
 ```
 
-Ele encadeia o `make fetch` e o `make persist`, e para no primeiro que falhar. A extração acontece dentro do `persist`, com o mesmo pacote que o `make extract` usa para imprimir. Se o `fetch` passa e não deixa ZIP, o dia não teve edição e nada é gravado. O `make persist` sozinho grava os ZIPs que já estão em `data/bronze/inlabs/`, sem rede:
+Ele encadeia o `make fetch` e o `make persist`. Se o `fetch` falha numa seção, o que foi baixado é gravado mesmo assim, e o `make ingest` sai com erro no fim. A extração acontece dentro do `persist`, com o mesmo pacote que o `make extract` usa para imprimir. Se o `fetch` passa e não deixa ZIP, o dia não teve edição e nada é gravado. O `make persist` sozinho grava os ZIPs que já estão em `data/bronze/inlabs/`, sem acessar o INLABS:
 
 ```bash
 make persist DATA=2026-10-01   # o resumo vai para o stderr
 ```
 
-O comando Go lê **um ZIP por execução**, como o `extract`, e grava tudo numa transação: a edição entra inteira ou não entra.
+O comando Go lê **um ZIP por execução**, como o `extract`, e grava tudo numa transação: a edição entra inteira ou não entra. Uma entrada que não lê como matéria é logada e o resto do ZIP é gravado; nesse caso o código de saída é `1` **mesmo com a edição gravada**, como no `extract`.
 
-**Pode rodar de novo.** Cada matéria é comparada com a última versão dela no banco, em tudo que é gravado (órgão, data, ementa e conteúdo):
+**Pode rodar de novo.** Cada matéria é comparada com **todas** as versões dela no banco, no que o DOU publicou (data, ementa e conteúdo). O órgão não entra: ele vem da identidade dos conselhos ([ADR 0004](docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md)), e resolver um nome não é republicação. Comparar só com a última versão faria o mesmo `id` vindo com dois textos (no DO1 e no DO1E, ou em dois dias da janela de reprocessamento) gerar duas versões a cada execução:
 
 | A matéria | O que acontece | No resumo |
 |---|---|---|
 | nunca foi vista | entra com `versao = 1` | `gravadas` |
-| já está lá, igual | nada é gravado | `inalteradas` |
-| já está lá, diferente (a edição foi republicada) | entra com a `versao` seguinte; as anteriores ficam | `versoes-novas` |
+| já está lá, igual a alguma versão | nada é gravado | `inalteradas` |
+| já está lá, diferente de todas (a edição foi republicada) | entra com a `versao` seguinte; as anteriores ficam | `versoes-novas` |
 | é de órgão desconhecido | fica de fora, e o órgão vai para a fila | `orgao-desconhecido` |
 | tem o `id` de outra entrada do mesmo ZIP | fica de fora; vale a primeira | `repetidas` |
 

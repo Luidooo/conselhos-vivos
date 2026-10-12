@@ -45,7 +45,7 @@ extract: ## lê as matérias dos ZIPs de DATA já baixados e imprime uma por lin
 		docker compose --progress quiet run --rm -T extract $(if $(HTML),-html) $$zip || falhou=1; \
 	done; exit $$falhou
 
-persist: ## grava no banco as matérias dos ZIPs de DATA já baixados; pode rodar de novo, não duplica
+persist: .env ## grava no banco as matérias dos ZIPs de DATA já baixados; pode rodar de novo, não duplica
 	@test -n "$(EDICOES)" || { echo "nenhum ZIP de $(DATA) em data/bronze/inlabs/ — rode make fetch DATA=$(DATA)"; exit 1; }
 	@# Como no extract: uma execução por edição, e a segunda roda mesmo se a primeira falhar.
 	@falhou=0; for zip in $(EDICOES:data/%=/data/%); do \
@@ -53,12 +53,15 @@ persist: ## grava no banco as matérias dos ZIPs de DATA já baixados; pode roda
 	done; exit $$falhou
 
 ingest: .env ## baixa as edições de DATA e grava as matérias de conselho no banco, de ponta a ponta; pode rodar de novo, não duplica
-	@$(MAKE) --no-print-directory fetch DATA=$(DATA)
 	@# O persist vai num make à parte: a lista de ZIPs dele tem de ser montada
-	@# depois do fetch. Se o fetch passou e não deixou ZIP, o dia não teve edição.
-	@if [ -e data/bronze/inlabs/$(DATA)-DO1.zip ] || [ -e data/bronze/inlabs/$(DATA)-DO1E.zip ]; then \
-		$(MAKE) --no-print-directory persist DATA=$(DATA); \
-	else echo "$(DATA) não teve edição do DOU: nada a gravar"; fi
+	@# depois do fetch. Ele roda mesmo se o fetch falhou numa seção: o que foi
+	@# baixado é gravado, e o make sai com erro no fim. Só sem falha e sem ZIP o
+	@# dia é dado como sem edição.
+	@falhou=0; $(MAKE) --no-print-directory fetch DATA=$(DATA) || falhou=1; \
+	if [ -e data/bronze/inlabs/$(DATA)-DO1.zip ] || [ -e data/bronze/inlabs/$(DATA)-DO1E.zip ]; then \
+		$(MAKE) --no-print-directory persist DATA=$(DATA) || falhou=1; \
+	elif [ $$falhou = 0 ]; then echo "$(DATA) não teve edição do DOU: nada a gravar"; fi; \
+	exit $$falhou
 
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
 	docker compose --progress quiet run --rm -T ingestor-test go test -count=1 ./...
