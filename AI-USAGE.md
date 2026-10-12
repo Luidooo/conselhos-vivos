@@ -295,6 +295,15 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:** teste novo (`TestSaveLeavesABlankEmentaNull`) visto falhando antes da correção e passando depois; `make test-db-go` com os 9 testes do pacote verdes; `make vet-go` e `make test-go` limpos.
 - **Quem revisou:** pendente — o Luis (autor do PR) e o Iago, no PR.
 
+### 2026-10-11 — CI rodando `make test` em todo PR
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `.github/workflows/test.yml`, `README.md`
+- **O que foi pedido:** o que mais dava para adiantar na E2; a IA apontou que o único CI era o build do site e que nenhum PR rodava os testes, e o Luis pediu para começar por aí.
+- **O que foi aproveitado:** o workflow inteiro. **Decidido pela IA**, a revisar: roda em todo PR, inclusive os só de documentação, porque os testes em Python leem `docs/adr/medicoes`; roda `make test` antes do `make vet-go`, porque é o `make test` que cria o `.env`; e inclui um passo `git diff --exit-code`, que falha se a carga reescrever os relatórios versionados com conteúdo diferente. Não há cache de imagens nem de módulos Go: cada execução baixa tudo, como um clone limpo.
+- **Como foi verificado:** YAML validado por parsing; os três passos (`make test`, `make vet-go`, `git diff --exit-code`) foram rodados nesta ordem na máquina local e passaram, mas **com** `.env`, volume e imagens já existentes. O que o workflow existe para provar — que passa num runner limpo — só é verificado pela primeira execução no próprio PR.
+- **Quem revisou:** pendente.
+
 ### 2026-10-11 — `make ingest` de ponta a ponta e idempotência (#24, #27)
 
 - **Ferramenta:** Claude Code (Claude Opus 5.5)

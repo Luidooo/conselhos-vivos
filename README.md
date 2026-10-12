@@ -80,6 +80,8 @@ make           # lista todos os comandos
 ```
 
 > **Porta 5432 ocupada?** Se você já tem um Postgres instalado na máquina, o `up` falha com `port is already allocated`. Troque `POSTGRES_PORT` no seu `.env` (ex.: `5433`) — só no `.env`, não no `.env.example`.
+
+**O CI roda os testes.** Em todo PR e a cada push no `main`, o workflow `.github/workflows/test.yml` roda `make test` e `make vet-go` num runner sem `.env`, sem volume do banco e sem imagem em cache — a mesma máquina limpa da entrega. Ele também falha se a carga deixar os relatórios versionados diferentes dos que estão no repositório. Nada no CI usa credencial do INLABS.
 >
 > **Só na sua máquina.** O banco e o pgAdmin escutam apenas em `127.0.0.1`: ninguém na mesma rede (Wi-Fi da UnB, por exemplo) alcança. Não troque isso — o pgAdmin roda **sem login**.
 >
