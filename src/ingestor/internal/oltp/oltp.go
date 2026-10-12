@@ -57,13 +57,15 @@ type Writer struct {
 	// is in ambiguous instead: it never resolves by itself.
 	organs    map[string]int32
 	ambiguous map[string]bool
-	// queued has the names this Writer already sent to orgao_alias. Most of an
-	// edition is of unknown organs, and the same few hundred times over.
-	queued map[string]bool
+	// waiting has the keys already in orgao_alias with no organ, from any
+	// source: the ones found there when the Writer was opened and the ones it
+	// queued since. A name waiting for a decision is not queued a second time.
+	waiting map[string]bool
 }
 
 // Open reads the identity of the organs: every name an organ has or had
-// (orgao_nome) and every spelling resolved to one (orgao_alias).
+// (orgao_nome), every spelling resolved to one and every spelling still
+// waiting for a decision (orgao_alias).
 func Open(ctx context.Context, db DB) (*Writer, error) {
 	rows, err := db.Query(ctx, `
 		SELECT orgao_id, nome FROM orgao_nome
@@ -74,7 +76,7 @@ func Open(ctx context.Context, db DB) (*Writer, error) {
 	}
 	defer rows.Close()
 
-	writer := &Writer{db: db, organs: map[string]int32{}, ambiguous: map[string]bool{}, queued: map[string]bool{}}
+	writer := &Writer{db: db, organs: map[string]int32{}, ambiguous: map[string]bool{}, waiting: map[string]bool{}}
 	for rows.Next() {
 		var (
 			id   int32
@@ -94,6 +96,19 @@ func Open(ctx context.Context, db DB) (*Writer, error) {
 	}
 	for key := range writer.ambiguous {
 		delete(writer.organs, key)
+	}
+	rows.Close()
+
+	pending, err := db.Query(ctx, `SELECT nome FROM orgao_alias WHERE status <> 'RESOLVIDO'`)
+	if err != nil {
+		return nil, fmt.Errorf("reading the names waiting for a decision: %w", err)
+	}
+	names, err := pgx.CollectRows(pending, pgx.RowTo[string])
+	if err != nil {
+		return nil, fmt.Errorf("reading the names waiting for a decision: %w", err)
+	}
+	for _, name := range names {
+		writer.waiting[Key(name)] = true
 	}
 	return writer, nil
 }
@@ -151,11 +166,13 @@ func (w *Writer) Save(ctx context.Context, a article.Article) (Outcome, error) {
 	return Saved, nil
 }
 
-// queue records the organ's name in orgao_alias, once per name, with no organ
-// and the reason. A name already there is left as it is: someone may have
-// decided on it since.
+// queue records the organ's name in orgao_alias, with no organ and the reason.
+// It does so once per key: a name already waiting for a decision, whichever
+// source put it there, keeps the status and the reason it was given. The
+// spreadsheet's "ambiguous, ask the researcher" is not to be answered by a
+// second row saying "not recognised".
 func (w *Writer) queue(ctx context.Context, a article.Article, organ, key string) error {
-	if w.queued[organ] {
+	if w.waiting[key] {
 		return nil
 	}
 
@@ -173,6 +190,6 @@ func (w *Writer) queue(ctx context.Context, a article.Article, organ, key string
 	if err != nil {
 		return fmt.Errorf("queueing the organ %q of %s: %w", organ, a.Entry, err)
 	}
-	w.queued[organ] = true
+	w.waiting[key] = true
 	return nil
 }
