@@ -9,6 +9,21 @@ help: ## lista os comandos
 DATA ?= $(shell TZ=America/Sao_Paulo date +%F)
 # As edições do dia que o make extract e o make persist leem: as que existem, DO1 e DO1E.
 EDICOES = $(wildcard data/bronze/inlabs/$(DATA)-DO1.zip data/bronze/inlabs/$(DATA)-DO1E.zip)
+# Os marcadores que o fetch deixa no lugar do ZIP, das duas seções: o INLABS disse
+# que a edição não houve, ou a busca dela falhou.
+SEM_EDICAO = $(wildcard data/bronze/inlabs/$(DATA)-DO1.sem-edicao data/bronze/inlabs/$(DATA)-DO1E.sem-edicao)
+FALHOU = $(wildcard data/bronze/inlabs/$(DATA)-DO1.falhou data/bronze/inlabs/$(DATA)-DO1E.falhou)
+# Sem ZIP, um dia sem edição não é erro; um que falhou ou que ninguém buscou é. A
+# falha de qualquer seção é avisada mesmo com o ZIP da outra (e o alvo sai com
+# erro no fim, pelo ZIPS_FALHOU); a falha vence o "sem edição" da outra seção.
+TEM_EDICAO = if [ -n "$(FALHOU)" ]; then echo "a busca de $(notdir $(FALHOU:.falhou=)) falhou (marcador em data/bronze/inlabs/) — rode make fetch DATA=$(DATA) de novo" >&2; fi; \
+	if [ -n "$(EDICOES)" ]; then :; \
+	elif [ -n "$(FALHOU)" ]; then exit 1; \
+	elif [ -n "$(SEM_EDICAO)" ]; then echo "$(DATA) não teve edição do DOU (marcador em data/bronze/inlabs/)" >&2; \
+	else echo "nenhum ZIP de $(DATA) em data/bronze/inlabs/ — rode make fetch DATA=$(DATA)"; exit 1; fi
+# O valor inicial do "falhou" dos laços do extract e do persist: com uma seção
+# falha, o alvo processa o ZIP da outra e sai com erro no fim.
+ZIPS_FALHOU = $(if $(FALHOU),1,0)
 
 .env:
 	cp .env.example .env
@@ -33,34 +48,32 @@ siorg: ## baixa o SIORG (com rede) e atualiza o recorte em data/referencia/; rod
 	docker compose --progress quiet run --rm -T siorg > data/referencia/siorg-conselhos.csv.novo
 	mv data/referencia/siorg-conselhos.csv.novo data/referencia/siorg-conselhos.csv
 
-fetch: .env ## baixa DO1 e DO1E do DOU (DATA=AAAA-MM-DD; sem DATA, hoje em Brasília). Sem retomada: rebaixa o que já existe
+fetch: .env ## baixa DO1 e DO1E do DOU (DATA=AAAA-MM-DD; sem DATA, hoje em Brasília). Sem retomada: rebaixa o que já existe; edição que não houve ou que falhou fica marcada
 	mkdir -p data/bronze/inlabs
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T ingestor -date $(DATA)
 
 extract: ## lê as matérias dos ZIPs de DATA já baixados e imprime uma por linha, em JSON (HTML=1 inclui o HTML do texto)
-	@test -n "$(EDICOES)" || { echo "nenhum ZIP de $(DATA) em data/bronze/inlabs/ — rode make fetch DATA=$(DATA)"; exit 1; }
+	@$(TEM_EDICAO)
 	@# Uma execução por edição: o comando lê um ZIP só. A segunda roda mesmo se a
 	@# primeira falhar, e o make sai com erro se qualquer uma falhou.
-	@falhou=0; for zip in $(EDICOES:data/%=/data/%); do \
+	@falhou=$(ZIPS_FALHOU); for zip in $(EDICOES:data/%=/data/%); do \
 		docker compose --progress quiet run --rm -T extract $(if $(HTML),-html) $$zip || falhou=1; \
 	done; exit $$falhou
 
 persist: .env ## grava no banco as matérias dos ZIPs de DATA já baixados; pode rodar de novo, não duplica
-	@test -n "$(EDICOES)" || { echo "nenhum ZIP de $(DATA) em data/bronze/inlabs/ — rode make fetch DATA=$(DATA)"; exit 1; }
+	@$(TEM_EDICAO)
 	@# Como no extract: uma execução por edição, e a segunda roda mesmo se a primeira falhar.
-	@falhou=0; for zip in $(EDICOES:data/%=/data/%); do \
+	@falhou=$(ZIPS_FALHOU); for zip in $(EDICOES:data/%=/data/%); do \
 		docker compose --progress quiet run --rm -T persist $$zip || falhou=1; \
 	done; exit $$falhou
 
 ingest: .env ## baixa as edições de DATA e grava as matérias de conselho no banco, de ponta a ponta; pode rodar de novo, não duplica
-	@# O persist vai num make à parte: a lista de ZIPs dele tem de ser montada
-	@# depois do fetch. Ele roda mesmo se o fetch falhou numa seção: o que foi
-	@# baixado é gravado, e o make sai com erro no fim. Só sem falha e sem ZIP o
-	@# dia é dado como sem edição.
+	@# O persist vai num make à parte: a lista de ZIPs e de marcadores dele tem de
+	@# ser montada depois do fetch. Ele roda mesmo se o fetch falhou numa seção: o
+	@# que foi baixado é gravado, e o make sai com erro no fim. Dia sem edição, dia
+	@# que falhou e dia não buscado quem decide é o TEM_EDICAO, dentro do persist.
 	@falhou=0; $(MAKE) --no-print-directory fetch DATA=$(DATA) || falhou=1; \
-	if [ -e data/bronze/inlabs/$(DATA)-DO1.zip ] || [ -e data/bronze/inlabs/$(DATA)-DO1E.zip ]; then \
-		$(MAKE) --no-print-directory persist DATA=$(DATA) || falhou=1; \
-	elif [ $$falhou = 0 ]; then echo "$(DATA) não teve edição do DOU: nada a gravar"; fi; \
+	$(MAKE) --no-print-directory persist DATA=$(DATA) || falhou=1; \
 	exit $$falhou
 
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
