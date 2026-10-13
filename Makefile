@@ -134,6 +134,7 @@ test: .env test-go ## testes: Go do ingestor, infra, esquema do OLTP, leitura da
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/conselhos
 	bash tests/db/test_carga.sh
 	bash tests/ingest/test_janela.sh
+	bash tests/lake/test_lake.sh
 	$(MAKE) --no-print-directory test-db-go
 
 reset: ## APAGA o banco, sobe do zero, migra e carrega a planilha
@@ -158,3 +159,7 @@ psql: ## abre o psql dentro do container
 
 logs: ## acompanha os logs do banco
 	docker compose logs -f db
+
+lake: .env ## extrai do OLTP e atualiza a tabela Delta Lake em data/silver/atos/
+	mkdir -p data/silver/atos
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T lake

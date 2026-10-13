@@ -36,9 +36,6 @@ services:
         target: /pgadmin4/servers.json
       - source: pgadmin_pgpass
         target: /pgpass
-        uid: "5050"
-        gid: "0"
-        mode: 0600
     volumes:
       - pgadmin:/var/lib/pgadmin
     depends_on:
@@ -195,6 +192,30 @@ services:
         condition: service_healthy
     entrypoint: []
 
+  # Camada analítica em Delta Lake (ADR 0005)
+  # Camada analítica em Delta Lake (ADR 0005)
+  lake:
+    image: python:3.12.14-slim
+    profiles: [lake]
+    working_dir: /app
+    environment:
+      PYTHONPATH: /app/src
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      PIP_CACHE_DIR: /tmp/pipcache
+      DOCKER_UID: ${DOCKER_UID:-1000}
+      DOCKER_GID: ${DOCKER_GID:-1000}
+    volumes:
+      - ./src:/app/src:ro
+      - ./data/silver:/data/silver
+      - pipcache:/tmp/pipcache
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "pip install -q --root-user-action=ignore --no-warn-script-location -r /app/src/lake/requirements.txt && python -m lake /data/silver/atos && chown -R $${DOCKER_UID}:$${DOCKER_GID} /data/silver"]
+
 # servers.json e pgpass gerados a partir do .env: o pgAdmin já abre conectado no banco.
 # O servers.json só é importado na 1ª subida do volume `pgadmin`; se mudar
 # POSTGRES_USER ou POSTGRES_DB, rode `make pgadmin-reset`. Senha sem `:` nem `\`
@@ -221,3 +242,4 @@ volumes:
   pgadmin:
   gocache:
   gomodcache:
+  pipcache:
