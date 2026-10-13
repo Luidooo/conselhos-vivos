@@ -6,12 +6,13 @@ import os
 from pathlib import Path
 from typing import Any, Dict
 
-from deltalake import DeltaTable, write_deltalake
+from deltalake import DeltaTable, WriterProperties, write_deltalake
 import psycopg
 import pyarrow as pa
 
 QUERY_OLTP = """
 SELECT 
+    a.id AS ato_id,
     a.origem,
     COALESCE(a.id_dou, a.id_planilha::text) AS id_origem,
     a.versao,
@@ -28,8 +29,8 @@ SELECT
     r.tipo AS revisor_tipo
 FROM ato a
 JOIN orgao o ON o.id = a.orgao_id
--- Nome vigente do órgão como fallback:
-JOIN orgao_nome n_vigente ON n_vigente.orgao_id = o.id AND n_vigente.data_fim IS NULL
+-- Nome vigente do órgão como fallback (LEFT JOIN para conselho extinto ou sem nome com fim aberto):
+LEFT JOIN orgao_nome n_vigente ON n_vigente.orgao_id = o.id AND n_vigente.data_fim IS NULL
 -- Nome histórico vigente na data da publicação do ato (ADR 0004):
 LEFT JOIN orgao_nome nome_epoca ON nome_epoca.orgao_id = o.id 
     AND a.data_publicacao >= nome_epoca.data_inicio 
@@ -48,6 +49,7 @@ ORDER BY a.data_publicacao, a.id;
 """
 
 ARROW_SCHEMA = pa.schema([
+    ("ato_id", pa.int64()),
     ("origem", pa.string()),
     ("id_origem", pa.string()),
     ("versao", pa.int32()),
@@ -67,9 +69,24 @@ ARROW_SCHEMA = pa.schema([
 ])
 
 
-def calcular_checksum(ementa: str | None, conteudo: str | None, tipologia: str | None, orgao_id: int) -> str:
-    """Hash determinístico do conteúdo mutável para merge seguro e sem armadilhas de NULL."""
-    conteudo_str = f"{ementa or ''}|{conteudo or ''}|{tipologia or ''}|{orgao_id}"
+def calcular_checksum(
+    ementa: str | None,
+    conteudo: str | None,
+    tipologia: str | None,
+    orgao_id: int,
+    orgao_nome: str | None,
+    orgao_sigla: str | None,
+    codigo_siorg: int | None,
+    revisor_tipo: str | None,
+    ref_legal: str | None,
+    data_publicacao: Any,
+) -> str:
+    """Hash determinístico de todo o conteúdo para merge seguro e sem armadilhas de NULL."""
+    conteudo_str = (
+        f"{ementa or ''}|{conteudo or ''}|{tipologia or ''}|{orgao_id}|"
+        f"{orgao_nome or ''}|{orgao_sigla or ''}|{codigo_siorg or ''}|"
+        f"{revisor_tipo or ''}|{ref_legal or ''}|{data_publicacao or ''}"
+    )
     return hashlib.md5(conteudo_str.encode("utf-8")).hexdigest()
 
 
@@ -104,21 +121,35 @@ def extrair_oltp(conn: psycopg.Connection) -> pa.Table:
 
     dados = {campo.name: [] for campo in ARROW_SCHEMA}
     for r in linhas:
-        dados["origem"].append(r[0])
-        dados["id_origem"].append(r[1])
-        dados["versao"].append(r[2])
-        dados["data_publicacao"].append(r[3])
-        dados["ano"].append(r[4])
-        dados["orgao_id"].append(r[5])
-        dados["orgao_nome"].append(r[6])
-        dados["orgao_sigla"].append(r[7])
-        dados["codigo_siorg"].append(r[8])
-        dados["ref_legal"].append(r[9])
-        dados["ementa"].append(r[10])
-        dados["conteudo"].append(r[11])
-        dados["tipologia_sigla"].append(r[12])
-        dados["revisor_tipo"].append(r[13])
-        dados["checksum"].append(calcular_checksum(r[10], r[11], r[12], r[5]))
+        dados["ato_id"].append(r[0])
+        dados["origem"].append(r[1])
+        dados["id_origem"].append(r[2])
+        dados["versao"].append(r[3])
+        dados["data_publicacao"].append(r[4])
+        dados["ano"].append(r[5])
+        dados["orgao_id"].append(r[6])
+        dados["orgao_nome"].append(r[7])
+        dados["orgao_sigla"].append(r[8])
+        dados["codigo_siorg"].append(r[9])
+        dados["ref_legal"].append(r[10])
+        dados["ementa"].append(r[11])
+        dados["conteudo"].append(r[12])
+        dados["tipologia_sigla"].append(r[13])
+        dados["revisor_tipo"].append(r[14])
+        dados["checksum"].append(
+            calcular_checksum(
+                ementa=r[11],
+                conteudo=r[12],
+                tipologia=r[13],
+                orgao_id=r[6],
+                orgao_nome=r[7],
+                orgao_sigla=r[8],
+                codigo_siorg=r[9],
+                revisor_tipo=r[14],
+                ref_legal=r[10],
+                data_publicacao=r[4],
+            )
+        )
         dados["atualizado_em"].append(agora)
 
     arrays = [pa.array(dados[campo.name], type=campo.type) for campo in ARROW_SCHEMA]
@@ -126,9 +157,10 @@ def extrair_oltp(conn: psycopg.Connection) -> pa.Table:
 
 
 def sincronizar_delta(tabela_arrow: pa.Table, destino: Path) -> Dict[str, Any]:
-    """Grava ou faz MERGE idempotente na tabela Delta em destino particionada por ano (comprimida com snappy por padrão)."""
+    """Grava ou faz MERGE idempotente na tabela Delta em destino particionada por ano e comprimida com ZSTD."""
     destino_str = str(destino)
     total_fonte = len(tabela_arrow)
+    writer_props = WriterProperties(compression="ZSTD")
 
     # 1. Primeira execução: a tabela ainda não existe
     if not DeltaTable.is_deltatable(destino_str):
@@ -138,6 +170,7 @@ def sincronizar_delta(tabela_arrow: pa.Table, destino: Path) -> Dict[str, Any]:
             tabela_arrow,
             partition_by=["ano"],
             mode="error",
+            writer_properties=writer_props,
         )
         return {
             "inseridas": total_fonte,
@@ -146,16 +179,10 @@ def sincronizar_delta(tabela_arrow: pa.Table, destino: Path) -> Dict[str, Any]:
             "total_lake": total_fonte,
         }
 
-    # 2. Execuções subsequentes: MERGE idempotente na chave analítica
+    # 2. Execuções subsequentes: MERGE idempotente na chave do ato no OLTP (ato_id)
     dt_table = DeltaTable(destino_str)
     
-    predicate = (
-        "target.origem = source.origem AND "
-        "target.id_origem = source.id_origem AND "
-        "target.versao = source.versao AND "
-        "target.orgao_id = source.orgao_id"
-    )
-
+    predicate = "target.ato_id = source.ato_id"
     update_condition = "target.checksum != source.checksum"
 
     merge_res = (
@@ -164,6 +191,7 @@ def sincronizar_delta(tabela_arrow: pa.Table, destino: Path) -> Dict[str, Any]:
             predicate=predicate,
             source_alias="source",
             target_alias="target",
+            writer_properties=writer_props,
         )
         .when_matched_update_all(predicate=update_condition)
         .when_not_matched_insert_all()
@@ -175,7 +203,7 @@ def sincronizar_delta(tabela_arrow: pa.Table, destino: Path) -> Dict[str, Any]:
     inalteradas = total_fonte - inseridas - atualizadas
 
     dt_atualizada = DeltaTable(destino_str)
-    total_lake = len(dt_atualizada.to_pyarrow_table())
+    total_lake = dt_atualizada.count()
 
     return {
         "inseridas": inseridas,

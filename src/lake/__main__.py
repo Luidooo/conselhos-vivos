@@ -1,7 +1,6 @@
 """Interface CLI do job analítico: python -m lake [destino]."""
 
 import logging
-import os
 from pathlib import Path
 import sys
 
@@ -38,4 +37,3 @@ def main(argv):
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-    os._exit(0)
