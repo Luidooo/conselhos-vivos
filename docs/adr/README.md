@@ -23,3 +23,4 @@ Levantadas na fase de entendimento do domínio, ainda sem ADR escrito:
 | [0002](0002-manter-postgresql-como-motor-do-oltp.md) | O OLTP de curadoria continua em PostgreSQL 16 | proposto |
 | [0003](0003-carregar-a-planilha-como-rotulo-da-curadoria.md) | A planilha da pesquisadora entra no OLTP como rótulo da curadoria, lida só com a biblioteca padrão | proposto |
 | [0004](0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md) | A identidade de um conselho sai de uma chave normalizada mais decisões registradas, nunca de similaridade de texto | proposto |
+| [0005](0005-armazenar-a-camada-analitica-em-tabelas-delta.md) | Armazenar a camada analítica em tabelas Delta particionadas por ano e comprimidas com zstd | proposto |
