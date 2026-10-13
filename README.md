@@ -81,6 +81,9 @@ make down      # para, mantém os dados
 make reset     # APAGA o banco, sobe do zero, migra e carrega a planilha
 make pgadmin-reset  # recria o pgAdmin (se mudar POSTGRES_USER ou POSTGRES_DB)
 make lake      # extrai do OLTP e atualiza a tabela Delta Lake em data/silver/atos/
+make cdc       # aplica no Delta as mudanças de classificacao pendentes no slot lógico (rode make lake antes)
+make cdc-demo  # reclassifica um ato e mostra a mudança chegando ao Delta
+make cdc-drop  # remove o slot de replicação (slot parado retém WAL)
 make           # lista todos os comandos
 ```
 
@@ -242,6 +245,26 @@ Para vários meses, um laço no shell:
 ```bash
 for m in 2026-06 2026-07 2026-08; do make ingest-mensal MES=$m; done
 ```
+
+## Fluxo de mudanças do OLTP ao Delta (CDC)
+
+O Postgres sobe com `wal_level=logical` e um slot de replicação lógica (`conselhos_lake`) guarda as mudanças de `classificacao`; `make cdc` as aplica na tabela Delta ([ADR 0007](docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica.md)). Sem Kafka.
+
+Para ver uma mudança atravessando o fluxo:
+
+```bash
+make up          # recria o db se ainda estava com wal_level=replica
+make migrate && make carga   # se o banco ainda estiver vazio
+make cdc-demo
+```
+
+O `make cdc-demo` roda `make lake` (carga completa) e `make cdc` (cria o slot), mostra a tipologia de um ato no Delta, **reclassifica** o ato (um `INSERT` novo em `classificacao`, que é insert-only), consome o slot e mostra a linha nova no Delta. `ATO_ID=123 make cdc-demo` escolhe o ato.
+
+Dia a dia: `make lake` uma vez, depois `make cdc` sempre que quiser aplicar as reclassificações pendentes (pode rodar de novo, não duplica).
+
+> **Slot parado retém WAL.** Se for abandonar o fluxo, rode `make cdc-drop`, senão o disco do banco cresce. Mudanças anteriores à criação do slot só entram com `make lake`.
+>
+> **A demonstração deixa uma classificação nova no banco** (é insert-only, não se apaga). `make test` espera o banco como a carga o deixa: depois de demonstrar, rode `make reset` antes de testar.
 
 ## Estrutura
 
