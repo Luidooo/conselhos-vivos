@@ -93,6 +93,20 @@ func (s *Store) Save(name string, r io.Reader) (Receipt, error) {
 	return Receipt{Path: final, Size: size}, nil
 }
 
+// Has reports whether the zip called name is in the directory. Only a whole
+// zip ever gets that name (see Save), so being there is being done.
+func (s *Store) Has(name string) (bool, error) {
+	_, err := os.Stat(filepath.Join(s.dir, name))
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, fs.ErrNotExist):
+		return false, nil
+	default:
+		return false, fmt.Errorf("looking for %s: %w", name, err)
+	}
+}
+
 // The suffixes of the two markers. A marker is an empty file under the
 // edition's name, with the suffix in place of ".zip".
 const (
@@ -129,7 +143,9 @@ func (s *Store) MarkFailed(name string) error {
 }
 
 // mark leaves the marker with suffix for the edition, and removes the one with
-// the other suffix: the record is what the last fetch found.
+// the other suffix: the record is what the last fetch found. The old marker
+// goes first: a crash in between leaves no marker (a day to fetch again), never
+// two that contradict each other.
 //
 // A zip already there wins over both: an edition that was downloaded once
 // existed, and neither a later "not found" nor a later failure takes it back.
@@ -141,12 +157,12 @@ func (s *Store) mark(name, suffix, other string) error {
 		return fmt.Errorf("looking for %s: %w", name, err)
 	}
 
+	if err := s.unmark(name, other); err != nil {
+		return err
+	}
 	marker := strings.TrimSuffix(name, ".zip") + suffix
 	if err := os.WriteFile(filepath.Join(s.dir, marker), nil, 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", marker, err)
-	}
-	if err := s.unmark(name, other); err != nil {
-		return err
 	}
 	if err := syncDir(s.dir); err != nil {
 		return fmt.Errorf("flushing the directory %s: %w", s.dir, err)

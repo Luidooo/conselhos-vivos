@@ -49,6 +49,7 @@ func main() {
 		"ignoradas", summary.Skipped,
 		"falhou", summary.Failed)
 
+	// The zip is committed by now: 1 says an entry failed, not that nothing went in.
 	if summary.Failed > 0 {
 		os.Exit(1)
 	}
@@ -179,5 +180,6 @@ func usage() {
 		"there is left alone, and one that came back different goes in as a new\n"+
 		"version. A matéria of an unknown organ is left out and the organ is queued in\n"+
 		"orgao_alias. Of two entries with the same id, only the first is saved. An XML\n"+
-		"that is not a matéria is a failure, and the exit code is 1.\n")
+		"that is not a matéria is a failure, and the exit code is 1 even though the\n"+
+		"rest of the zip was written and committed.\n")
 }

@@ -83,13 +83,25 @@ func TestPersistSavesTheEdition(t *testing.T) {
 	tx := dbtest.Begin(t)
 	before := state(t, tx)
 
+	// The organ that is not a conselho may be queued already: a real ingestion
+	// into this database (make ingest-mensal) meets it too, and the queue takes a
+	// name once.
+	const organ = "Coordenação-Geral de Controle de Serviços e Produtos"
+	var queuedBefore bool
+	require.NoError(t, tx.QueryRow(context.Background(),
+		`SELECT EXISTS (SELECT 1 FROM orgao_alias WHERE nome = $1)`, organ).Scan(&queuedBefore))
+
 	summary, err := persist(context.Background(), tx, quiet(), writeEdition(t, anEdition(t)))
 	require.NoError(t, err)
 
 	assert.Equal(t, Summary{Saved: 1, UnknownOrgan: 1, Skipped: 1, Failed: 1}, summary)
 	// One row in ato, for the conselho, and one in orgao_alias, for the organ
-	// that is not one.
-	assert.Len(t, state(t, tx), len(before)+2)
+	// that is not one, unless it was in the queue already.
+	added := 2
+	if queuedBefore {
+		added = 1
+	}
+	assert.Len(t, state(t, tx), len(before)+added)
 }
 
 // The acceptance of issue #24: the same day twice leaves the database

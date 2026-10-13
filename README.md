@@ -33,6 +33,7 @@ Um conselho que só produz `AUTO` está se auto-administrando, não incidindo em
 | Fonte | O que traz | Acesso |
 |---|---|---|
 | [INLABS / Imprensa Nacional](https://inlabs.in.gov.br/) | Edições completas do DOU em XML, desde 01/01/2020 | Gratuito, exige cadastro |
+| [Dados abertos da Imprensa Nacional](https://www.in.gov.br/acesso-a-informacao/dados-abertos/base-de-dados) | O mesmo XML do INLABS, um ZIP por mês e por seção, com o histórico de anos anteriores | Público (CC0), sem login; o mês sai ~2 semanas depois de acabar |
 | Planilhas da pesquisadora | 215 atos já classificados à mão, 2003–2020 — nosso *ground truth* | Pública; cópia versionada em `data/raw/` |
 | [Brasil Participativo](https://brasilparticipativo.presidencia.gov.br/) | Composição, agenda e reuniões de cada conselho | Público (Decidim) |
 | Cadastro de órgãos (SIORG / decretos) | O censo de conselhos existentes — o denominador | Público |
@@ -70,6 +71,7 @@ make persist   # grava no banco as matérias dos ZIPs já baixados de DATA; pode
 make ingest    # fetch e persist dos 7 dias que terminam em DATA (JANELA=N muda a janela): baixa e grava as matérias de conselho
 make ingest-dia  # o mesmo para um dia só, sem janela
 make janela    # lista os dias que o make ingest reprocessa
+make ingest-mensal MES=2026-08  # o mês inteiro dos dados abertos, sem login: baixa e grava as matérias de conselho
 make migrate   # aplica as migrações de sql/ que ainda não rodaram
 make carga     # carrega os conselhos e a planilha da pesquisadora (idempotente) e atualiza os relatórios
 make siorg     # baixa o SIORG (precisa de rede) e atualiza o recorte em data/referencia/
@@ -82,6 +84,8 @@ make           # lista todos os comandos
 ```
 
 > **Porta 5432 ocupada?** Se você já tem um Postgres instalado na máquina, o `up` falha com `port is already allocated`. Troque `POSTGRES_PORT` no seu `.env` (ex.: `5433`) — só no `.env`, não no `.env.example`.
+
+**O CI roda os testes.** Em todo PR e a cada push no `main`, o workflow `.github/workflows/test.yml` roda `make test` e `make vet-go` num runner sem `.env`, sem volume do banco e sem imagem em cache — a mesma máquina limpa da entrega. Ele também falha se a carga deixar os relatórios versionados diferentes dos que estão no repositório. Nada no CI usa credencial do INLABS.
 >
 > **Só na sua máquina.** O banco e o pgAdmin escutam apenas em `127.0.0.1`: ninguém na mesma rede (Wi-Fi da UnB, por exemplo) alcança. Não troque isso — o pgAdmin roda **sem login**.
 >
@@ -108,12 +112,16 @@ Um arquivo só aparece com o nome final quando o conteúdo é um ZIP que abre: s
 
 **Não há retomada.** Cada execução baixa o dia de novo, sobrescrevendo o que estiver em disco. Para vários dias:
 
+```bash
+for d in 2026-10-01 2026-10-02 2026-10-03; do make fetch DATA=$d; done
+```
+
 **O diretório é o registro do dia.** No lugar do ZIP que não veio, o `fetch` deixa um arquivo vazio com o mesmo nome e outra extensão. Assim `data/bronze/inlabs/` diz o que foi pedido ao INLABS e o que ele respondeu, por data e por seção:
 
 | Em `data/bronze/inlabs/` | Quer dizer |
 |---|---|
 | `2026-10-02-DO1.zip` | houve edição, e ela foi baixada |
-| `2026-10-04-DO1.sem-edicao` | a edição foi buscada e o INLABS respondeu que ela não existe (domingo, feriado, dia sem edição extra) |
+| `2026-10-04-DO1.sem-edicao` | a edição foi buscada e o INLABS respondeu que ela não existe (domingo, feriado, dia sem edição extra)¹ |
 | `2026-10-02-DO1.falhou` | a edição foi buscada e não chegou: é a que falta buscar de novo |
 | nada | ninguém buscou |
 
@@ -127,6 +135,8 @@ Para cada edição há no máximo um dos três arquivos, e ele diz o que a últi
 - **Um ZIP em disco vence.** Nem um "não existe" nem uma falha posteriores desmentem uma edição já baixada.
 - **A falha é buscada de novo quando o dia roda de novo**: `make fetch DATA=...` rebaixa o dia inteiro, e não só o que falhou. Nada refaz sozinho um dia que falhou.
 - **Execução interrompida não deixa registro.** Uma busca cancelada ou que estourou o prazo da execução não foi recusada, só não foi esperada.
+
+¹ "Respondeu que não existe" é o `404`, e essa leitura **ainda não foi conferida contra o INLABS**: não se sabe o que ele devolve em manutenção nem para uma data sem edição com sessão válida. Até lá, um `.sem-edicao` num dia útil merece desconfiança.
 
 O registro fica no bronze, e não numa tabela do banco, para o `fetch` continuar sem falar com o banco: ele roda sem o Postgres no ar. O custo é que o registro não é consultável por SQL.
 
@@ -160,7 +170,7 @@ make ingest DATA=2026-10-11 JANELA=1   # só o dia
 make ingest-dia DATA=2026-10-11        # o mesmo que JANELA=1
 ```
 
-Para cada dia, do mais antigo para o mais novo, ele encadeia o `make fetch` e o `make persist`, e o dia para no primeiro dos dois que falhar. A extração acontece dentro do `persist`, com o mesmo pacote que o `make extract` usa para imprimir. Um dia que o `fetch` marcou como sem edição não é erro, e nada é gravado; um dia cuja busca falhou é. Um dia que falha não impede os seguintes, e o `make` sai com erro se qualquer um falhou.
+Para cada dia, do mais antigo para o mais novo, ele encadeia o `make fetch` e o `make persist` (é o `make ingest-dia`). Se o `fetch` falha numa seção, o que foi baixado é gravado mesmo assim, e o dia conta como falho. A extração acontece dentro do `persist`, com o mesmo pacote que o `make extract` usa para imprimir. Um dia que o `fetch` marcou como sem edição não é erro, e nada é gravado; um dia cuja busca falhou é, em qualquer das duas seções. Um dia que falha não impede os seguintes, e o `make` sai com erro se qualquer um falhou.
 
 **Dado atrasado.** No DOU o atraso é real: a edição extra (`DO1E`) sai depois da busca da manhã, e o INLABS pode republicar uma edição. Por isso cada `make ingest` busca e grava de novo os últimos `JANELA` dias, e não só o dia pedido:
 
@@ -168,24 +178,25 @@ Para cada dia, do mais antigo para o mais novo, ele encadeia o `make fetch` e o 
 - **O ato atrasado fica na data em que foi publicado**, e não na data em que chegou: `data_publicacao` vem do `pubDate` da matéria.
 - **Um dia cuja busca falhou é buscado de novo** na próxima execução, enquanto estiver na janela.
 - **O que chega depois da janela não entra sozinho, e nada avisa.** Para trazê-lo, rode o dia à mão (`make ingest-dia DATA=...`) ou uma janela maior (`JANELA=30`). O bronze guarda só a última versão baixada de cada edição.
+- **A janela é de dias do INLABS**, e o login automático do INLABS hoje é recusado (#42): ela só regrava os dias cujos ZIPs já estão em `data/bronze/inlabs/`. Na fonte mensal (`make ingest-mensal`) não há janela: o ZIP de um mês fechado já traz o `DO1E` de todos os dias, e uma retificação sai como matéria nova, na data em que foi publicada.
 
 A janela padrão é de **7 dias**, um valor provisório: cobre o fim de semana e um feriado emendado, e custa 14 edições pedidas ao INLABS por execução (DO1 e DO1E de cada dia). Ninguém mediu ainda com que atraso o INLABS republica uma edição; a squad decide o valor na #31. `make janela DATA=... JANELA=...` lista os dias sem baixar nada.
 
-O `make persist` sozinho grava os ZIPs que já estão em `data/bronze/inlabs/`, sem rede:
+O `make persist` sozinho grava os ZIPs que já estão em `data/bronze/inlabs/`, sem acessar o INLABS:
 
 ```bash
 make persist DATA=2026-10-01   # o resumo vai para o stderr
 ```
 
-O comando Go lê **um ZIP por execução**, como o `extract`, e grava tudo numa transação: a edição entra inteira ou não entra.
+O comando Go lê **um ZIP por execução**, como o `extract`, e grava tudo numa transação: a edição entra inteira ou não entra. Uma entrada que não lê como matéria é logada e o resto do ZIP é gravado; nesse caso o código de saída é `1` **mesmo com a edição gravada**, como no `extract`.
 
-**Pode rodar de novo.** Cada matéria é comparada com a última versão dela no banco, em tudo que é gravado (órgão, data, ementa e conteúdo):
+**Pode rodar de novo.** Cada matéria é comparada com **todas** as versões dela no banco, no que o DOU publicou (data, ementa e conteúdo). O órgão não entra: ele vem da identidade dos conselhos ([ADR 0004](docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md)), e resolver um nome não é republicação. Comparar só com a última versão faria o mesmo `id` vindo com dois textos (no DO1 e no DO1E, ou em dois dias da janela de reprocessamento) gerar duas versões a cada execução:
 
 | A matéria | O que acontece | No resumo |
 |---|---|---|
 | nunca foi vista | entra com `versao = 1` | `gravadas` |
-| já está lá, igual | nada é gravado | `inalteradas` |
-| já está lá, diferente (a edição foi republicada) | entra com a `versao` seguinte; as anteriores ficam | `versoes-novas` |
+| já está lá, igual a alguma versão | nada é gravado | `inalteradas` |
+| já está lá, diferente de todas (a edição foi republicada) | entra com a `versao` seguinte; as anteriores ficam | `versoes-novas` |
 | é de órgão desconhecido | fica de fora, e o órgão vai para a fila | `orgao-desconhecido` |
 | tem o `id` de outra entrada do mesmo ZIP | fica de fora; vale a primeira | `repetidas` |
 
@@ -204,9 +215,32 @@ Quem grava é o pacote `src/ingestor/internal/oltp`, em `ato` com `origem = 'DOU
 
 **Como o órgão é encontrado.** O nome do último nível do `artCategory` vira a chave normalizada do [ADR 0004](docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md) (sem caixa, acento, espaços repetidos e sigla no fim) e é procurado entre os nomes que os órgãos têm ou já tiveram (`orgao_nome`) e as grafias resolvidas (`orgao_alias` com `status = 'RESOLVIDO'`). A chave é calculada em Go (`oltp.Key`) e em Python (`chave()` em `src/conselhos`); um teste confere que as duas dão o mesmo resultado nos 125 nomes que a carga gravou.
 
-**Órgão desconhecido.** A maioria das ~300 matérias de um dia não é de conselho. A matéria de um órgão que não é um dos conhecidos **não entra em `ato`**, e o nome do órgão entra uma vez em `orgao_alias`, com `fonte = 'DOU'`, `status = 'INDEFINIDO'`, sem órgão e com o `artCategory` inteiro no motivo: é a fila de decisão do ADR 0004. Quando alguém resolver o nome, a matéria é gravada reingerindo o ZIP, que continua em `data/bronze/`. Se a chave casar com **mais de um** órgão, nenhum é escolhido: o nome entra na fila como `AMBIGUO`.
+**Órgão desconhecido.** A maioria das ~300 matérias de um dia não é de conselho. A matéria de um órgão que não é um dos conhecidos **não entra em `ato`**, e o nome do órgão entra uma vez em `orgao_alias`, com `fonte = 'DOU'`, `status = 'INDEFINIDO'`, sem órgão e com o `artCategory` inteiro no motivo: é a fila de decisão do ADR 0004. Quando alguém resolver o nome, a matéria é gravada reingerindo o ZIP, que continua em `data/bronze/`. Se a chave casar com **mais de um** órgão, nenhum é escolhido: o nome entra na fila como `AMBIGUO`. Um nome que **já está à espera de decisão**, por qualquer fonte, não ganha uma segunda linha: se a planilha o deixou como `AMBIGUO` ou `INDEFINIDO`, o status e o motivo dela continuam valendo, e a matéria fica de fora até alguém decidir.
+
+A chave do nome é calculada em dois lugares, em Python na carga e em Go na ingestão. As duas são conferidas contra o mesmo arquivo, `src/ingestor/internal/oltp/testdata/chaves.tsv`, com todos os nomes de `orgao_nome` e da planilha: nenhuma muda sem o teste da outra falhar.
 
 A classificação não é tocada: continua da planilha e da curadoria ([ADR 0003](docs/adr/0003-carregar-a-planilha-como-rotulo-da-curadoria.md)).
+
+## Ingerir um mês pelos dados abertos
+
+O `make ingest-mensal` faz o mesmo que o `make ingest`, mas para um **mês inteiro**, e a partir dos [dados abertos da Imprensa Nacional](https://www.in.gov.br/acesso-a-informacao/dados-abertos/base-de-dados): público, sem login e sem credencial no `.env`. O ZIP mensal traz o mesmo XML `<article>` do INLABS, com o `DO1` e o `DO1E` de todos os dias do mês, e é gravado pelo mesmo `persist`.
+
+```bash
+make ingest-mensal MES=2026-08   # baixa a Seção 1 de agosto e grava as matérias de conselho em ato
+make fetch-mensal MES=2026-08    # só baixa, para data/bronze/dados-abertos/S01082026.zip
+make persist-mensal MES=2026-08  # só grava o ZIP já baixado, sem acessar a Imprensa Nacional
+```
+
+- **O ZIP fica com o nome que a Imprensa Nacional dá** (`S01MMAAAA.zip`): a Seção 1 de agosto de 2026 é `S01082026.zip`, com cerca de 50 MB e 8.600 matérias.
+- **Mês já em disco não é baixado de novo.** O arquivo de um mês fechado não muda, e o nome só existe depois que o ZIP chegou inteiro. Rodar o `make ingest-mensal` de novo não baixa nem duplica nada; o `persist` compara cada matéria com todas as versões, como no `make ingest`.
+- **Mês ainda não publicado é erro**, e nada é gravado. O mês sai cerca de duas semanas depois de acabar: em meados de outubro, o mais recente é agosto. Para o dia de hoje, a fonte continua sendo o `make ingest`, do INLABS.
+- **Como o link é encontrado.** O endereço de cada ZIP leva um UUID que não dá para montar; o `fetch-mensal` lê a página da base de dados com `ano` e `mes` e pega o link do `S01MMAAAA.zip`. Só aceita link para o próprio `www.in.gov.br`. O pedido vai com `Accept: */*`: sem esse cabeçalho, o site responde `403`.
+
+Para vários meses, um laço no shell:
+
+```bash
+for m in 2026-06 2026-07 2026-08; do make ingest-mensal MES=$m; done
+```
 
 ## Estrutura
 

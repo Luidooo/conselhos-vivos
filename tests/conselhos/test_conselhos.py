@@ -23,6 +23,7 @@ PLANILHA = RAIZ / "data/raw/Cópia_bancos_dados_Carla_Rocha.xlsx"
 DECISOES = RAIZ / "data/referencia/conselhos-decisoes.csv"
 SIORG = RAIZ / "data/referencia/siorg-conselhos.csv"
 GABARITO = RAIZ / "docs/adr/medicoes/0004-identidade/gabarito.csv"
+CHAVES = RAIZ / "src/ingestor/internal/oltp/testdata/chaves.tsv"
 RES = resolver(PLANILHA, DECISOES, SIORG)
 ALIAS = {a.linha: a for a in RES.aliases}
 ORGAO = {o.nome: o for o in RES.orgaos}
@@ -63,6 +64,16 @@ class Chave(unittest.TestCase):
     def test_sigla_com_hifen(self):
         self.assertEqual(chave("CONSELHO NACIONAL DAS ZONAS DE PROCESSAMENTO DE EXPORTAÇÃO-CZPE"),
                          chave("Conselho Nacional das Zonas de Processamento de Exportação"))
+
+    def test_a_chave_e_a_mesma_do_go(self):
+        # o ingestor em Go recalcula a chave (internal/oltp/key.go); os dois são conferidos
+        # contra o mesmo arquivo, então nenhum muda sem o teste do outro falhar
+        linhas = CHAVES.read_text(encoding="utf-8").rstrip("\n").split("\n")
+        self.assertGreater(len(linhas), 150)
+        for linha in linhas:
+            nome, esperada = linha.split("\t")
+            with self.subTest(nome=nome):
+                self.assertEqual(chave(nome), esperada)
 
     def test_de_e_do_nao_sao_a_mesma_chave(self):
         # a chave não adivinha: "de Meio Ambiente" só chega ao CONAMA por decisão registrada

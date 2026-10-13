@@ -3,7 +3,6 @@ package oltp
 import (
 	"regexp"
 	"strings"
-	"unicode"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/unicode/norm"
@@ -25,15 +24,22 @@ func squeeze(name string) string {
 // (ADR 0004, B). Two names with the same key are the same organ.
 //
 // It has to give what chave() in src/conselhos/identidade.py gives, since both
-// write orgao_alias.chave. TestKeyAgreesWithTheLoadedAliases checks it against
-// every alias the Python loaded.
+// write orgao_alias.chave. TestKeyAgreesWithThePythonKey holds it to a file of
+// names and keys the Python is held to as well.
 func Key(name string) string {
 	bare := trailingAcronym.ReplaceAllString(trailingParens.ReplaceAllString(squeeze(name), ""), "")
-	unaccented := strings.Map(func(r rune) rune {
-		if unicode.Is(unicode.Mn, r) {
-			return -1
+	// What goes is what Python's unicodedata.combining() says is a combining
+	// character: a canonical combining class other than zero. It is not the
+	// category Mn: a variation selector is Mn with class zero, and stays.
+	var unaccented strings.Builder
+	decomposed := norm.NFKD.String(bare)
+	for i := 0; i < len(decomposed); {
+		properties := norm.NFKD.PropertiesString(decomposed[i:])
+		size := properties.Size()
+		if properties.CCC() == 0 {
+			unaccented.WriteString(decomposed[i : i+size])
 		}
-		return r
-	}, norm.NFKD.String(bare))
-	return cases.Fold().String(unaccented)
+		i += size
+	}
+	return cases.Fold().String(unaccented.String())
 }

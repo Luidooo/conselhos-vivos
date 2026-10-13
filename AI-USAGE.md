@@ -295,6 +295,24 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:** teste novo (`TestSaveLeavesABlankEmentaNull`) visto falhando antes da correção e passando depois; `make test-db-go` com os 9 testes do pacote verdes; `make vet-go` e `make test-go` limpos.
 - **Quem revisou:** pendente — o Luis (autor do PR) e o Iago, no PR.
 
+### 2026-10-11 — Diários de bordo das semanas 8, 9 e 10 (#26)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `docs/diario/2026-09-29.md`, `docs/diario/2026-10-06.md`, `docs/diario/2026-10-13.md`, `site/.vitepress/config.mts` (menu "Processo")
+- **O que foi pedido:** escrever os diários que faltavam para o checklist da E2, no formato dos anteriores (medido, surpreendeu, decidido), a partir do histórico.
+- **O que foi aproveitado:** os três textos, ainda sem revisão da squad. **Decidido pela IA**, a revisar: um arquivo por semana, com a data de referência da issue no nome; o cabeçalho traz "Quem trabalhou", tirado dos autores de PRs, revisões e issues, em vez de "Presentes", porque não há ata das reuniões; cada diário ganhou uma seção "O que ficou em aberto"; e o da semana 10 foi escrito em 11/10, antes de a semana fechar, e diz isso no cabeçalho.
+- **Como foi verificado:** os números das tabelas foram conferidos na API do GitHub (arquivos, linhas e commits de cada PR; datas de criação, merge e fechamento; responsáveis das issues), no texto dos PRs #17, #22, #23 e #35 e nas entradas deste arquivo. A contagem de testes em Go (87, dos quais 11 só com banco) foi obtida rodando-os na branch do PR #35. `npm run build` do site sem link quebrado, com os três diários no menu. **Não** foi verificado: quem esteve em cada reunião, nem nada do que não deixou rastro em PR, issue ou neste arquivo — conversas da squad fora do GitHub não entraram.
+- **Quem revisou:** pendente — cada pessoa citada deveria conferir a parte que é dela.
+
+### 2026-10-11 — CI rodando `make test` em todo PR
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `.github/workflows/test.yml`, `README.md`
+- **O que foi pedido:** o que mais dava para adiantar na E2; a IA apontou que o único CI era o build do site e que nenhum PR rodava os testes, e o Luis pediu para começar por aí.
+- **O que foi aproveitado:** o workflow inteiro. **Decidido pela IA**, a revisar: roda em todo PR, inclusive os só de documentação, porque os testes em Python leem `docs/adr/medicoes`; roda `make test` antes do `make vet-go`, porque é o `make test` que cria o `.env`; e inclui um passo `git diff --exit-code`, que falha se a carga reescrever os relatórios versionados com conteúdo diferente. Não há cache de imagens nem de módulos Go: cada execução baixa tudo, como um clone limpo.
+- **Como foi verificado:** YAML validado por parsing; os três passos (`make test`, `make vet-go`, `git diff --exit-code`) foram rodados nesta ordem na máquina local e passaram, mas **com** `.env`, volume e imagens já existentes. O que o workflow existe para provar — que passa num runner limpo — só é verificado pela primeira execução no próprio PR.
+- **Quem revisou:** pendente.
+
 ### 2026-10-11 — `make ingest` de ponta a ponta e idempotência (#24, #27)
 
 - **Ferramenta:** Claude Code (Claude Opus 5.5)
@@ -303,6 +321,15 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** a implementação inteira. **Decidido pela IA**, a revisar pela squad: (1) em vez do `ON CONFLICT (id_dou, versao) DO NOTHING` sugerido na revisão do #23, a matéria é comparada com a **última** versão dela em tudo que é gravado (órgão, data, ementa e conteúdo) — igual, nada é gravado; diferente, entra a versão seguinte. Isso já entrega a #27 no mesmo código. (2) De duas entradas com o mesmo `id` no mesmo ZIP, **só a primeira é gravada** e a outra é contada como `repetida`: gravar as duas criava duas versões novas a cada execução. (3) O `make ingest` encadeia `fetch` e `persist`, sem passar pelo `make extract`, porque o `persist` já lê o ZIP com o mesmo pacote; e, se o `fetch` passa sem deixar ZIP, o dia é tratado como sem edição. (4) Um ZIP por execução e uma transação por ZIP. (5) O teste de "rodar duas vezes" é em Go, em transação desfeita, e não em shell como o `tests/db/test_carga.sh`, para não deixar no banco a matéria construída. Da revisão do #23 também entrou o conjunto de nomes já enfileirados, para não ir ao banco uma vez por matéria de órgão desconhecido.
 - **Como foi verificado:** `make test` inteiro e `make vet-go`. Os testes gravam a mesma edição duas vezes e comparam `ato` e `orgao_alias` linha a linha, com `id` e `criado_em`; republicam a edição com o texto alterado e conferem a versão 2 ao lado da 1 intacta; e gravam um ZIP com o mesmo `id` em duas entradas de conteúdo diferente. Este último foi visto **falhando** com a deduplicação desligada (1 versão nova na primeira execução, 2 na segunda) e passando com ela. **Não** foi exercitado: o `make ingest` contra o INLABS nem o `persist` com commit de verdade sobre um ZIP real, por falta de credencial nesta máquina — o critério "três dias de DO1, duas vezes" continua aberto. Também não foi medido se um `id` se repete entre o DO1 e o DO1E do mesmo dia com conteúdo diferente; nesse caso a segunda execução ainda criaria versões.
 - **Quem revisou:** pendente.
+
+### 2026-10-11 — Revisão do PR #35 e ajustes no `make ingest` (#24, #27)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `src/ingestor/internal/oltp/oltp.go`, `src/ingestor/internal/oltp/oltp_test.go`, `src/ingestor/cmd/persist/main.go`, `Makefile` (alvos `persist` e `ingest`), `README.md`
+- **O que foi pedido:** revisar o PR #35 e aplicar na própria branch os seis achados, porque o autor pediu ajuda para destravar a E2.
+- **O que foi aproveitado:** os seis. (1) O `Save` passou a comparar a matéria com **todas** as versões, e não só com a última: o mesmo `id` vindo com dois textos (DO1 e DO1E, ou dois dias da janela de reprocessamento) gerava duas versões a cada execução. (2) O órgão saiu da comparação: ele vem da identidade (ADR 0004), e resolver um nome não é republicação. (3) `persist` depende do `.env`. (4) O código de saída `1` do `persist` com entrada ruim ficou documentado como "a edição foi gravada mesmo assim". (5) O `make ingest` grava o que o `fetch` baixou mesmo quando uma seção falha, e sai com erro no fim; sem falha e sem ZIP, o dia continua sendo "sem edição". (6) O README trocou "sem rede" por "sem acessar o INLABS", porque a primeira execução baixa os módulos Go.
+- **Como foi verificado:** dois testes novos (`TestSaveDoesNotSwapBetweenTwoKnownVersions` e `TestSaveDoesNotVersionAChangeOfOrgan`) vistos falhando antes da correção (4 versões no lugar de 2; versão nova na troca de órgão) e passando depois; `make test-db-go`, `make test-go` e `make vet-go` verdes. O `make ingest` foi simulado nos dois caminhos com data futura, que o `fetch` recusa: sem ZIP, saiu com erro sem dizer "sem edição"; com um ZIP só com uma imagem no bronze, o `persist` rodou e o make saiu com erro no fim. Nada foi gravado no banco. **Não** foi rodado contra o INLABS, que estava em manutenção.
+- **Quem revisou:** pendente — o Luis, no PR.
 
 ### 2026-10-11 — Registro do dia no bronze: sem edição, falhou, não buscado (#28)
 
@@ -313,6 +340,52 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:** `make test` inteiro e `make vet-go`. Um teste roda o `FetchDay` contra um servidor de teste e um diretório de verdade nos três casos: seção que falha fica com `.falhou`, seção que não existe fica com `.sem-edicao`, dia não pedido não deixa nada; na execução seguinte a seção que falhava chega, e o `.falhou` dá lugar ao ZIP. O `make persist` e o `make extract` foram rodados à mão nos três estados (sai com 0 e avisa no dia sem edição; erro com mensagem própria no dia que falhou e no dia não buscado). Uma primeira versão da condição no `Makefile` saía com erro sem dizer o motivo no dia não buscado; foi reescrita antes de rodar. **Não** foi exercitado contra o INLABS: o `404` como "sem edição" continua sendo a classificação sem evidência que o PR #17 já apontava, e é dela que o marcador `.sem-edicao` depende.
 - **Quem revisou:** pendente.
 
+
+### 2026-10-11 — Revisão do PR #37 e ajustes no registro do dia (#28)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `Makefile` (`TEM_EDICAO`, `extract`, `persist`, `ingest`), `src/ingestor/internal/store/store.go`, `README.md`; merge da branch do #35 nesta
+- **O que foi pedido:** revisar o PR #37 e aplicar na própria branch os achados.
+- **O que foi aproveitado:** (1) A branch do #35 atualizada entrou nesta, e o conflito no `make ingest` foi resolvido mantendo a correção do #35: o que foi baixado é gravado mesmo com uma seção falha. A decisão de "sem edição", "falhou" e "não buscado" ficou com o `TEM_EDICAO`, dentro do `persist`. (2) O `TEM_EDICAO` passou a olhar os marcadores do DO1 **e** do DO1E: a falha de qualquer seção é avisada e vira erro, inclusive quando a outra seção foi baixada ou não teve edição. (4) O `store` apaga o marcador antigo antes de gravar o novo: uma queda no meio deixa nenhum marcador, nunca dois que se contradizem. (5) O README ganhou o exemplo que faltava depois de "Para vários dias:". **Não aplicado:** (3) conferir o que o INLABS devolve em manutenção e para uma data sem edição, porque o INLABS estava em manutenção e não havia credencial; no lugar, o README avisa que o `.sem-edicao` vem de um `404` ainda não conferido.
+- **Como foi verificado:** `make vet-go`, `make test-go` (8 pacotes) e `make test-db-go` verdes. O `make persist` foi rodado com marcadores e ZIPs de teste em datas fictícias, em quatro casos: as duas seções sem edição (sai com 0), DO1 sem edição e DO1E falho (erro), DO1 baixado e DO1E falho (grava o DO1 e sai com erro) e dia não buscado (erro). Os arquivos de teste foram apagados, e o ZIP de teste só tinha uma imagem, então nada foi gravado no banco.
+- **Quem revisou:** pendente — o Luis, no PR.
+
+### 2026-10-12 — Ingestão mensal pelos dados abertos da Imprensa Nacional (#42)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `src/ingestor/internal/dadosabertos/` (pacote e testes), `src/ingestor/cmd/fetch-mensal/main.go`, `src/ingestor/internal/store/store.go` (`Has`) e teste, `src/ingestor/internal/config/config.go`, `src/ingestor/cmd/persist/main_test.go`, `docker-compose.yml` (serviço `fetch-mensal`), `Makefile` (`fetch-mensal`, `persist-mensal`, `ingest-mensal`), `README.md`
+- **O que foi pedido:** uma fonte de ingestão automática para a E2 que não dependa do login do INLABS, que recusa clientes que não são navegador (502 no `logar.php`, inclusive com o script oficial e com a credencial correta). A IA investigou a alternativa, criou a issue #42 a pedido e implementou.
+- **O que foi aproveitado:** a investigação e a implementação inteira, ainda sem revisão da squad. **Achados da investigação:** a Imprensa Nacional publica em dados abertos (CC0, sem login) um ZIP por mês e por seção; a API do dados.gov.br exige chave (401), mas a página `in.gov.br/acesso-a-informacao/dados-abertos/base-de-dados?ano=&mes=` lista os links de cada mês; o site responde 403 a pedido sem `Accept` e 200 com `Accept: */*`, mantendo o nosso User-Agent — não é imitação de navegador. **Decidido pela IA**, a revisar: só a Seção 1; o ZIP fica com o nome publicado (`S01MMAAAA.zip`) em `data/bronze/dados-abertos/`; mês já em disco não é pedido de novo (o arquivo de um mês fechado não muda); só aceita link para o próprio host da página; sem marcador de falha no bronze, porque o mês não tem o caso "sem edição" e uma falha não deixa nada sob o nome do ZIP.
+- **Como foi verificado:** com a autorização da Luiza, a amostra `S01082026.zip` (52,6 MB) foi lida pelo `extract` atual sem nenhuma mudança: 8.590 matérias, 0 falhas, 120 imagens ignoradas, DO1 e DO1E, 24 dias de publicação, nenhum `id` repetido. Sete testes novos com `httptest` (link encontrado, mês em disco sem requisição, mês não publicado, download com erro, página no lugar do ZIP, link para outro host, formato do mês) e um no `store`; `make test-go` e `make vet-go` verdes. O `make fetch-mensal` foi rodado de verdade: `MES=2026-08` baixou o ZIP idêntico à amostra em ~9 s, a segunda execução não fez requisição, `MES=2026-09` saiu com "mês ainda não publicado" sem gravar nada, e `MES=2026-9` foi recusado. Num banco limpo (`make reset`), o `make ingest-mensal MES=2026-08` gravou 96 atos de conselho e pôs 8.494 matérias de órgão desconhecido na fila, com 0 falhas; a segunda gravação deu `gravadas=0 inalteradas=96`, e uma foto de `ato`, `orgao_alias` e `classificacao` (contagem e md5 das linhas: 96, 751 e 215) saiu idêntica antes e depois. O `make test` inteiro passou com o banco cheio de agosto, depois de uma correção: o `TestPersistSavesTheEdition` esperava que o órgão desconhecido do teste (uma coordenação da Polícia Federal) entrasse na fila, mas agosto já o tinha posto lá; o teste passou a esperar +1 ou +2 linhas conforme o órgão já esteja na fila.
+- **Quem revisou:** pendente.
+
+### 2026-10-12 — Diário da semana 10 completado e conflito do PR #36 (#26)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `docs/diario/2026-10-13.md`, `AI-USAGE.md` (conflito com o `main`)
+- **O que foi pedido:** fechar o PR #36: resolver o conflito no `AI-USAGE.md` que o Iago apontou e acrescentar ao diário da semana 10, escrito em 11/10, o que aconteceu até 12/10.
+- **O que foi aproveitado:** o conflito foi resolvido mantendo as entradas dos dois lados, em ordem de data. No diário entraram os PRs #35, #38, #41 e #43 com as datas de merge, o login automático do INLABS recusado, a troca da fonte automática para os dados abertos, os números de agosto e a prova de idempotência; o que estava "em revisão" passou para o que foi mergeado (a comparação com todas as versões, sem o órgão); e da lista "em aberto" saíram o registro do dia (decidido no #41) e o `id` repetido entre DO1 e DO1E (0 em agosto). O texto da semana 8 e da semana 9 não foi mexido.
+- **Como foi verificado:** datas, tamanhos e estados dos PRs e issues tirados da API do GitHub em 12/10; os números de agosto são os das execuções registradas no PR #43; o histórico desde 2002 foi conferido na página da base de dados (janeiro de 2002, 2003, 2004 e 2020 listam os três ZIPs), sem baixar os arquivos; build do site sem link quebrado.
+- **Quem revisou:** pendente — a Luiza, antes do push.
+
+### 2026-10-11 — Pendências da revisão do PR #23: chave Go × Python e nomes à espera de decisão
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `src/ingestor/internal/oltp/` (`key.go`, `oltp.go`, testes, `testdata/chaves.tsv`), `tests/conselhos/test_conselhos.py`, `README.md`
+- **O que foi pedido:** resolver os pontos que a revisão do PR #23 deixou "para registrar" e que não viraram issue.
+- **O que foi aproveitado:** duas mudanças. (1) **Paridade da chave.** Um arquivo com 169 pares de nome e chave, gerado pela `chave()` do Python: os 153 nomes de `orgao_nome` e dos aliases da planilha que estão no banco, mais 16 feitos para separar as duas linguagens. O teste em Go e um teste novo em Python leem o mesmo arquivo. Nos 153 nomes reais as duas chaves já batiam; divergiam em 2 dos 16 construídos, exatamente a diferença que a revisão apontava: o Go removia a categoria `Mn` e o Python remove classe de combinação diferente de zero. O Go passou a usar a classe de combinação. (2) **Nome já à espera de decisão.** O `Writer` passa a ler também os aliases sem órgão, de qualquer fonte, e não enfileira de novo um nome cuja chave já está lá. **Decidido pela IA**, a revisar: nesse caso a matéria continua fora de `ato` e **nenhuma** linha nova é gravada, em vez de uma linha `DOU` copiando o status da planilha; e a comparação é pela chave, não pelo nome, então duas grafias do DOU com a mesma chave passam a dar uma linha só. O terceiro ponto da revisão, o ADR 0001 dizer que o DOU não entra no OLTP, é da #32 e não foi tocado.
+- **Como foi verificado:** `make test` inteiro e `make vet-go`. O teste de paridade em Go foi visto **falhando** nos dois casos construídos antes da correção e passando depois; o teste do nome à espera foi visto falhando com a leitura dos pendentes desligada (2 linhas em vez de 1). **Não** foi verificado em dado real: não se sabe se algum dos 5 nomes pendentes da planilha aparece de fato no DOU, e os dois caracteres em que as chaves divergiam não ocorrem em nenhum nome do banco — a correção é de consistência, sem efeito nos dados de hoje.
+- **Quem revisou:** pendente.
+
+### 2026-10-12 — PR #40 trazido para o `main` (revisão do #23)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** merge do `main` na branch `fix/pendencias-revisao-23`; `AI-USAGE.md` (conflito)
+- **O que foi pedido:** destravar o PR #40, que apontava para a branch do #35, já mergeada, e tinha conflito em sete arquivos.
+- **O que foi aproveitado:** os conflitos vinham de o #40 estar empilhado sobre a versão do #35 anterior à revisão, que entrou no `main` modificada pelo squash. Em vez de resolver arquivo por arquivo, o que arriscava trazer de volta código já revisado, a árvore partiu do `main` e recebeu só o commit próprio do #40 (`50eb7d4`); o resultado entrou como merge, sem reescrever a branch. A diferença contra o `main` ficou nos mesmos 8 arquivos do PR. Só o `AI-USAGE.md` conflitou, e as entradas dos dois lados ficaram. O código do #40 não foi alterado.
+- **Como foi verificado:** `make vet-go` e `make test` inteiro verdes, com o banco cheio de agosto de 2026. O `make persist-mensal MES=2026-08` rodado com o código do #40 deu `gravadas=0 inalteradas=96`, e `orgao_alias` saiu idêntico (751 linhas, mesmo md5): a mudança não altera o que já estava no banco.
+- **Quem revisou:** pendente — a Luiza, no PR.
+
 ### 2026-10-11 — Janela de reprocessamento no `make ingest` (#31, metade do OLTP)
 
 - **Ferramenta:** Claude Code (Claude Opus 5.5)
@@ -322,3 +395,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:** `make test` inteiro e `make vet-go`. O teste novo em shell confere os dias da janela (padrão, um dia só, virada de mês, 29 de fevereiro) e a recusa de `JANELA=0`, de `JANELA` que não é número e de `DATA` malformada. O teste novo em Go grava uma edição, grava de novo com uma matéria a mais e confere que só ela entra, com a `data_publicacao` do dia da edição. O laço do `make ingest` foi rodado com o `make` de dentro trocado por um substituto que falha num dos dias: os três dias foram tentados em ordem, o que falhou foi nomeado e o `make` saiu com erro. **Não** foi exercitado: o `make ingest` com janela contra o INLABS, por falta de credencial — nem o tempo nem o tamanho de sete dias de download foram medidos. A parte da issue que pede o ato atrasado na partição certa do Delta depende da #25 e não foi feita.
 - **Quem revisou:** pendente.
 
+
+### 2026-10-12 — PR #39 trazido para o `main` (janela de reprocessamento, #31)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** merge do `main` na branch `feature/issue-31-janela`; `Makefile` (`ingest`, `ingest-dia`), `README.md` (seção "Dado atrasado"), `AI-USAGE.md`
+- **O que foi pedido:** destravar o PR #39, que apontava para a branch do #37, já mergeada, e conflitava com o `ingest-mensal` do #43.
+- **O que foi aproveitado:** como no #40, a árvore partiu do `main` e recebeu só o commit próprio do #39 (`df574ef`), como merge, sem reescrever a branch. Três conflitos foram resolvidos à mão. (1) No `Makefile`, o `ingest` com janela e o `ingest-dia` do #39 ficaram, mas o corpo do `ingest-dia` é o do `main`: o #39 foi escrito antes da revisão do #35 e parava o dia no primeiro passo que falhasse, o que desfaria a correção de gravar o que foi baixado quando uma seção falha. (2) No README, o texto do #39 foi ajustado para esse comportamento e ganhou um item: a janela é de dias do INLABS, cujo login automático é recusado (#42), e na fonte mensal não há janela. (3) No `AI-USAGE.md`, as entradas dos dois lados ficaram. O valor de N continua o provisório do #39 (7), à espera da squad.
+- **Como foi verificado:** `make vet-go` e `make test` inteiro verdes, com o banco cheio de agosto de 2026, incluindo os 7 casos do `tests/ingest/test_janela.sh` e o `TestPersistTakesAMateriaThatArrivedLate`; `make -n ingest` confere que cada dia da janela chama o `ingest-dia`. **Não** foi exercitado: o `make ingest` com janela contra o INLABS, cujo login automático é recusado.
+- **Quem revisou:** pendente — a Luiza, no PR.

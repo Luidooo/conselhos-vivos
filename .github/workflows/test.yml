@@ -1,0 +1,34 @@
+# Testes: o make test de um clone limpo, em todo PR e a cada push no main.
+# O runner é a máquina limpa da entrega: sem .env, sem volume do banco e sem
+# imagem em cache. Nada aqui usa credencial do INLABS.
+name: Testes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # Cria o .env a partir do .env.example, sobe o banco, migra e roda tudo.
+      - run: make test
+      - run: make vet-go
+      # A carga reescreve os relatórios versionados: se saírem diferentes dos
+      # que estão no repositório, alguém esqueceu de commitá-los.
+      - name: Nada versionado mudou
+        run: git diff --exit-code
+      - name: Logs do banco
+        if: failure()
+        run: docker compose logs db

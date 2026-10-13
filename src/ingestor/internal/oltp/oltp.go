@@ -57,13 +57,15 @@ type Writer struct {
 	// is in ambiguous instead: it never resolves by itself.
 	organs    map[string]int32
 	ambiguous map[string]bool
-	// queued has the names this Writer already sent to orgao_alias. Most of an
-	// edition is of unknown organs, and the same few hundred times over.
-	queued map[string]bool
+	// waiting has the keys already in orgao_alias with no organ, from any
+	// source: the ones found there when the Writer was opened and the ones it
+	// queued since. A name waiting for a decision is not queued a second time.
+	waiting map[string]bool
 }
 
 // Open reads the identity of the organs: every name an organ has or had
-// (orgao_nome) and every spelling resolved to one (orgao_alias).
+// (orgao_nome), every spelling resolved to one and every spelling still
+// waiting for a decision (orgao_alias).
 func Open(ctx context.Context, db DB) (*Writer, error) {
 	rows, err := db.Query(ctx, `
 		SELECT orgao_id, nome FROM orgao_nome
@@ -74,7 +76,7 @@ func Open(ctx context.Context, db DB) (*Writer, error) {
 	}
 	defer rows.Close()
 
-	writer := &Writer{db: db, organs: map[string]int32{}, ambiguous: map[string]bool{}, queued: map[string]bool{}}
+	writer := &Writer{db: db, organs: map[string]int32{}, ambiguous: map[string]bool{}, waiting: map[string]bool{}}
 	for rows.Next() {
 		var (
 			id   int32
@@ -95,6 +97,19 @@ func Open(ctx context.Context, db DB) (*Writer, error) {
 	for key := range writer.ambiguous {
 		delete(writer.organs, key)
 	}
+	rows.Close()
+
+	pending, err := db.Query(ctx, `SELECT nome FROM orgao_alias WHERE status <> 'RESOLVIDO'`)
+	if err != nil {
+		return nil, fmt.Errorf("reading the names waiting for a decision: %w", err)
+	}
+	names, err := pgx.CollectRows(pending, pgx.RowTo[string])
+	if err != nil {
+		return nil, fmt.Errorf("reading the names waiting for a decision: %w", err)
+	}
+	for _, name := range names {
+		writer.waiting[Key(name)] = true
+	}
 	return writer, nil
 }
 
@@ -103,9 +118,13 @@ func Open(ctx context.Context, db DB) (*Writer, error) {
 // an <Ementa> with only blanks is stored as NULL, as an empty one.
 // With an unknown one it is left out and its organ is queued.
 //
-// It can be run again. The matéria is compared with its latest version, in
-// everything Save writes: organ, date, ementa and content. Equal, nothing
-// happens; different, it goes in as the next version.
+// It can be run again. The matéria is compared with every version already
+// written, in what the DOU published: date, ementa and content. Equal to any of
+// them, nothing happens; different from all, it goes in as the next version.
+// Comparing with the latest only would swap between two zips that bring the
+// same id with two texts (DO1 and DO1E, or two days of the reprocessing
+// window), adding two versions on every run. The organ is not compared: it is
+// the identity decision (ADR 0004), and resolving a name is not a republication.
 func (w *Writer) Save(ctx context.Context, a article.Article) (Outcome, error) {
 	if strings.TrimSpace(a.HTML) == "" {
 		return 0, fmt.Errorf("%s: %w", a.Entry, ErrNoContent)
@@ -126,18 +145,16 @@ func (w *Writer) Save(ctx context.Context, a article.Article) (Outcome, error) {
 	// second, which fails and is run again.
 	var version int
 	err := w.db.QueryRow(ctx, `
-		WITH latest AS (
+		WITH versions AS (
 			SELECT versao,
-			       orgao_id = $2 AND data_publicacao = $3
-			         AND ementa IS NOT DISTINCT FROM NULLIF($4, '') AND conteudo = $5 AS same
+			       data_publicacao = $3 AND ementa IS NOT DISTINCT FROM NULLIF($4, '')
+			         AND conteudo = $5 AS same
 			  FROM ato
 			 WHERE origem = 'DOU' AND id_dou = $1
-			 ORDER BY versao DESC
-			 LIMIT 1
 		)
 		INSERT INTO ato (origem, id_dou, versao, orgao_id, data_publicacao, ementa, conteudo)
-		SELECT 'DOU', $1, COALESCE((SELECT versao FROM latest), 0) + 1, $2, $3, NULLIF($4, ''), $5
-		 WHERE NOT COALESCE((SELECT same FROM latest), FALSE)
+		SELECT 'DOU', $1, COALESCE((SELECT max(versao) FROM versions), 0) + 1, $2, $3, NULLIF($4, ''), $5
+		 WHERE NOT EXISTS (SELECT 1 FROM versions WHERE same)
 		RETURNING versao`,
 		a.ID, id, a.PubDate.In(time.UTC), strings.TrimSpace(a.Ementa), a.HTML).Scan(&version)
 	switch {
@@ -151,11 +168,13 @@ func (w *Writer) Save(ctx context.Context, a article.Article) (Outcome, error) {
 	return Saved, nil
 }
 
-// queue records the organ's name in orgao_alias, once per name, with no organ
-// and the reason. A name already there is left as it is: someone may have
-// decided on it since.
+// queue records the organ's name in orgao_alias, with no organ and the reason.
+// It does so once per key: a name already waiting for a decision, whichever
+// source put it there, keeps the status and the reason it was given. The
+// spreadsheet's "ambiguous, ask the researcher" is not to be answered by a
+// second row saying "not recognised".
 func (w *Writer) queue(ctx context.Context, a article.Article, organ, key string) error {
-	if w.queued[organ] {
+	if w.waiting[key] {
 		return nil
 	}
 
@@ -173,6 +192,6 @@ func (w *Writer) queue(ctx context.Context, a article.Article, organ, key string
 	if err != nil {
 		return fmt.Errorf("queueing the organ %q of %s: %w", organ, a.Entry, err)
 	}
-	w.queued[organ] = true
+	w.waiting[key] = true
 	return nil
 }

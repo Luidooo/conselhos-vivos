@@ -30,6 +30,14 @@ type Fetch struct {
 	OutputDir string `env:"INLABS_OUTPUT_DIR" envDefault:"."`
 }
 
+// FetchMensal is the configuration of the fetch-mensal command. No
+// credentials: the open data is public.
+type FetchMensal struct {
+	// OutputDir is where the monthly zips are written. It defaults to the
+	// directory the command was run from.
+	OutputDir string `env:"DADOS_ABERTOS_OUTPUT_DIR" envDefault:"."`
+}
+
 // Load fills dest — a pointer to a struct with env tags — from the
 // environment, reading envFile first when one is given.
 //
