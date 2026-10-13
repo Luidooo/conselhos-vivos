@@ -404,3 +404,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** como no #40, a árvore partiu do `main` e recebeu só o commit próprio do #39 (`df574ef`), como merge, sem reescrever a branch. Três conflitos foram resolvidos à mão. (1) No `Makefile`, o `ingest` com janela e o `ingest-dia` do #39 ficaram, mas o corpo do `ingest-dia` é o do `main`: o #39 foi escrito antes da revisão do #35 e parava o dia no primeiro passo que falhasse, o que desfaria a correção de gravar o que foi baixado quando uma seção falha. (2) No README, o texto do #39 foi ajustado para esse comportamento e ganhou um item: a janela é de dias do INLABS, cujo login automático é recusado (#42), e na fonte mensal não há janela. (3) No `AI-USAGE.md`, as entradas dos dois lados ficaram. O valor de N continua o provisório do #39 (7), à espera da squad.
 - **Como foi verificado:** `make vet-go` e `make test` inteiro verdes, com o banco cheio de agosto de 2026, incluindo os 7 casos do `tests/ingest/test_janela.sh` e o `TestPersistTakesAMateriaThatArrivedLate`; `make -n ingest` confere que cada dia da janela chama o `ingest-dia`. **Não** foi exercitado: o `make ingest` com janela contra o INLABS, cujo login automático é recusado.
 - **Quem revisou:** pendente — a Luiza, no PR.
+
+### 2026-10-13 — Camada analítica em Delta Lake (#25, ADR 0005)
+
+- **Ferramenta:** Gemini for Developers
+- **Onde:** `docs/adr/0005-...md`, `docs/adr/README.md`, `src/lake/`, `docker-compose.yml`, `Makefile`, `tests/lake/test_lake.sh`, `README.md`
+- **O que foi pedido:** estruturar a ADR da camada analítica (Delta Lake, particionamento anual e idempotência por merge) e implementar o módulo Python `src/lake` com o serviço no compose e alvo no Makefile.
+- **O que foi aproveitado:** a estrutura da ADR 0005, a query de consolidação com os nomes históricos e tipologia vigente, a lógica de merge no `sync.py` com `deltalake`, o serviço `lake` e o alvo `make lake`.
+- **Como foi verificado:** conferido que a extração preserva os 215 atos da planilha; executado `make lake` duas vezes comprovando idempotência (0 inserções na segunda); teste analítico com DuckDB rodando contra `data/silver/atos/`; suíte `make test` completa passando.
+- **Quem revisou:** Gabriel Moura e pendente (quem revisar o PR)
