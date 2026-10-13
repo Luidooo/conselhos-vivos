@@ -45,6 +45,7 @@ export default withMermaid(defineConfig({
   rewrites: {
     'site/index.md': 'index.md',
     'site/entrega-e1.md': 'entrega-e1.md',
+    'site/entrega-e2.md': 'entrega-e2.md',
     'site/jornada-do-dado.md': 'jornada-do-dado.md',
     'README.md': 'visao-geral.md',
     'docs/adr/README.md': 'docs/adr/index.md',
@@ -89,6 +90,7 @@ export default withMermaid(defineConfig({
   themeConfig: {
     siteTitle: 'Conselhos Vivos',
     nav: [
+      { text: 'Entrega E2', link: '/entrega-e2' },
       { text: 'Entrega E1', link: '/entrega-e1' },
       { text: 'Jornada do dado', link: '/jornada-do-dado' },
       { text: 'Visão geral', link: '/visao-geral' },
@@ -100,6 +102,7 @@ export default withMermaid(defineConfig({
       {
         text: 'Comece aqui',
         items: [
+          { text: 'Entrega E2', link: '/entrega-e2' },
           { text: 'Entrega E1', link: '/entrega-e1' },
           { text: 'Jornada do dado', link: '/jornada-do-dado' },
           { text: 'Visão geral e como rodar', link: '/visao-geral' },
@@ -113,6 +116,8 @@ export default withMermaid(defineConfig({
           { text: '0002 · PostgreSQL 16', link: '/docs/adr/0002-manter-postgresql-como-motor-do-oltp' },
           { text: '0003 · Planilha como rótulo', link: '/docs/adr/0003-carregar-a-planilha-como-rotulo-da-curadoria' },
           { text: '0004 · Identidade dos conselhos', link: '/docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada' },
+          { text: '0006 · Camada analítica em Delta', link: '/docs/adr/0006-armazenar-a-camada-analitica-em-tabelas-delta' },
+          { text: '0007 · CDC por slot lógico', link: '/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica' },
         ],
       },
       {

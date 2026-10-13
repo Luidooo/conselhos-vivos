@@ -14,6 +14,7 @@ Levantadas na fase de entendimento do domínio, ainda sem ADR escrito:
 | 3 | Como classificar a tipologia automaticamente — regras, classificador clássico ou LLM local | É o valor científico do projeto; temos 215 exemplos rotulados para medir |
 | 4 | Onde mora a camada analítica — Postgres+Parquet/DuckDB ou lakehouse completo | Critério de desempate é operacional: o que a pesquisadora consegue subir sozinha |
 | 5 | Formato da camada de consumo | Define o que entregamos como produto final |
+| 6 | Quais bases enriquecem o modelo analítico — cadastro de órgãos (SIORG), marcos legais e de governo, Brasil Participativo ([proposta](../../site/jornada-do-dado.md#enriquecer-com-outras-bases-proposta-para-a-e3)) | Sem elas, a E3 não tem as dimensões nem a dimensão de variação lenta que o checklist pede |
 
 ## Índice
 
