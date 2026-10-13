@@ -227,6 +227,34 @@ func TestSaveQueuesAnUnknownOrgan(t *testing.T) {
 	assert.Contains(t, reason, "Ministério de Teste/"+organ)
 }
 
+// A name the spreadsheet left waiting for a decision comes up in the DOU: it
+// is still left out of ato, and the decision that is waiting stays the only
+// one, with its own status and reason.
+func TestSaveLeavesANameAlreadyWaitingAlone(t *testing.T) {
+	tx := begin(t)
+	ctx := context.Background()
+	const waiting = "Conselho de Teste à Espera de Decisão"
+	_, err := tx.Exec(ctx, `
+		INSERT INTO orgao_alias (nome, chave, fonte, status, motivo)
+		VALUES ($1, $2, 'PLANILHA', 'AMBIGUO', 'dois conselhos possíveis: perguntar à pesquisadora')`,
+		waiting, Key(waiting))
+	require.NoError(t, err)
+
+	writer, err := Open(ctx, tx)
+	require.NoError(t, err)
+	atos := count(t, tx, `SELECT count(*) FROM ato`)
+
+	outcome, err := writer.Save(ctx, handmade("900000030", "Ministério de Teste", "CONSELHO DE TESTE À ESPERA DE DECISÃO (CTED)"))
+	require.NoError(t, err)
+	assert.Equal(t, UnknownOrgan, outcome)
+
+	assert.Equal(t, atos, count(t, tx, `SELECT count(*) FROM ato`), "nothing goes into ato")
+	assert.Equal(t, 1, count(t, tx, `SELECT count(*) FROM orgao_alias WHERE chave = $1`, Key(waiting)),
+		"no second row beside the spreadsheet's")
+	assert.Equal(t, 1, count(t, tx, `
+		SELECT count(*) FROM orgao_alias WHERE chave = $1 AND fonte = 'PLANILHA' AND status = 'AMBIGUO'`, Key(waiting)))
+}
+
 func TestSaveDoesNotChooseBetweenTwoOrgans(t *testing.T) {
 	tx := begin(t)
 	ctx := context.Background()
