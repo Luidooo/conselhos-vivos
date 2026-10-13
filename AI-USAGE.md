@@ -405,11 +405,11 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:** `make vet-go` e `make test` inteiro verdes, com o banco cheio de agosto de 2026, incluindo os 7 casos do `tests/ingest/test_janela.sh` e o `TestPersistTakesAMateriaThatArrivedLate`; `make -n ingest` confere que cada dia da janela chama o `ingest-dia`. **Não** foi exercitado: o `make ingest` com janela contra o INLABS, cujo login automático é recusado.
 - **Quem revisou:** pendente — a Luiza, no PR.
 
-### 2026-10-13 — Camada analítica em Delta Lake (#25, ADR 0005)
+### 2026-10-13 — Camada analítica em Delta Lake (#25, ADR 0006)
 
 - **Ferramenta:** Gemini for Developers
-- **Onde:** `docs/adr/0005-...md`, `docs/adr/README.md`, `src/lake/`, `docker-compose.yml`, `Makefile`, `tests/lake/test_lake.sh`, `README.md`
+- **Onde:** `docs/adr/0006-...md`, `docs/adr/README.md`, `src/lake/`, `docker-compose.yml`, `Makefile`, `tests/lake/test_lake.sh`, `README.md`
 - **O que foi pedido:** estruturar a ADR da camada analítica (Delta Lake, particionamento anual e idempotência por merge) e implementar o módulo Python `src/lake` com o serviço no compose e alvo no Makefile.
-- **O que foi aproveitado:** a estrutura da ADR 0005, a query de consolidação com os nomes históricos e tipologia vigente, a lógica de merge no `sync.py` com `deltalake`, o serviço `lake` e o alvo `make lake`.
+- **O que foi aproveitado:** a estrutura da ADR 0006, a query de consolidação com os nomes históricos e tipologia vigente, a lógica de merge no `sync.py` com `deltalake`, compressão ZSTD, medições comparativas reais, o serviço `lake` e o alvo `make lake`.
 - **Como foi verificado:** conferido que a extração preserva os 215 atos da planilha; executado `make lake` duas vezes comprovando idempotência (0 inserções na segunda); teste analítico com DuckDB rodando contra `data/silver/atos/`; suíte `make test` completa passando.
 - **Quem revisou:** Gabriel Moura e pendente (quem revisar o PR)
