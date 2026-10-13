@@ -1,0 +1,28 @@
+{
+  "total_atos": 215,
+  "particionamento": {
+    "anual": {
+      "arquivos": 12,
+      "tamanho_kb": 299.3,
+      "tempo_ms": 4.9
+    },
+    "diario": {
+      "arquivos": 112,
+      "tamanho_kb": 1376.7,
+      "tempo_ms": 16.72
+    }
+  },
+  "compressao": {
+    "snappy": {
+      "tamanho_kb": 375.6,
+      "tempo_agregacao_ms": 6.37,
+      "tempo_texto_ms": 7.09
+    },
+    "zstd": {
+      "tamanho_kb": 299.3,
+      "reducao_pct": -20.3,
+      "tempo_agregacao_ms": 5.92,
+      "tempo_texto_ms": 7.08
+    }
+  }
+}

@@ -80,6 +80,7 @@ make docs      # sobe o site de documentação em localhost:5173 (precisa de Nod
 make down      # para, mantém os dados
 make reset     # APAGA o banco, sobe do zero, migra e carrega a planilha
 make pgadmin-reset  # recria o pgAdmin (se mudar POSTGRES_USER ou POSTGRES_DB)
+make lake      # extrai do OLTP e atualiza a tabela Delta Lake em data/silver/atos/
 make           # lista todos os comandos
 ```
 
@@ -252,6 +253,7 @@ docs/diario/    registro semanal do andamento
 docs/carga/     relatórios da carga (gerados pelo make carga, versionados)
 data/           dados locais (não versionados), exceto a planilha em raw/ e referencia/
 data/referencia/ decisões de identidade dos conselhos e recorte do SIORG (versionados)
+data/silver/    camada analítica em Delta Lake (não versionada localmente)
 tests/          testes do pipeline
 site/           site de documentação (VitePress); as páginas são os .md do repositório
 ```

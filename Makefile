@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-db-go vet-go reset pgadmin-reset psql logs
+.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-db-go vet-go reset pgadmin-reset psql logs lake
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -37,7 +37,7 @@ TEM_MES = if [ -z "$(MES)" ]; then echo "diga o mês: MES=AAAA-MM, como MES=2026
 JANELA ?= 7
 # Os dias da janela. A conta de datas roda em Python, num container sem rede,
 # porque o date do Linux e o do macOS não fazem aritmética do mesmo jeito.
-DIAS = docker compose --progress quiet run --rm -T --entrypoint python carga -c \
+DIAS = docker --log-level error compose --progress quiet run --rm -T --entrypoint python carga -c \
 	'import sys, datetime as d; fim = d.date.fromisoformat(sys.argv[1]); n = int(sys.argv[2]); n >= 1 or sys.exit("JANELA tem de ser 1 ou mais"); print(*[fim - d.timedelta(days=i) for i in range(n - 1, -1, -1)])' \
 	$(DATA) $(JANELA)
 
@@ -134,6 +134,7 @@ test: .env test-go ## testes: Go do ingestor, infra, esquema do OLTP, leitura da
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/conselhos
 	bash tests/db/test_carga.sh
 	bash tests/ingest/test_janela.sh
+	bash tests/lake/test_lake.sh
 	$(MAKE) --no-print-directory test-db-go
 
 reset: ## APAGA o banco, sobe do zero, migra e carrega a planilha
@@ -158,3 +159,7 @@ psql: ## abre o psql dentro do container
 
 logs: ## acompanha os logs do banco
 	docker compose logs -f db
+
+lake: .env ## extrai do OLTP e atualiza a tabela Delta Lake em data/silver/atos/
+	mkdir -p data/silver/atos
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T lake
