@@ -76,6 +76,8 @@ flowchart TB
     ind["Índice de vitalidade<br/>quem parou de publicar e<br/>o que cada conselho decide"] --> pub["Painel para a pesquisadora<br/>e para o público"]
   end
 
+  extra[("Outras bases públicas<br/>cadastro de órgãos, marcos legais,<br/>reuniões · a decidir na E3")] -. "enriquecem" .-> ind
+
   subgraph final["Etapa final · perguntar em linguagem natural"]
     rag["<b>Assistente de perguntas (RAG)</b><br/>busca as decisões no banco,<br/>responde e mostra a fonte"]
   end
@@ -88,7 +90,7 @@ flowchart TB
   classDef proximo fill:#ffffff,stroke:#0071e3,stroke-dasharray:4 3,color:#1d1d1f
   class manual manual
   class oltp feito
-  class bronze,conselho,linha,ia,ind,pub,rag proximo
+  class bronze,conselho,linha,ia,ind,pub,rag,extra proximo
 ```
 
 <p class="cv-legenda">Cinza: o trabalho feito hoje à mão. Azul cheio: já pronto. Contorno tracejado: o que vem nas próximas etapas, até o assistente de perguntas.</p>
@@ -136,6 +138,18 @@ O INLABS só tem o DOU em XML a partir de **1º/1/2020**, e **só 4 dos 215 atos
 Com só 6 exemplos de `GEST` e 7 de `IP`, a acurácia geral esconde os erros nas categorias raras. A medição precisa ser **por categoria**.
 
 **Que IA.** Ainda é uma decisão em aberto: regras, classificador clássico ou modelo de linguagem rodando localmente. Ela vai virar um ADR, com as três alternativas medidas sobre os 215 atos ([decisões em aberto](/docs/adr/#decisoes-em-aberto)).
+
+## Enriquecer com outras bases (proposta para a E3)
+
+A tipologia enriquece cada ato. Para o indicador de vitalidade, o modelo analítico da E3 também precisa de **dimensões**: quem é o conselho, a que ministério responde, se ainda existe, o que aconteceu em volta dele. Essas informações não estão no DOU. A escolha das bases ainda é uma **decisão em aberto da squad** ([decisões em aberto](/docs/adr/#decisoes-em-aberto)); a proposta, por ordem de retorno:
+
+| Base | O que traz | Por que | Custo e risco |
+|---|---|---|---|
+| **1. Cadastro de órgãos do governo (SIORG)** | Vinculação ministerial, natureza e situação de cada conselho | Já está em uso: o `make siorg` baixa o cadastro, e 68 dos 82 conselhos têm código ([ADR 0004](/docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada)). Dá o **denominador** do silêncio, os conselhos que existem e não publicam, e uma **dimensão de variação lenta**: o conselho que muda de ministério, como o CONAMA em 2023. | Baixo. O casamento de nomes não é completo: 28 das 125 grafias não casam com nenhuma unidade. |
+| **2. Marcos legais e de governo** | Mandatos presidenciais e os decretos que criam ou extinguem colegiados, como o Decreto nº 9.759/2019, que extinguiu colegiados federais em massa | Explica quedas na série: um conselho que para de publicar em 2019 pode ter sido extinto, e não ficado em silêncio. | Baixo: é uma tabela pequena, montada à mão e versionada no repositório. O trabalho é a curadoria de quais decretos entram. |
+| **3. Brasil Participativo** | Composição, agenda e reuniões de cada conselho | Um segundo sinal de vitalidade, independente do DOU: o conselho que se reúne e não publica, ou o contrário. | Alto: ninguém conferiu ainda se há API, nem a cobertura e o histórico. Vale um teste antes de entrar no modelo; o candidato natural é a E4. |
+
+O critério da escolha é o checklist da E3: o modelo precisa de fato e dimensão, com **pelo menos uma dimensão de variação lenta**. A base 1 cobre isso sozinha; a 2 é barata e ajuda a ler a série; a 3 é a de maior valor e a de maior incerteza.
 
 ## Depois das duas etapas
 

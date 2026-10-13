@@ -405,6 +405,33 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:** `make vet-go` e `make test` inteiro verdes, com o banco cheio de agosto de 2026, incluindo os 7 casos do `tests/ingest/test_janela.sh` e o `TestPersistTakesAMateriaThatArrivedLate`; `make -n ingest` confere que cada dia da janela chama o `ingest-dia`. **Não** foi exercitado: o `make ingest` com janela contra o INLABS, cujo login automático é recusado.
 - **Quem revisou:** pendente — a Luiza, no PR.
 
+### 2026-10-13 — Proposta de bases de enriquecimento para a E3
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `site/jornada-do-dado.md` (seção "Enriquecer com outras bases" e um nó no diagrama), `docs/adr/README.md` (decisão em aberto nº 6)
+- **O que foi pedido:** levantar quais bases poderiam enriquecer o modelo analítico da E3 e registrar a proposta na documentação.
+- **O que foi aproveitado:** a proposta de três bases, por ordem de retorno — o cadastro de órgãos (SIORG), uma tabela de marcos legais e de governo e o Brasil Participativo — registrada como **decisão em aberto da squad**, e não como decisão tomada. O que já estava no repositório veio dele: o uso parcial do SIORG (68 dos 82 conselhos com código e 28 das 125 grafias sem casamento, ADR 0004) e a citação do Brasil Participativo no README e no ADR 0001. **Sugestões da IA, sem verificação:** o Decreto nº 9.759/2019 como exemplo de marco, e a avaliação de que o Brasil Participativo é a base de maior risco; ninguém conferiu se ele tem API, nem a cobertura e o histórico.
+- **Como foi verificado:** os requisitos da E3 foram lidos na página da disciplina em 13/10 (fato e dimensão, dimensão de variação lenta); os números do SIORG conferidos no ADR 0004; build do site sem link quebrado.
+- **Quem revisou:** pendente — a Luiza, no PR.
+
+### 2026-10-13 — Página "Entrega E2" no site (#33)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `site/entrega-e2.md` (nova), `site/.vitepress/config.mts` (rota, menu e barra lateral)
+- **O que foi pedido:** uma aba da E2 no site, no formato da página da E1.
+- **O que foi aproveitado:** a página inteira, com os 8 itens do checklist da E2 na ordem da página da disciplina, o bloco "conferir em máquina limpa" e o link da evidência de cada item. Os itens que ainda não estão no `main` aparecem marcados como pendentes, com a issue, em vez de afirmar o que não existe. Atualizada no fim do dia, depois dos merges do #48 (Delta, compressão) e do #49 (CDC): os itens 2, 3 e 6 viraram evidência com os números dos ADRs 0006 e 0007; ficam pendentes a demonstração forçada da semântica (#30), o ADR da ingestão (#32) e a demonstração do dado atrasado no Delta (#31).
+- **Como foi verificado:** os números da ingestão de agosto são os das execuções registradas no PR #43; build do site sem link quebrado; no servidor local, todas as páginas linkadas abriram e as três âncoras da "Visão geral" existem.
+- **Quem revisou:** pendente — a Luiza, no PR.
+
+### 2026-10-13 — Plano de migração do ingestor Go para Python (proposta para a E3)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5 e Fable 5.1; agente de planejamento em segundo plano)
+- **Onde:** `docs/planos/2026-10-13-migracao-ingestor-go-para-python.md`
+- **O que foi pedido:** a Luiza quer o pipeline todo em Python; pediu um plano de migração do módulo Go (`src/ingestor/`) para discutir com a squad depois da E2.
+- **O que foi aproveitado:** o plano inteiro, como **proposta não decidida**: inventário pacote a pacote com o equivalente Python (stdlib + `psycopg`, que o lake já usa), cinco fatias (infra → `fetch-mensal` → `extract` → `persist` → descarte do cliente INLABS com ADR → ADR 0008), prova de equivalência por fatia sobre `S01082026.zip` (fotos de `ato` e `orgao_alias` e prova cruzada: o Python relendo o que o Go gravou tem de dar `inalteradas=96`), ~43 h de esforço e riscos (paridade da chave Unicode, desempenho do `HTMLParser`, cobertura dos 112 testes Go). **Recomendação do agente, a decidir pela squad:** não portar o cliente INLABS, cujo login é recusado a scripts, e sim descontinuá-lo com ADR.
+- **Como foi verificado:** o agente só leu o repositório (sem editar nem rodar nada no banco); os números citados (8.590 matérias, 96 atos, 751 aliases, contagem de testes Go) batem com o `AI-USAGE.md` de 12/10 e com `go test`. Não foi verificado por execução: nenhuma fatia foi implementada.
+- **Quem revisou:** pendente — a Luiza e a squad; o Go é do Iago e do Luis, e a decisão não é só dela.
+
 ### 2026-10-13 — Camada analítica em Delta Lake (#25, ADR 0006)
 
 - **Ferramenta:** Gemini for Developers
