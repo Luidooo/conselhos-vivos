@@ -7,6 +7,7 @@
 data/raw/**
 data/bronze/**
 data/interim/**
+data/silver/**
 !data/**/.gitkeep
 # exceção: a planilha da pesquisadora, pública, é a entrada da carga (#3)
 !data/raw/Cópia_bancos_dados_Carla_Rocha.xlsx
