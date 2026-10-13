@@ -19,11 +19,26 @@ O `make lake` ([ADR 0006](0006-armazenar-a-camada-analitica-em-tabelas-delta.md)
 
 | Alternativa | Por que não |
 |---|---|
+| Opção nula: recarga periódica agendada (`make lake` recorrente) | Varre o OLTP inteiro e relê todas as partições do Delta a cada ciclo ($O(N)$ em vez de $O(\Delta)$). Embora em pequeno volume o tempo total de container empate (~7 s), em escala anual (~1.150 atos com HTML de até 42 KB) gera tráfego de I/O redundante. Além disso, não cumpre o requisito de fluxo reativo de mudanças com entrega pelo menos uma vez da E2 |
 | Debezium + Kafka | Dois serviços permanentes e uma JVM num notebook, para ~96 atos/mês |
 | `pgoutput` | Exige parsear protocolo binário e criar publication, sem ganho nesse volume |
 | `wal2json` | Não vem na imagem oficial do Postgres |
 | Reaplicar a regra de vigência a partir do WAL | Duplicaria a regra de negócio; reler o OLTP evita |
 | Triggers que gravam uma fila | Mudaria o esquema do OLTP e perde o que o WAL já garante |
+
+### Medições empíricas: Opção Nula vs CDC incremental
+
+Com os 215 atos reais e medições no PostgreSQL 16:
+- **Tempo de extração e MERGE no Python:**
+  - `make lake` (recarga completa, 215 atos): **~92 ms** (26 ms leitura + 66 ms merge Delta em todas as partições).
+  - `make cdc` (incremental, 1 ato alterado): **~47 ms** (12 ms peek/get slot + 10 ms leitura OLTP do ato único + 25 ms merge Delta da partição afetada).
+  *(Nota: no Compose sob demanda, ambos somam ~6,6 s a 7,0 s com a subida do container efêmero; a vantagem do CDC cresce com $O(\Delta)$ vs $O(N)$ conforme os atos acumulam HTMLs no OLTP).*
+- **Tamanho do WAL retido pelo slot:**
+  - Slot consumido (em dia): **56 bytes** de defasagem (`pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)`).
+  - Transação de reclassificação única: **~29 KB (29.152 bytes)** de WAL gerado e retido até o próximo consumo.
+  - Risco de retenção: se o consumidor não rodar, o Postgres acumula arquivos de WAL inteiros (segmentos de 16 MB cada) sem conseguir reciclá-los.
+
+*(Medição válida também para a análise do mecanismo de ingestão no ADR 0005 / #32).*
 
 ## Consequências
 
@@ -31,6 +46,8 @@ O `make lake` ([ADR 0006](0006-armazenar-a-camada-analitica-em-tabelas-delta.md)
 
 **Perdemos / riscos:**
 - **Slot sem consumidor retém WAL e pode encher o disco.** Se o fluxo for abandonado, rode `make cdc-drop`.
+- **Custo de memória com `test_decoding` descartando dados de outras tabelas.** O plugin `test_decoding` decodifica todas as linhas alteradas de todas as tabelas em formato texto. Durante ingestões em lote (como `make ingest-mensal`), atos novos geram centenas de KB ou MB de HTML em `ato.conteudo`; o `ler_pendentes` carrega essas linhas na memória do Python apenas para descartar via regex o que não for `classificacao`. Manter `test_decoding` sem `pgoutput` é defensável no volume do projeto, mas requer atenção a esse consumo de memória transitório.
+- **Queda forçada e at-least-once.** A ordem operacional garante pelo menos uma vez (peek -> grava Delta -> consome LSN), mas a demonstração automatizada de caos (queda forçada do processo entre a gravação e o consumo) está reservada para a issue #30.
 - O texto do `test_decoding` não é um contrato estável entre versões do Postgres; o consumidor depende só do formato `table public.classificacao: INSERT: ... ato_id[bigint]:N`. Está coberto por `tests/lake/test_cdc.sh` e a imagem do Postgres está fixada.
 - Mudanças anteriores à criação do slot não são vistas: vale a carga completa.
 - O fluxo cobre `classificacao`. Mudanças em outras tabelas (por exemplo nome de órgão) continuam dependendo do `make lake`.

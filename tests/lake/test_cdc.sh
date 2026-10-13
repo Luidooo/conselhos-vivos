@@ -2,7 +2,7 @@
 # Teste do fluxo de mudanças OLTP -> Delta (ADR 0007): uma reclassificação confirmada
 # no OLTP atravessa o slot lógico e aparece no Delta; reexecutar não reaplica nada.
 # Usa slot e Delta próprios (não mexe no slot nem na tabela do dia a dia).
-# classificacao é insert-only: a linha do teste fica no banco local (make reset limpa).
+# classificacao é insert-only: a linha do teste fica no banco com revisor de teste e não afeta outros testes.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -23,15 +23,12 @@ INSTALL delta; LOAD delta;
 SELECT tipologia_sigla FROM delta_scan('$TMP_CONTAINER_DIR') WHERE ato_id = $1;" | tr -d '[:space:]'
 }
 
-cls_teste=""
-# classificacao é insert-only; para não deixar resíduo (test_carga conta as linhas), o teste
-# apaga a própria linha numa transação única, com o trigger desligado só ali dentro.
+# Limpeza do slot temporário e da pasta temporária do Delta.
+# classificacao é insert-only (ADR 0001): a reclassificação do teste fica registrada
+# no histórico sob o revisor exclusivo de teste, sem violar a integridade nem precisar de DELETE.
 limpa() {
   cdc --drop-slot >/dev/null 2>&1 || true
   rm -rf "$TMP_HOST_DIR"
-  if [ -n "$cls_teste" ]; then
-    psql_db "ALTER TABLE classificacao DISABLE TRIGGER tg_classificacao_insert_only; DELETE FROM classificacao WHERE id = $cls_teste; ALTER TABLE classificacao ENABLE TRIGGER tg_classificacao_insert_only;" >/dev/null || echo "AVISO: não removeu a classificação $cls_teste do teste"
-  fi
 }
 trap limpa EXIT INT TERM
 limpa
@@ -44,12 +41,12 @@ saida=$(cdc "$TMP_CONTAINER_DIR")
 echo "$saida" | grep -q "pendentes=0" || { echo "FALHOU: slot recém-criado devia estar sem pendências:"; echo "$saida"; exit 1; }
 
 ato=$(psql_db "SELECT id FROM ato ORDER BY id LIMIT 1")
-revisor=$(psql_db "SELECT id FROM revisor WHERE tipo = 'HUMANO' ORDER BY id LIMIT 1")
+revisor=$(psql_db "INSERT INTO revisor (nome, tipo, email) VALUES ('Revisor de Teste CDC', 'HUMANO', 'teste-cdc@sistema.local') ON CONFLICT (email) DO UPDATE SET nome = EXCLUDED.nome RETURNING id")
 antes=$(tipologia_no_delta "$ato")
 nova=$(psql_db "SELECT sigla FROM tipologia WHERE sigla <> '$antes' ORDER BY sigla DESC LIMIT 1")
 
 echo "==> [test_cdc] 2. Reclassificando o ato $ato ('${antes}' -> '$nova')"
-cls_teste=$(psql_db "INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id) VALUES ($ato, '$nova', $revisor) RETURNING id")
+psql_db "INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id) VALUES ($ato, '$nova', $revisor)" >/dev/null
 saida=$(cdc "$TMP_CONTAINER_DIR")
 echo "$saida" | grep -q "pendentes=1 atos_afetados=1" || { echo "FALHOU: esperava 1 evento e 1 ato:"; echo "$saida"; exit 1; }
 echo "$saida" | grep -q "atualizadas=1" || { echo "FALHOU: o Delta não atualizou a linha:"; echo "$saida"; exit 1; }

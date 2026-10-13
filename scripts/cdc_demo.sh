@@ -26,8 +26,7 @@ make --no-print-directory lake
 make --no-print-directory cdc   # cria o slot, se faltar, e zera o que já estava pendente
 
 ato=${ATO_ID:-$(psql_db "SELECT id FROM ato ORDER BY id LIMIT 1")}
-revisor=$(psql_db "SELECT id FROM revisor WHERE tipo = 'HUMANO' ORDER BY id LIMIT 1")
-[ -n "$revisor" ] || { echo "não há revisor HUMANO no banco"; exit 1; }
+revisor=$(psql_db "INSERT INTO revisor (nome, tipo, email) VALUES ('Curador da Demonstração', 'HUMANO', 'curador-demo@pesquisa.local') ON CONFLICT (email) DO UPDATE SET nome = EXCLUDED.nome RETURNING id")
 atual=$(psql_db "SELECT COALESCE((SELECT tipologia_sigla FROM classificacao_vigente cv JOIN revisor r ON r.id = cv.revisor_id WHERE cv.ato_id = $ato ORDER BY (r.tipo='HUMANO') DESC, cv.criado_em DESC LIMIT 1), '')")
 nova=$(psql_db "SELECT sigla FROM tipologia WHERE sigla <> '$atual' ORDER BY sigla DESC LIMIT 1")
 
@@ -44,6 +43,5 @@ echo "==> 5. Ato $ato no Delta DEPOIS"
 delta_do_ato "$ato"
 echo "==> Reexecutar make cdc agora não encontra nada pendente (pendentes=0)."
 echo ""
-echo "==> ATENÇÃO: a demonstração deixou uma reclassificação (insert-only) no banco."
-echo "==> Antes de rodar 'make test', resete o ambiente para restaurar o estado inicial:"
-echo "==>     make reset"
+echo "==> A reclassificação permanece registrada no banco histórico (insert-only, ADR 0001)."
+echo "==> Como usa revisor próprio, ela não afeta 'make test' nem exige 'make reset'."

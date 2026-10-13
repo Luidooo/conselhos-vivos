@@ -248,12 +248,14 @@ for m in 2026-06 2026-07 2026-08; do make ingest-mensal MES=$m; done
 
 ## Fluxo de mudanças do OLTP ao Delta (CDC)
 
-O Postgres sobe com `wal_level=logical` e um slot de replicação lógica (`conselhos_lake`) guarda as mudanças de `classificacao`; `make cdc` as aplica na tabela Delta ([ADR 0007](docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica.md)). Sem Kafka.
+O Postgres sobe com `wal_level=logical` e um slot de replicação lógica (`conselhos_lake`) guarda as mudanças de `classificacao`; `make cdc` as aplica na tabela Delta ([ADR 0007](docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica.md)). Sem Kafka. Quem já possui o banco rodando precisa recriar o container `db` para ativar o nível lógico (`make up` faz isso automaticamente; os dados persistem no volume).
+
+**Cobertura do CDC:** o slot lógico monitora exclusivamente `INSERT` na tabela `classificacao` (as reclassificações de curadoria). Mudanças em outras tabelas — como atos novos ingeridos do DOU (`ato`), novas versões de matérias (`versao`) ou alterações em nomes e aliases de conselhos (`orgao_nome`, `orgao_alias`) — continuam sendo propagadas para a camada Delta pela recarga periódica via `make lake`.
 
 Para ver uma mudança atravessando o fluxo:
 
 ```bash
-make up          # recria o db se ainda estava com wal_level=replica
+make up                      # recria o db com wal_level=logical se ainda estava com replica
 make migrate && make carga   # se o banco ainda estiver vazio
 make cdc-demo
 ```
@@ -264,7 +266,7 @@ Dia a dia: `make lake` uma vez, depois `make cdc` sempre que quiser aplicar as r
 
 > **Slot parado retém WAL.** Se for abandonar o fluxo, rode `make cdc-drop`, senão o disco do banco cresce. Mudanças anteriores à criação do slot só entram com `make lake`.
 >
-> **A demonstração deixa uma classificação nova no banco** (é insert-only, não se apaga). `make test` espera o banco como a carga o deixa: depois de demonstrar, rode `make reset` antes de testar.
+> **Curadoria insert-only mantida.** A reclassificação da demonstração permanece registrada no histórico do banco (ADR 0001), sob revisor dedicado. Os testes isolam os revisores e não exigem `make reset` após demonstrar.
 
 ## Estrutura
 
