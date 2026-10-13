@@ -67,8 +67,24 @@ func newSignedInClient(t *testing.T, handler http.HandlerFunc) *Client {
 // fakeStore stands in for the disk, including the failure a real one only
 // shows when it is full.
 type fakeStore struct {
-	saved []string
-	err   error
+	saved  []string
+	marked []string
+	failed []string
+	err    error
+	// markErr is the failure of recording a missing edition, and failErr of
+	// recording a failed one.
+	markErr error
+	failErr error
+}
+
+func (s *fakeStore) MarkFailed(name string) error {
+	s.failed = append(s.failed, name)
+	return s.failErr
+}
+
+func (s *fakeStore) MarkNoEdition(name string) error {
+	s.marked = append(s.marked, name)
+	return s.markErr
 }
 
 func (s *fakeStore) Save(name string, body io.Reader) (store.Receipt, error) {

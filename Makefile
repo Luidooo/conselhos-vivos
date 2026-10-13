@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest test test-go test-db-go vet-go reset pgadmin-reset psql logs
+.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest fetch-mensal persist-mensal ingest-mensal test test-go test-db-go vet-go reset pgadmin-reset psql logs
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -9,6 +9,28 @@ help: ## lista os comandos
 DATA ?= $(shell TZ=America/Sao_Paulo date +%F)
 # As edições do dia que o make extract e o make persist leem: as que existem, DO1 e DO1E.
 EDICOES = $(wildcard data/bronze/inlabs/$(DATA)-DO1.zip data/bronze/inlabs/$(DATA)-DO1E.zip)
+# Os marcadores que o fetch deixa no lugar do ZIP, das duas seções: o INLABS disse
+# que a edição não houve, ou a busca dela falhou.
+SEM_EDICAO = $(wildcard data/bronze/inlabs/$(DATA)-DO1.sem-edicao data/bronze/inlabs/$(DATA)-DO1E.sem-edicao)
+FALHOU = $(wildcard data/bronze/inlabs/$(DATA)-DO1.falhou data/bronze/inlabs/$(DATA)-DO1E.falhou)
+# Sem ZIP, um dia sem edição não é erro; um que falhou ou que ninguém buscou é. A
+# falha de qualquer seção é avisada mesmo com o ZIP da outra (e o alvo sai com
+# erro no fim, pelo ZIPS_FALHOU); a falha vence o "sem edição" da outra seção.
+TEM_EDICAO = if [ -n "$(FALHOU)" ]; then echo "a busca de $(notdir $(FALHOU:.falhou=)) falhou (marcador em data/bronze/inlabs/) — rode make fetch DATA=$(DATA) de novo" >&2; fi; \
+	if [ -n "$(EDICOES)" ]; then :; \
+	elif [ -n "$(FALHOU)" ]; then exit 1; \
+	elif [ -n "$(SEM_EDICAO)" ]; then echo "$(DATA) não teve edição do DOU (marcador em data/bronze/inlabs/)" >&2; \
+	else echo "nenhum ZIP de $(DATA) em data/bronze/inlabs/ — rode make fetch DATA=$(DATA)"; exit 1; fi
+# O valor inicial do "falhou" dos laços do extract e do persist: com uma seção
+# falha, o alvo processa o ZIP da outra e sai com erro no fim.
+ZIPS_FALHOU = $(if $(FALHOU),1,0)
+
+# O mês que o make fetch-mensal baixa dos dados abertos, AAAA-MM. Sem padrão: o mês
+# corrente nunca está publicado, e o anterior só sai por volta do dia 15.
+MES ?=
+# O ZIP da Seção 1 do MES, com o nome que a Imprensa Nacional dá: 2026-08 é S01082026.zip.
+ZIP_MENSAL = data/bronze/dados-abertos/S01$(word 2,$(subst -, ,$(MES)))$(word 1,$(subst -, ,$(MES))).zip
+TEM_MES = if [ -z "$(MES)" ]; then echo "diga o mês: MES=AAAA-MM, como MES=2026-08" >&2; exit 2; fi
 
 .env:
 	cp .env.example .env
@@ -33,32 +55,48 @@ siorg: ## baixa o SIORG (com rede) e atualiza o recorte em data/referencia/; rod
 	docker compose --progress quiet run --rm -T siorg > data/referencia/siorg-conselhos.csv.novo
 	mv data/referencia/siorg-conselhos.csv.novo data/referencia/siorg-conselhos.csv
 
-fetch: .env ## baixa DO1 e DO1E do DOU (DATA=AAAA-MM-DD; sem DATA, hoje em Brasília). Sem retomada: rebaixa o que já existe
+fetch: .env ## baixa DO1 e DO1E do DOU (DATA=AAAA-MM-DD; sem DATA, hoje em Brasília). Sem retomada: rebaixa o que já existe; edição que não houve ou que falhou fica marcada
 	mkdir -p data/bronze/inlabs
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T ingestor -date $(DATA)
 
 extract: ## lê as matérias dos ZIPs de DATA já baixados e imprime uma por linha, em JSON (HTML=1 inclui o HTML do texto)
-	@test -n "$(EDICOES)" || { echo "nenhum ZIP de $(DATA) em data/bronze/inlabs/ — rode make fetch DATA=$(DATA)"; exit 1; }
+	@$(TEM_EDICAO)
 	@# Uma execução por edição: o comando lê um ZIP só. A segunda roda mesmo se a
 	@# primeira falhar, e o make sai com erro se qualquer uma falhou.
-	@falhou=0; for zip in $(EDICOES:data/%=/data/%); do \
+	@falhou=$(ZIPS_FALHOU); for zip in $(EDICOES:data/%=/data/%); do \
 		docker compose --progress quiet run --rm -T extract $(if $(HTML),-html) $$zip || falhou=1; \
 	done; exit $$falhou
 
-persist: ## grava no banco as matérias dos ZIPs de DATA já baixados; pode rodar de novo, não duplica
-	@test -n "$(EDICOES)" || { echo "nenhum ZIP de $(DATA) em data/bronze/inlabs/ — rode make fetch DATA=$(DATA)"; exit 1; }
+persist: .env ## grava no banco as matérias dos ZIPs de DATA já baixados; pode rodar de novo, não duplica
+	@$(TEM_EDICAO)
 	@# Como no extract: uma execução por edição, e a segunda roda mesmo se a primeira falhar.
-	@falhou=0; for zip in $(EDICOES:data/%=/data/%); do \
+	@falhou=$(ZIPS_FALHOU); for zip in $(EDICOES:data/%=/data/%); do \
 		docker compose --progress quiet run --rm -T persist $$zip || falhou=1; \
 	done; exit $$falhou
 
 ingest: .env ## baixa as edições de DATA e grava as matérias de conselho no banco, de ponta a ponta; pode rodar de novo, não duplica
-	@$(MAKE) --no-print-directory fetch DATA=$(DATA)
-	@# O persist vai num make à parte: a lista de ZIPs dele tem de ser montada
-	@# depois do fetch. Se o fetch passou e não deixou ZIP, o dia não teve edição.
-	@if [ -e data/bronze/inlabs/$(DATA)-DO1.zip ] || [ -e data/bronze/inlabs/$(DATA)-DO1E.zip ]; then \
-		$(MAKE) --no-print-directory persist DATA=$(DATA); \
-	else echo "$(DATA) não teve edição do DOU: nada a gravar"; fi
+	@# O persist vai num make à parte: a lista de ZIPs e de marcadores dele tem de
+	@# ser montada depois do fetch. Ele roda mesmo se o fetch falhou numa seção: o
+	@# que foi baixado é gravado, e o make sai com erro no fim. Dia sem edição, dia
+	@# que falhou e dia não buscado quem decide é o TEM_EDICAO, dentro do persist.
+	@falhou=0; $(MAKE) --no-print-directory fetch DATA=$(DATA) || falhou=1; \
+	$(MAKE) --no-print-directory persist DATA=$(DATA) || falhou=1; \
+	exit $$falhou
+
+fetch-mensal: ## baixa a Seção 1 do DOU de um mês inteiro dos dados abertos, sem login (MES=AAAA-MM); mês já em disco não baixa de novo
+	@$(TEM_MES)
+	mkdir -p data/bronze/dados-abertos
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T fetch-mensal -month $(MES)
+
+persist-mensal: .env ## grava no banco as matérias do ZIP mensal de MES já baixado; pode rodar de novo, não duplica
+	@$(TEM_MES)
+	@if [ ! -f "$(ZIP_MENSAL)" ]; then echo "nenhum $(notdir $(ZIP_MENSAL)) em data/bronze/dados-abertos/ — rode make fetch-mensal MES=$(MES)" >&2; exit 1; fi
+	docker compose --progress quiet run --rm -T persist /$(ZIP_MENSAL)
+
+ingest-mensal: .env ## baixa o mês MES dos dados abertos e grava as matérias de conselho no banco; pode rodar de novo, não duplica
+	@# Sem o ZIP não há o que gravar: se o fetch falha, o persist nem roda.
+	@$(MAKE) --no-print-directory fetch-mensal MES=$(MES) && \
+	$(MAKE) --no-print-directory persist-mensal MES=$(MES)
 
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
 	docker compose --progress quiet run --rm -T ingestor-test go test -count=1 ./...

@@ -98,6 +98,23 @@ services:
       - ./data/bronze:/data/bronze
     entrypoint: ["sh", "-c", "go build -o /tmp/fetch ./cmd/fetch && exec /tmp/fetch \"$$@\"", "--"]
 
+  # Baixa um mês inteiro do DOU (Seção 1) dos dados abertos da Imprensa Nacional
+  # (#42). Sem credencial: o arquivo é público. Fora isso, igual ao ingestor.
+  fetch-mensal:
+    image: golang:1.26.8-alpine
+    profiles: [ingestor]
+    working_dir: /app
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
+    environment:
+      DADOS_ABERTOS_OUTPUT_DIR: /data/bronze/dados-abertos
+      GOCACHE: /tmp/gocache
+      GOMODCACHE: /tmp/gomodcache
+      GOFLAGS: -mod=mod
+    volumes:
+      - ./src/ingestor:/app:ro
+      - ./data/bronze:/data/bronze
+    entrypoint: ["sh", "-c", "go build -o /tmp/fetch-mensal ./cmd/fetch-mensal && exec /tmp/fetch-mensal \"$$@\"", "--"]
+
   # Lê as matérias dos ZIPs que o ingestor já baixou. Sem credencial e com o
   # bronze só para leitura: daqui nada volta para o disco além do stdout.
   extract:

@@ -290,6 +290,59 @@ func TestSaveAgainWritesNothing(t *testing.T) {
 	assert.Equal(t, 1, count(t, tx, `SELECT count(*) FROM ato WHERE id_dou = $1`, item.ID))
 }
 
+// The same id with two texts, coming from two zips (the DO1 and the DO1E of a
+// day, or two days of the reprocessing window): once both are in, running again
+// writes nothing. Comparing with the latest version only would swap between the
+// two and add two versions on every run.
+func TestSaveDoesNotSwapBetweenTwoKnownVersions(t *testing.T) {
+	tx := begin(t)
+	ctx := context.Background()
+	a := builtSample(t)
+	b := a
+	b.HTML += "<p>Texto da outra edição.</p>"
+
+	writer, err := Open(ctx, tx)
+	require.NoError(t, err)
+	for i, want := range []Outcome{Saved, NewVersion, Unchanged, Unchanged} {
+		item := a
+		if i%2 == 1 {
+			item = b
+		}
+		outcome, err := writer.Save(ctx, item)
+		require.NoError(t, err)
+		assert.Equal(t, want, outcome, "save %d", i+1)
+	}
+	assert.Equal(t, 2, count(t, tx, `SELECT count(*) FROM ato WHERE id_dou = $1`, a.ID))
+}
+
+// The organ is the identity decision (ADR 0004), not something the DOU
+// published: resolving a name to another organ is not a republication.
+func TestSaveDoesNotVersionAChangeOfOrgan(t *testing.T) {
+	tx := begin(t)
+	ctx := context.Background()
+	const name = "Conselho Nacional de Teste da Persistência"
+	first := newOrgan(t, tx, name)
+	item := handmade("900000050", "Ministério de Teste", name)
+
+	writer, err := Open(ctx, tx)
+	require.NoError(t, err)
+	outcome, err := writer.Save(ctx, item)
+	require.NoError(t, err)
+	require.Equal(t, Saved, outcome)
+
+	// The name now belongs to another organ.
+	_, err = tx.Exec(ctx, `UPDATE orgao_nome SET nome = 'Conselho de Outro Nome' WHERE orgao_id = $1`, first)
+	require.NoError(t, err)
+	newOrgan(t, tx, name)
+
+	writer, err = Open(ctx, tx)
+	require.NoError(t, err)
+	outcome, err = writer.Save(ctx, item)
+	require.NoError(t, err)
+	assert.Equal(t, Unchanged, outcome)
+	assert.Equal(t, 1, count(t, tx, `SELECT count(*) FROM ato WHERE id_dou = '900000050'`))
+}
+
 func TestSaveKeepsARepublishedMateriaAsANewVersion(t *testing.T) {
 	changes := map[string]func(*article.Article){
 		"the text":   func(a *article.Article) { a.HTML += "<p>Republicada por incorreção.</p>" },
