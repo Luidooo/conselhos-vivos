@@ -385,3 +385,22 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** os conflitos vinham de o #40 estar empilhado sobre a versão do #35 anterior à revisão, que entrou no `main` modificada pelo squash. Em vez de resolver arquivo por arquivo, o que arriscava trazer de volta código já revisado, a árvore partiu do `main` e recebeu só o commit próprio do #40 (`50eb7d4`); o resultado entrou como merge, sem reescrever a branch. A diferença contra o `main` ficou nos mesmos 8 arquivos do PR. Só o `AI-USAGE.md` conflitou, e as entradas dos dois lados ficaram. O código do #40 não foi alterado.
 - **Como foi verificado:** `make vet-go` e `make test` inteiro verdes, com o banco cheio de agosto de 2026. O `make persist-mensal MES=2026-08` rodado com o código do #40 deu `gravadas=0 inalteradas=96`, e `orgao_alias` saiu idêntico (751 linhas, mesmo md5): a mudança não altera o que já estava no banco.
 - **Quem revisou:** pendente — a Luiza, no PR.
+
+### 2026-10-11 — Janela de reprocessamento no `make ingest` (#31, metade do OLTP)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `Makefile` (`ingest`, `ingest-dia`, `janela`), `tests/ingest/test_janela.sh`, `src/ingestor/cmd/persist/main_test.go`, `README.md`
+- **O que foi pedido:** adiantar a #31 no que não depende da tabela Delta (#25).
+- **O que foi aproveitado:** a implementação inteira, ainda sem revisão da squad. **Decidido pela IA**, a revisar: a janela mora no `Makefile`, como um laço sobre o `fetch` e o `persist` de um dia, porque o comando Go baixa uma data por execução por decisão do PR #17; a conta de datas roda em Python, num container sem rede, porque o `date` do Linux e o do macOS não fazem aritmética do mesmo jeito; um dia que falha não impede os seguintes; e o `make ingest-dia` preserva o comportamento de um dia só. **O valor de N não foi decidido:** o padrão `JANELA=7` é provisório, escolhido pela IA sem medição (cobre fim de semana e feriado emendado), e a issue pede que a squad decida.
+- **Como foi verificado:** `make test` inteiro e `make vet-go`. O teste novo em shell confere os dias da janela (padrão, um dia só, virada de mês, 29 de fevereiro) e a recusa de `JANELA=0`, de `JANELA` que não é número e de `DATA` malformada. O teste novo em Go grava uma edição, grava de novo com uma matéria a mais e confere que só ela entra, com a `data_publicacao` do dia da edição. O laço do `make ingest` foi rodado com o `make` de dentro trocado por um substituto que falha num dos dias: os três dias foram tentados em ordem, o que falhou foi nomeado e o `make` saiu com erro. **Não** foi exercitado: o `make ingest` com janela contra o INLABS, por falta de credencial — nem o tempo nem o tamanho de sete dias de download foram medidos. A parte da issue que pede o ato atrasado na partição certa do Delta depende da #25 e não foi feita.
+- **Quem revisou:** pendente.
+
+
+### 2026-10-12 — PR #39 trazido para o `main` (janela de reprocessamento, #31)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** merge do `main` na branch `feature/issue-31-janela`; `Makefile` (`ingest`, `ingest-dia`), `README.md` (seção "Dado atrasado"), `AI-USAGE.md`
+- **O que foi pedido:** destravar o PR #39, que apontava para a branch do #37, já mergeada, e conflitava com o `ingest-mensal` do #43.
+- **O que foi aproveitado:** como no #40, a árvore partiu do `main` e recebeu só o commit próprio do #39 (`df574ef`), como merge, sem reescrever a branch. Três conflitos foram resolvidos à mão. (1) No `Makefile`, o `ingest` com janela e o `ingest-dia` do #39 ficaram, mas o corpo do `ingest-dia` é o do `main`: o #39 foi escrito antes da revisão do #35 e parava o dia no primeiro passo que falhasse, o que desfaria a correção de gravar o que foi baixado quando uma seção falha. (2) No README, o texto do #39 foi ajustado para esse comportamento e ganhou um item: a janela é de dias do INLABS, cujo login automático é recusado (#42), e na fonte mensal não há janela. (3) No `AI-USAGE.md`, as entradas dos dois lados ficaram. O valor de N continua o provisório do #39 (7), à espera da squad.
+- **Como foi verificado:** `make vet-go` e `make test` inteiro verdes, com o banco cheio de agosto de 2026, incluindo os 7 casos do `tests/ingest/test_janela.sh` e o `TestPersistTakesAMateriaThatArrivedLate`; `make -n ingest` confere que cada dia da janela chama o `ingest-dia`. **Não** foi exercitado: o `make ingest` com janela contra o INLABS, cujo login automático é recusado.
+- **Quem revisou:** pendente — a Luiza, no PR.

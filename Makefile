@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest fetch-mensal persist-mensal ingest-mensal test test-go test-db-go vet-go reset pgadmin-reset psql logs
+.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-db-go vet-go reset pgadmin-reset psql logs
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -31,6 +31,15 @@ MES ?=
 # O ZIP da Seção 1 do MES, com o nome que a Imprensa Nacional dá: 2026-08 é S01082026.zip.
 ZIP_MENSAL = data/bronze/dados-abertos/S01$(word 2,$(subst -, ,$(MES)))$(word 1,$(subst -, ,$(MES))).zip
 TEM_MES = if [ -z "$(MES)" ]; then echo "diga o mês: MES=AAAA-MM, como MES=2026-08" >&2; exit 2; fi
+
+# Quantos dias o make ingest reprocessa, contando DATA: o DOU chega atrasado
+# (edição extra à tarde, edição republicada), e a janela é o que busca de novo.
+JANELA ?= 7
+# Os dias da janela. A conta de datas roda em Python, num container sem rede,
+# porque o date do Linux e o do macOS não fazem aritmética do mesmo jeito.
+DIAS = docker compose --progress quiet run --rm -T --entrypoint python carga -c \
+	'import sys, datetime as d; fim = d.date.fromisoformat(sys.argv[1]); n = int(sys.argv[2]); n >= 1 or sys.exit("JANELA tem de ser 1 ou mais"); print(*[fim - d.timedelta(days=i) for i in range(n - 1, -1, -1)])' \
+	$(DATA) $(JANELA)
 
 .env:
 	cp .env.example .env
@@ -74,7 +83,14 @@ persist: .env ## grava no banco as matérias dos ZIPs de DATA já baixados; pode
 		docker compose --progress quiet run --rm -T persist $$zip || falhou=1; \
 	done; exit $$falhou
 
-ingest: .env ## baixa as edições de DATA e grava as matérias de conselho no banco, de ponta a ponta; pode rodar de novo, não duplica
+ingest: .env ## baixa e grava no banco os JANELA dias que terminam em DATA (padrão: 7); pode rodar de novo, não duplica
+	@# Do dia mais antigo para o mais novo. Um dia que falha não impede os
+	@# seguintes, e o make sai com erro se qualquer um falhou.
+	@dias=$$($(DIAS)) || exit 1; falhou=0; for dia in $$dias; do \
+		$(MAKE) --no-print-directory ingest-dia DATA=$$dia || { echo "FALHOU: ingestão de $$dia" >&2; falhou=1; }; \
+	done; exit $$falhou
+
+ingest-dia: .env ## baixa as edições de DATA e grava as matérias de conselho no banco: um dia só, sem janela
 	@# O persist vai num make à parte: a lista de ZIPs e de marcadores dele tem de
 	@# ser montada depois do fetch. Ele roda mesmo se o fetch falhou numa seção: o
 	@# que foi baixado é gravado, e o make sai com erro no fim. Dia sem edição, dia
@@ -98,6 +114,9 @@ ingest-mensal: .env ## baixa o mês MES dos dados abertos e grava as matérias d
 	@$(MAKE) --no-print-directory fetch-mensal MES=$(MES) && \
 	$(MAKE) --no-print-directory persist-mensal MES=$(MES)
 
+janela: ## lista os dias que o make ingest reprocessa, do mais antigo para o mais novo
+	@$(DIAS)
+
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
 	docker compose --progress quiet run --rm -T ingestor-test go test -count=1 ./...
 
@@ -114,6 +133,7 @@ test: .env test-go ## testes: Go do ingestor, infra, esquema do OLTP, leitura da
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/planilha
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/conselhos
 	bash tests/db/test_carga.sh
+	bash tests/ingest/test_janela.sh
 	$(MAKE) --no-print-directory test-db-go
 
 reset: ## APAGA o banco, sobe do zero, migra e carrega a planilha

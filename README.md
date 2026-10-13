@@ -68,7 +68,9 @@ make test-db-go  # só os testes do ingestor que gravam no banco, em transação
 make fetch     # baixa as edições do DOU de hoje em Brasília; DATA=AAAA-MM-DD para outro dia
 make extract   # lê as matérias dos ZIPs já baixados de DATA e imprime uma por linha, em JSON
 make persist   # grava no banco as matérias dos ZIPs já baixados de DATA; pode rodar de novo, não duplica
-make ingest    # fetch e persist de DATA, de ponta a ponta: baixa o dia e grava as matérias de conselho
+make ingest    # fetch e persist dos 7 dias que terminam em DATA (JANELA=N muda a janela): baixa e grava as matérias de conselho
+make ingest-dia  # o mesmo para um dia só, sem janela
+make janela    # lista os dias que o make ingest reprocessa
 make ingest-mensal MES=2026-08  # o mês inteiro dos dados abertos, sem login: baixa e grava as matérias de conselho
 make migrate   # aplica as migrações de sql/ que ainda não rodaram
 make carga     # carrega os conselhos e a planilha da pesquisadora (idempotente) e atualiza os relatórios
@@ -160,13 +162,27 @@ Uma entrada que não é XML — a imagem de uma matéria, ou uma pasta, que não
 
 ## Gravar as matérias no banco
 
-O `make ingest` leva um dia do DOU do INLABS até o banco, de ponta a ponta:
+O `make ingest` leva o DOU do INLABS até o banco, de ponta a ponta:
 
 ```bash
-make ingest DATA=2026-10-01   # baixa DO1 e DO1E do dia e grava as matérias de conselho em ato
+make ingest DATA=2026-10-11            # os 7 dias que terminam em DATA: de 05/10 a 11/10
+make ingest DATA=2026-10-11 JANELA=1   # só o dia
+make ingest-dia DATA=2026-10-11        # o mesmo que JANELA=1
 ```
 
-Ele encadeia o `make fetch` e o `make persist`. Se o `fetch` falha numa seção, o que foi baixado é gravado mesmo assim, e o `make ingest` sai com erro no fim. A extração acontece dentro do `persist`, com o mesmo pacote que o `make extract` usa para imprimir. Um dia que o `fetch` marcou como sem edição não é erro, e nada é gravado; um dia cuja busca falhou é, em qualquer das duas seções. O `make persist` sozinho grava os ZIPs que já estão em `data/bronze/inlabs/`, sem acessar o INLABS:
+Para cada dia, do mais antigo para o mais novo, ele encadeia o `make fetch` e o `make persist` (é o `make ingest-dia`). Se o `fetch` falha numa seção, o que foi baixado é gravado mesmo assim, e o dia conta como falho. A extração acontece dentro do `persist`, com o mesmo pacote que o `make extract` usa para imprimir. Um dia que o `fetch` marcou como sem edição não é erro, e nada é gravado; um dia cuja busca falhou é, em qualquer das duas seções. Um dia que falha não impede os seguintes, e o `make` sai com erro se qualquer um falhou.
+
+**Dado atrasado.** No DOU o atraso é real: a edição extra (`DO1E`) sai depois da busca da manhã, e o INLABS pode republicar uma edição. Por isso cada `make ingest` busca e grava de novo os últimos `JANELA` dias, e não só o dia pedido:
+
+- **O que chega dentro da janela entra sozinho.** Uma matéria nova numa edição já gravada entra com `versao = 1`; uma que voltou diferente entra como versão nova; as demais ficam como estavam. Reprocessar não duplica.
+- **O ato atrasado fica na data em que foi publicado**, e não na data em que chegou: `data_publicacao` vem do `pubDate` da matéria.
+- **Um dia cuja busca falhou é buscado de novo** na próxima execução, enquanto estiver na janela.
+- **O que chega depois da janela não entra sozinho, e nada avisa.** Para trazê-lo, rode o dia à mão (`make ingest-dia DATA=...`) ou uma janela maior (`JANELA=30`). O bronze guarda só a última versão baixada de cada edição.
+- **A janela é de dias do INLABS**, e o login automático do INLABS hoje é recusado (#42): ela só regrava os dias cujos ZIPs já estão em `data/bronze/inlabs/`. Na fonte mensal (`make ingest-mensal`) não há janela: o ZIP de um mês fechado já traz o `DO1E` de todos os dias, e uma retificação sai como matéria nova, na data em que foi publicada.
+
+A janela padrão é de **7 dias**, um valor provisório: cobre o fim de semana e um feriado emendado, e custa 14 edições pedidas ao INLABS por execução (DO1 e DO1E de cada dia). Ninguém mediu ainda com que atraso o INLABS republica uma edição; a squad decide o valor na #31. `make janela DATA=... JANELA=...` lista os dias sem baixar nada.
+
+O `make persist` sozinho grava os ZIPs que já estão em `data/bronze/inlabs/`, sem acessar o INLABS:
 
 ```bash
 make persist DATA=2026-10-01   # o resumo vai para o stderr
