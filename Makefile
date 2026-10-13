@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-db-go vet-go reset pgadmin-reset psql logs
+.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-db-go vet-go reset pgadmin-reset psql logs lake
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -37,7 +37,7 @@ TEM_MES = if [ -z "$(MES)" ]; then echo "diga o mês: MES=AAAA-MM, como MES=2026
 JANELA ?= 7
 # Os dias da janela. A conta de datas roda em Python, num container sem rede,
 # porque o date do Linux e o do macOS não fazem aritmética do mesmo jeito.
-DIAS = docker compose --progress quiet run --rm -T --entrypoint python carga -c \
+DIAS = docker --log-level error compose --progress quiet run --rm -T --entrypoint python carga -c \
 	'import sys, datetime as d; fim = d.date.fromisoformat(sys.argv[1]); n = int(sys.argv[2]); n >= 1 or sys.exit("JANELA tem de ser 1 ou mais"); print(*[fim - d.timedelta(days=i) for i in range(n - 1, -1, -1)])' \
 	$(DATA) $(JANELA)
 
