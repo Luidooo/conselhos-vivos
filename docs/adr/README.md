@@ -25,3 +25,4 @@ Levantadas na fase de entendimento do domínio, ainda sem ADR escrito:
 | [0004](0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md) | A identidade de um conselho sai de uma chave normalizada mais decisões registradas, nunca de similaridade de texto | proposto |
 | 0005 | Mecanismo de ingestão com opção nula (#32) | reservado |
 | [0006](0006-armazenar-a-camada-analitica-em-tabelas-delta.md) | Armazenar a camada analítica em tabelas Delta particionadas por ano e comprimidas com zstd | proposto |
+| [0007](0007-propagar-mudancas-por-slot-de-replicacao-logica.md) | Propagar mudanças do OLTP ao Delta por slot de replicação lógica, sem Kafka | proposto |

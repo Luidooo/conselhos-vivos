@@ -1,6 +1,8 @@
 services:
   db:
     image: postgres:16.15
+    # CDC por slot lógico (ADR 0002 já previa o custo; ADR 0007 descreve o uso)
+    command: ["postgres", "-c", "wal_level=logical"]
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -211,12 +213,39 @@ services:
       DOCKER_GID: ${DOCKER_GID:-1000}
     volumes:
       - ./src:/app/src:ro
+      - ./docs:/app/docs
       - ./data/silver:/data/silver
       - pipcache:/tmp/pipcache
     depends_on:
       db:
         condition: service_healthy
-    entrypoint: ["sh", "-c", "pip install -q --root-user-action=ignore --no-warn-script-location -r /app/src/lake/requirements.txt && python -m lake \"$${1:-/data/silver/atos}\" && chown -R $${DOCKER_UID}:$${DOCKER_GID} /data/silver", "sh"]
+    entrypoint: ["sh", "-c", "pip install -q --root-user-action=ignore --no-warn-script-location -r /app/src/lake/requirements.txt && if [ \"$$1\" = \"python\" ]; then shift; exec python \"$$@\"; else python -m lake \"$${1:-/data/silver/atos}\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data/silver; exit $$rc; fi", "sh"]
+
+  # Fluxo de mudanças OLTP -> Delta (ADR 0007): aplica no Delta o que está pendente no slot lógico.
+  # Mesma imagem e volumes do lake. Argumentos: [destino] ou --drop-slot.
+  cdc:
+    image: python:3.12.14-slim
+    profiles: [lake]
+    working_dir: /app
+    environment:
+      PYTHONPATH: /app/src
+      PYTHONDONTWRITEBYTECODE: "1"
+      CDC_SLOT: ${CDC_SLOT:-conselhos_lake}
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      PIP_CACHE_DIR: /tmp/pipcache
+      DOCKER_UID: ${DOCKER_UID:-1000}
+      DOCKER_GID: ${DOCKER_GID:-1000}
+    volumes:
+      - ./src:/app/src:ro
+      - ./data/silver:/data/silver
+      - pipcache:/tmp/pipcache
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "pip install -q --root-user-action=ignore --no-warn-script-location -r /app/src/lake/requirements.txt && { python -m lake.cdc \"$$@\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data/silver; exit $$rc; }", "sh"]
 
 # servers.json e pgpass gerados a partir do .env: o pgAdmin já abre conectado no banco.
 # O servers.json só é importado na 1ª subida do volume `pgadmin`; se mudar

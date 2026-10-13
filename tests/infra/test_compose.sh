@@ -31,6 +31,9 @@ echo "2/5 conferindo que as portas só escutam em 127.0.0.1"
 assert_local_only db 5432
 assert_local_only pgadmin 80
 
+# CDC por slot lógico (ADR 0007) exige decodificação lógica ligada
+[ "$(psql_db "SHOW wal_level;")" = "logical" ] || { echo "FALHOU: wal_level não é logical"; exit 1; }
+
 echo "3/5 gravando marcador"
 psql_db "CREATE TABLE IF NOT EXISTS _smoke (id int PRIMARY KEY);"
 psql_db "INSERT INTO _smoke VALUES (1) ON CONFLICT DO NOTHING;"

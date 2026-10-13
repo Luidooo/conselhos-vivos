@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-db-go vet-go reset pgadmin-reset psql logs lake
+.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-db-go vet-go reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -135,6 +135,7 @@ test: .env test-go ## testes: Go do ingestor, infra, esquema do OLTP, leitura da
 	bash tests/db/test_carga.sh
 	bash tests/ingest/test_janela.sh
 	bash tests/lake/test_lake.sh
+	bash tests/lake/test_cdc.sh
 	$(MAKE) --no-print-directory test-db-go
 
 reset: ## APAGA o banco, sobe do zero, migra e carrega a planilha
@@ -163,3 +164,12 @@ logs: ## acompanha os logs do banco
 lake: .env ## extrai do OLTP e atualiza a tabela Delta Lake em data/silver/atos/
 	mkdir -p data/silver/atos
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T lake
+
+cdc: .env ## aplica no Delta as mudanças de classificacao pendentes no slot lógico (rode make lake antes)
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T cdc
+
+cdc-demo: .env ## demonstração: reclassifica um ato (insert-only) e mostra a mudança chegando ao Delta
+	bash scripts/cdc_demo.sh
+
+cdc-drop: .env ## remove o slot de replicação (slot parado retém WAL)
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T cdc --drop-slot

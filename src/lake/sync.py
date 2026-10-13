@@ -45,6 +45,8 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) cv ON true
 LEFT JOIN revisor r ON r.id = cv.revisor_id
+-- Sem lista (NULL): todos os atos (make lake). Com lista: só os atos afetados (make cdc).
+WHERE (%(ato_ids)s::bigint[] IS NULL OR a.id = ANY(%(ato_ids)s::bigint[]))
 ORDER BY a.data_publicacao, a.id;
 """
 
@@ -108,12 +110,12 @@ def obter_conexao() -> psycopg.Connection:
     )
 
 
-def extrair_oltp(conn: psycopg.Connection) -> pa.Table:
-    """Lê os atos consolidados do OLTP e retorna uma tabela PyArrow tipada."""
+def extrair_oltp(conn: psycopg.Connection, ato_ids: list[int] | None = None) -> pa.Table:
+    """Lê os atos consolidados do OLTP (todos, ou só os de ato_ids) e retorna uma tabela PyArrow tipada."""
     agora = dt.datetime.now(dt.timezone.utc)
     
     with conn.cursor() as cur:
-        cur.execute(QUERY_OLTP)
+        cur.execute(QUERY_OLTP, {"ato_ids": ato_ids})
         linhas = cur.fetchall()
 
     if not linhas:

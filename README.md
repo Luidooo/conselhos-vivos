@@ -81,6 +81,9 @@ make down      # para, mantém os dados
 make reset     # APAGA o banco, sobe do zero, migra e carrega a planilha
 make pgadmin-reset  # recria o pgAdmin (se mudar POSTGRES_USER ou POSTGRES_DB)
 make lake      # extrai do OLTP e atualiza a tabela Delta Lake em data/silver/atos/
+make cdc       # aplica no Delta as mudanças de classificacao pendentes no slot lógico (rode make lake antes)
+make cdc-demo  # reclassifica um ato e mostra a mudança chegando ao Delta
+make cdc-drop  # remove o slot de replicação (slot parado retém WAL)
 make           # lista todos os comandos
 ```
 
@@ -242,6 +245,28 @@ Para vários meses, um laço no shell:
 ```bash
 for m in 2026-06 2026-07 2026-08; do make ingest-mensal MES=$m; done
 ```
+
+## Fluxo de mudanças do OLTP ao Delta (CDC)
+
+O Postgres sobe com `wal_level=logical` e um slot de replicação lógica (`conselhos_lake`) guarda as mudanças de `classificacao`; `make cdc` as aplica na tabela Delta ([ADR 0007](docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica.md)). Sem Kafka. Quem já possui o banco rodando precisa recriar o container `db` para ativar o nível lógico (`make up` faz isso automaticamente; os dados persistem no volume).
+
+**Cobertura do CDC:** o slot lógico monitora exclusivamente `INSERT` na tabela `classificacao` (as reclassificações de curadoria). Mudanças em outras tabelas — como atos novos ingeridos do DOU (`ato`), novas versões de matérias (`versao`) ou alterações em nomes e aliases de conselhos (`orgao_nome`, `orgao_alias`) — continuam sendo propagadas para a camada Delta pela recarga periódica via `make lake`.
+
+Para ver uma mudança atravessando o fluxo:
+
+```bash
+make up                      # recria o db com wal_level=logical se ainda estava com replica
+make migrate && make carga   # se o banco ainda estiver vazio
+make cdc-demo
+```
+
+O `make cdc-demo` roda `make lake` (carga completa) e `make cdc` (cria o slot), mostra a tipologia de um ato no Delta, **reclassifica** o ato (um `INSERT` novo em `classificacao`, que é insert-only), consome o slot, mostra a mudança no Delta e, por fim, **restaura a tipologia original** com novo `INSERT`, provando o ciclo completo sem alterar a distribuição analítica real. `ATO_ID=123 make cdc-demo` escolhe o ato.
+
+Dia a dia: `make lake` uma vez, depois `make cdc` sempre que quiser aplicar as reclassificações pendentes (pode rodar de novo, não duplica).
+
+> **Slot parado retém WAL.** Se for abandonar o fluxo, rode `make cdc-drop`, senão o disco do banco cresce. Mudanças anteriores à criação do slot só entram com `make lake`.
+>
+> **Curadoria insert-only mantida.** A reclassificação da demonstração permanece registrada no histórico do banco (ADR 0001), sob revisor dedicado. Os testes isolam os revisores e não exigem `make reset` após demonstrar.
 
 ## Estrutura
 

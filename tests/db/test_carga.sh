@@ -26,7 +26,8 @@ PLANILHA="SELECT a.* FROM ato a JOIN orgao_nome n ON n.orgao_id = a.orgao_id AND
            WHERE a.origem = 'PLANILHA'"
 PESQUISADORA="(SELECT id FROM revisor WHERE email = 'curadoria@pesquisa.local')"
 estado() {
-  psql_db -c "SELECT (SELECT count(*) FROM ato) || '|' || (SELECT count(*) FROM classificacao) || '|' ||
+  psql_db -c "SELECT (SELECT count(*) FROM ato) || '|' ||
+                     (SELECT count(*) FROM classificacao WHERE revisor_id = $PESQUISADORA) || '|' ||
                      (SELECT count(*) FROM orgao) || '|' || (SELECT count(*) FROM orgao_nome) || '|' ||
                      (SELECT count(*) FROM orgao_alias)"
 }
@@ -43,7 +44,7 @@ espera_valor "uma classificação da pesquisadora por ato" "215|215" \
 espera_valor "tipologia como na planilha" "99=6,AUTO=97,DEF=68,FISC=31,GEST=6,IP=7" \
   "SELECT string_agg(s || '=' || c, ',' ORDER BY s) FROM (
      SELECT v.tipologia_sigla s, count(*) c FROM classificacao_vigente v JOIN ato a ON a.id = v.ato_id
-      WHERE a.origem = 'PLANILHA' GROUP BY 1) x"
+      WHERE a.origem = 'PLANILHA' AND v.revisor_id = $PESQUISADORA GROUP BY 1) x"
 espera_valor "data serial convertida (CNAS, ID 1)" "2003-02-19" \
   "SELECT data_publicacao FROM ($PLANILHA AND n.nome = 'Conselho Nacional de Assistência Social') a WHERE id_planilha = 1"
 espera_valor "ato/ano do CNPIR recuperado (ID 1)" "1/2005" \
