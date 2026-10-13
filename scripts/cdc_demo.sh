@@ -41,7 +41,17 @@ make --no-print-directory cdc
 
 echo "==> 5. Ato $ato no Delta DEPOIS"
 delta_do_ato "$ato"
+
+echo "==> 6. Restaurando a tipologia original '$atual' (INSERT em classificacao, revisor $revisor)"
+psql_db "INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id) VALUES ($ato, '$atual', $revisor)"
+
+echo "==> 7. Consumindo o slot da restauração (make cdc)"
+make --no-print-directory cdc
+
+echo "==> 8. Ato $ato no Delta FINAL (restaurado)"
+delta_do_ato "$ato"
 echo "==> Reexecutar make cdc agora não encontra nada pendente (pendentes=0)."
 echo ""
-echo "==> A reclassificação permanece registrada no banco histórico (insert-only, ADR 0001)."
-echo "==> Como usa revisor próprio, ela não afeta 'make test' nem exige 'make reset'."
+echo "==> A reclassificação e sua restauração permanecem registradas no histórico (insert-only, ADR 0001)."
+echo "==> A tipologia vigente do ato $ato retornou ao valor original ('$atual'), mantendo a integridade analítica."
+echo "==> Como usa revisor próprio e restaura o valor, ela não afeta 'make test' nem exige 'make reset'."

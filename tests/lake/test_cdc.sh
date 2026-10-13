@@ -23,12 +23,21 @@ INSTALL delta; LOAD delta;
 SELECT tipologia_sigla FROM delta_scan('$TMP_CONTAINER_DIR') WHERE ato_id = $1;" | tr -d '[:space:]'
 }
 
+ato=""
+antes=""
+revisor=""
+
 # Limpeza do slot temporário e da pasta temporária do Delta.
-# classificacao é insert-only (ADR 0001): a reclassificação do teste fica registrada
-# no histórico sob o revisor exclusivo de teste, sem violar a integridade nem precisar de DELETE.
+# classificacao é insert-only (ADR 0001): as reclassificações ficam no histórico.
+# Caso ocorra falha no meio, o trap restaura a tipologia original com novo INSERT.
 limpa() {
   cdc --drop-slot >/dev/null 2>&1 || true
   rm -rf "$TMP_HOST_DIR"
+  if [ -n "$antes" ] && [ -n "$ato" ] && [ -n "$revisor" ]; then
+    psql_db "INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id)
+             SELECT $ato, '$antes', $revisor
+             WHERE (SELECT tipologia_sigla FROM classificacao_vigente cv JOIN revisor r ON r.id = cv.revisor_id WHERE cv.ato_id = $ato ORDER BY (r.tipo='HUMANO') DESC, cv.criado_em DESC LIMIT 1) <> '$antes';" >/dev/null 2>&1 || true
+  fi
 }
 trap limpa EXIT INT TERM
 limpa
@@ -57,5 +66,17 @@ echo "==> [test_cdc] 3. Segunda execução: nada pendente"
 saida=$(cdc "$TMP_CONTAINER_DIR")
 echo "$saida" | grep -q "pendentes=0" || { echo "FALHOU: o slot não avançou:"; echo "$saida"; exit 1; }
 
-echo "==> [test_cdc] OK: reclassificação do ato $ato atravessou o slot até o Delta"
+echo "==> [test_cdc] 4. Restaurando tipologia original ('$nova' -> '$antes')"
+psql_db "INSERT INTO classificacao (ato_id, tipologia_sigla, revisor_id) VALUES ($ato, '$antes', $revisor)" >/dev/null
+saida=$(cdc "$TMP_CONTAINER_DIR")
+echo "$saida" | grep -q "pendentes=1 atos_afetados=1" || { echo "FALHOU na restauração: esperava 1 evento e 1 ato:"; echo "$saida"; exit 1; }
+echo "$saida" | grep -q "atualizadas=1" || { echo "FALHOU na restauração: o Delta não atualizou a linha:"; echo "$saida"; exit 1; }
+restaurado=$(tipologia_no_delta "$ato")
+[ "$restaurado" = "$antes" ] || { echo "FALHOU: Delta tem '$restaurado', esperava '$antes'"; exit 1; }
+
+echo "==> [test_cdc] 5. Terceira execução: nada pendente após restauração"
+saida=$(cdc "$TMP_CONTAINER_DIR")
+echo "$saida" | grep -q "pendentes=0" || { echo "FALHOU: o slot não avançou após restauração:"; echo "$saida"; exit 1; }
+
+echo "==> [test_cdc] OK: reclassificação e restauração do ato $ato atravessaram o slot até o Delta"
 

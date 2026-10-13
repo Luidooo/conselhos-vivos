@@ -19,7 +19,7 @@ O `make lake` ([ADR 0006](0006-armazenar-a-camada-analitica-em-tabelas-delta.md)
 
 | Alternativa | Por que não |
 |---|---|
-| Opção nula: recarga periódica agendada (`make lake` recorrente) | Varre o OLTP inteiro e relê todas as partições do Delta a cada ciclo ($O(N)$ em vez de $O(\Delta)$). Embora em pequeno volume o tempo total de container empate (~7 s), em escala anual (~1.150 atos com HTML de até 42 KB) gera tráfego de I/O redundante. Além disso, não cumpre o requisito de fluxo reativo de mudanças com entrega pelo menos uma vez da E2 |
+| Opção nula: recarga periódica agendada (`make lake` recorrente) | Varre o OLTP inteiro e relê todas as partições do Delta a cada ciclo (O(N) em vez de O(Δ)). Embora em pequeno volume o tempo total de container empate (~7 s), em escala anual (~1.150 atos com HTML de até 42 KB) gera tráfego de I/O redundante. Além disso, não cumpre o requisito de fluxo reativo de mudanças com entrega pelo menos uma vez da E2 |
 | Debezium + Kafka | Dois serviços permanentes e uma JVM num notebook, para ~96 atos/mês |
 | `pgoutput` | Exige parsear protocolo binário e criar publication, sem ganho nesse volume |
 | `wal2json` | Não vem na imagem oficial do Postgres |
@@ -28,14 +28,19 @@ O `make lake` ([ADR 0006](0006-armazenar-a-camada-analitica-em-tabelas-delta.md)
 
 ### Medições empíricas: Opção Nula vs CDC incremental
 
-Com os 215 atos reais e medições no PostgreSQL 16:
-- **Tempo de extração e MERGE no Python:**
-  - `make lake` (recarga completa, 215 atos): **~92 ms** (26 ms leitura + 66 ms merge Delta em todas as partições).
-  - `make cdc` (incremental, 1 ato alterado): **~47 ms** (12 ms peek/get slot + 10 ms leitura OLTP do ato único + 25 ms merge Delta da partição afetada).
-  *(Nota: no Compose sob demanda, ambos somam ~6,6 s a 7,0 s com a subida do container efêmero; a vantagem do CDC cresce com $O(\Delta)$ vs $O(N)$ conforme os atos acumulam HTMLs no OLTP).*
+As medições são reproduzíveis via script dedicado no repositório:
+```bash
+docker compose run --rm lake python docs/adr/medicoes/0007-cdc/bench.py
+```
+
+Com os 215 atos reais e medições no PostgreSQL 16 (conforme `docs/adr/medicoes/0007-cdc/resultados.json`):
+- **Tempo de extração e MERGE no Python (medianas):**
+  - `make lake` (recarga completa, 215 atos): **~68 ms** (11,4 ms na consulta OLTP de todos os atos + 56,8 ms no merge Delta em todas as partições).
+  - `make cdc` (incremental, 1 ato alterado): **~58 ms** (1,9 ms na consulta OLTP filtrada por ID + 56,4 ms no merge Delta). A extração do OLTP é **~6× mais rápida**.
+  *(Nota: no Compose sob demanda, ambos somam ~6,6 s a 7,0 s com a subida do container efêmero; a vantagem do CDC cresce com O(Δ) vs O(N) conforme os atos acumulam HTMLs volumosos no OLTP).*
 - **Tamanho do WAL retido pelo slot:**
   - Slot consumido (em dia): **56 bytes** de defasagem (`pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)`).
-  - Transação de reclassificação única: **~29 KB (29.152 bytes)** de WAL gerado e retido até o próximo consumo.
+  - Transação de reclassificação única: **512 bytes** de WAL na alteração isolada (e até **~29 KB** se envolver cadastro de metadados de novo revisor na mesma transação).
   - Risco de retenção: se o consumidor não rodar, o Postgres acumula arquivos de WAL inteiros (segmentos de 16 MB cada) sem conseguir reciclá-los.
 
 *(Medição válida também para a análise do mecanismo de ingestão no ADR 0005 / #32).*

@@ -1,0 +1,21 @@
+{
+  "total_atos": 215,
+  "tempos_python_ms": {
+    "make_lake_completo": {
+      "extracao_ms": 11.39,
+      "merge_delta_ms": 56.78,
+      "total_ms": 68.18
+    },
+    "make_cdc_incremental": {
+      "extracao_ms": 1.92,
+      "merge_delta_ms": 56.35,
+      "total_ms": 58.28
+    },
+    "speedup_cpu": 1.17
+  },
+  "wal_retido_bytes": {
+    "slot_consumido_bytes": 56,
+    "transacao_reclassificacao_bytes": 512,
+    "transacao_reclassificacao_kb": 0.5
+  }
+}

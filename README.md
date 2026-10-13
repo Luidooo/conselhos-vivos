@@ -260,7 +260,7 @@ make migrate && make carga   # se o banco ainda estiver vazio
 make cdc-demo
 ```
 
-O `make cdc-demo` roda `make lake` (carga completa) e `make cdc` (cria o slot), mostra a tipologia de um ato no Delta, **reclassifica** o ato (um `INSERT` novo em `classificacao`, que é insert-only), consome o slot e mostra a linha nova no Delta. `ATO_ID=123 make cdc-demo` escolhe o ato.
+O `make cdc-demo` roda `make lake` (carga completa) e `make cdc` (cria o slot), mostra a tipologia de um ato no Delta, **reclassifica** o ato (um `INSERT` novo em `classificacao`, que é insert-only), consome o slot, mostra a mudança no Delta e, por fim, **restaura a tipologia original** com novo `INSERT`, provando o ciclo completo sem alterar a distribuição analítica real. `ATO_ID=123 make cdc-demo` escolhe o ato.
 
 Dia a dia: `make lake` uma vez, depois `make cdc` sempre que quiser aplicar as reclassificações pendentes (pode rodar de novo, não duplica).
 

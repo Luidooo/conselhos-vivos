@@ -213,12 +213,13 @@ services:
       DOCKER_GID: ${DOCKER_GID:-1000}
     volumes:
       - ./src:/app/src:ro
+      - ./docs:/app/docs
       - ./data/silver:/data/silver
       - pipcache:/tmp/pipcache
     depends_on:
       db:
         condition: service_healthy
-    entrypoint: ["sh", "-c", "pip install -q --root-user-action=ignore --no-warn-script-location -r /app/src/lake/requirements.txt && python -m lake \"$${1:-/data/silver/atos}\" && chown -R $${DOCKER_UID}:$${DOCKER_GID} /data/silver", "sh"]
+    entrypoint: ["sh", "-c", "pip install -q --root-user-action=ignore --no-warn-script-location -r /app/src/lake/requirements.txt && if [ \"$$1\" = \"python\" ]; then shift; exec python \"$$@\"; else python -m lake \"$${1:-/data/silver/atos}\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data/silver; exit $$rc; fi", "sh"]
 
   # Fluxo de mudanças OLTP -> Delta (ADR 0007): aplica no Delta o que está pendente no slot lógico.
   # Mesma imagem e volumes do lake. Argumentos: [destino] ou --drop-slot.
