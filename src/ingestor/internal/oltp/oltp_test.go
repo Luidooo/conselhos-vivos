@@ -204,8 +204,11 @@ func TestSaveQueuesAnUnknownOrgan(t *testing.T) {
 	atos := count(t, tx, `SELECT count(*) FROM ato`)
 
 	// Two matérias of the same organ, the second with the name spaced apart.
-	for id, name := range map[string]string{"900000020": organ, "900000021": "Coordenação de Teste  Que Não Existe"} {
-		outcome, err := writer.Save(ctx, handmade(id, "Ministério de Teste", name))
+	for _, m := range []struct{ id, name string }{
+		{"900000020", organ},
+		{"900000021", "Coordenação de Teste  Que Não Existe"},
+	} {
+		outcome, err := writer.Save(ctx, handmade(m.id, "Ministério de Teste", m.name))
 		require.NoError(t, err)
 		assert.Equal(t, UnknownOrgan, outcome)
 	}
