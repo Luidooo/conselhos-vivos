@@ -468,6 +468,24 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:** `make test` inteiro verde; `docker compose run dou --help` sem o aviso de cache e sem download na segunda execução; `unittest discover -s tests` na raiz sem `ImportError`.
 - **Quem revisou:** o Moura, no PR; pendente a conferência dele depois desta rodada.
 
+### 2026-10-13 — Migração 1: `fetch-mensal` em Python (#53)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.1)
+- **Onde:** `src/dou/bronze.py`, `src/dou/dadosabertos.py`, `src/dou/fetch_mensal.py`, `src/dou/__main__.py`; `tests/dou/test_bronze.py` e `test_dadosabertos.py`; `docker-compose.yml` (serviço Go `fetch-mensal` removido; `dou` ganha `DADOS_ABERTOS_OUTPUT_DIR`), `Makefile` (`make fetch-mensal` chama o Python), `README.md`
+- **O que foi pedido:** portar `internal/store` e `internal/dadosabertos` do Go para Python, trocar o serviço e provar a equivalência, como o plano da #51 descreve.
+- **O que foi aproveitado:** tudo, só com a biblioteca padrão (`urllib`, `zipfile`, `tempfile`, `os.replace` + `fsync`). Os 16 testes do `store` e os 8 do `dadosabertos` foram portados nome a nome para `unittest` (26, mais 2 novos), com um `ThreadingHTTPServer` em `127.0.0.1` no papel do `httptest`; a corrida de dois gravadores usa threads de verdade. **Duas diferenças achadas pelos testes e corrigidas:** `strptime("%Y-%m")` aceita `2026-8`, que o Go recusava — entrou uma regex antes; e o teste de "só a Seção 1" estava mal montado. **Diferença aceita e registrada:** o Go tinha um teto de 10 min no mês inteiro; aqui o timeout (30 s) é por operação de socket, sem teto global. O `fetch` diário do INLABS (`internal/inlabs`) não foi tocado: continua em Go até a #56.
+- **Como foi verificado:** o ZIP de agosto baixado pelo Go foi guardado fora do repositório, o Python baixou o mesmo mês e o `cmp` deu **idêntico** (52.565.336 bytes, ~11 s); a segunda execução não fez pedido (`ja-baixada`); `MES=2026-10` saiu com 1 sem gravar nada e `MES=2026-9` com 2; `make test` inteiro verde (28 testes em `tests/dou`). **Achado colateral:** `MES=2026-09` baixou: setembro de 2026 foi publicado nos dados abertos em 13/10 (286 MB, 8.927 XMLs), e ficou em `data/bronze/dados-abertos/`.
+- **Quem revisou:** pendente — a Luiza, no PR.
+
+### 2026-10-13 — ADR 0005: Ingestão no OLTP, CDC vs Opção Nula e Debezium+Kafka (#32)
+
+- **Ferramenta:** Antigravity (Gemini 3.8 Flash)
+- **Onde:** `docs/adr/0005-ingerir-dou-no-oltp-e-propagar-ao-delta-via-cdc.md`, `docs/adr/medicoes/0005-ingestao/bench.py`, `docs/adr/medicoes/0005-ingestao/resultados.json`, `docs/adr/README.md`, `site/entrega-e2.md`, `site/.vitepress/config.mts`, `docs/diario/2026-10-13.md`
+- **O que foi pedido:** implementar o ADR obrigatório da Entrega E2 aplicando o Método de Decisão para a issue #32: comparar com medições empíricas do domínio as três alternativas de propagação ((A, opção nula) recarga periódica completa agendada, (B) CDC lógico com consumidor próprio e (C) Debezium com Apache Kafka), detalhando containers, consumo de RAM, latência e reprocessamento; justificar formalmente por que o DOU agora entra no OLTP (revisando o ADR 0001); sintetizar a escolha de Delta Lake vs Iceberg e compressão Zstd; e atualizar o índice de ADRs e o checklist da E2.
+- **O que foi aproveitado:** redação completa do ADR 0005 cobrindo contexto, revisão arquitetural do ADR 0001 (por que o ato precisa ser entidade transacional no OLTP para viabilizar curadoria 3NF e resolução de aliases, sem virar um espelho indiscriminado do DOU), comparação detalhada das 3 alternativas, script reproduzível de benchmark `docs/adr/medicoes/0005-ingestao/bench.py` com resultados empíricos em `resultados.json` (0 containers e 0 MB de RAM permanente adicionais para o CDC vs estimativas teóricas de 4 containers e ~2 GB de RAM JVM para Debezium+Kafka; comparação honesta com a opção nula com empate em parede no Compose e no tempo total de CPU), consequências honestas com perdas (risco de retenção de WAL no slot), gatilhos de revisão objetivos, e atualização do índice e do VitePress. **Registro explícito:** a coluna C (Debezium + Kafka) foi estimada com base na literatura e arquitetura típica com JVM, não executada no projeto; o script `bench.py` afere as opções A e B com a base real sem alterar o banco de dados.
+- **Como foi verificado:** execução real do benchmark com `docker compose run --rm lake python docs/adr/medicoes/0005-ingestao/bench.py` com código 0 e geração de `resultados.json` sem modificar tabelas do OLTP; conferência de links no site e no índice de ADRs; e suíte de testes do projeto validada.
+- **Quem revisou:** pendente (PR #61).
+
 ### 2026-10-13 — Migração 2: `extract` em Python (#54)
 
 - **Ferramenta:** Claude Code (Claude Fable 5.1)

@@ -237,9 +237,10 @@ make fetch-mensal MES=2026-08    # só baixa, para data/bronze/dados-abertos/S01
 make persist-mensal MES=2026-08  # só grava o ZIP já baixado, sem acessar a Imprensa Nacional
 ```
 
-- **O ZIP fica com o nome que a Imprensa Nacional dá** (`S01MMAAAA.zip`): a Seção 1 de agosto de 2026 é `S01082026.zip`, com cerca de 50 MB e 8.600 matérias.
+- **O ZIP fica com o nome que a Imprensa Nacional dá** (`S01MMAAAA.zip`): a Seção 1 de agosto de 2026 é `S01082026.zip`, com cerca de 50 MB e 8.600 matérias; a de setembro tem 286 MB e 8.900.
+- **O `fetch-mensal` é Python** (`python -m dou fetch-mensal`, em `src/dou/`), a primeira fatia da migração do ingestor (#51): o download é byte a byte o mesmo que o comando em Go fazia.
 - **Mês já em disco não é baixado de novo.** O arquivo de um mês fechado não muda, e o nome só existe depois que o ZIP chegou inteiro. Rodar o `make ingest-mensal` de novo não baixa nem duplica nada; o `persist` compara cada matéria com todas as versões, como no `make ingest`.
-- **Mês ainda não publicado é erro**, e nada é gravado. O mês sai cerca de duas semanas depois de acabar: em meados de outubro, o mais recente é agosto. Para o dia de hoje, a fonte continua sendo o `make ingest`, do INLABS.
+- **Mês ainda não publicado é erro**, e nada é gravado. O mês sai cerca de duas semanas depois de acabar: setembro de 2026 apareceu em 13/10. Para o dia de hoje, a fonte continua sendo o `make ingest`, do INLABS.
 - **Como o link é encontrado.** O endereço de cada ZIP leva um UUID que não dá para montar; o `fetch-mensal` lê a página da base de dados com `ano` e `mes` e pega o link do `S01MMAAAA.zip`. Só aceita link para o próprio `www.in.gov.br`. O pedido vai com `Accept: */*`: sem esse cabeçalho, o site responde `403`.
 
 Para vários meses, um laço no shell:
