@@ -102,7 +102,7 @@ ingest-dia: .env ## baixa as edições de DATA e grava as matérias de conselho 
 fetch-mensal: ## baixa a Seção 1 do DOU de um mês inteiro dos dados abertos, sem login (MES=AAAA-MM); mês já em disco não baixa de novo
 	@$(TEM_MES)
 	mkdir -p data/bronze/dados-abertos
-	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T fetch-mensal -month $(MES)
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T dou fetch-mensal --month $(MES)
 
 persist-mensal: .env ## grava no banco as matérias do ZIP mensal de MES já baixado; pode rodar de novo, não duplica
 	@$(TEM_MES)
