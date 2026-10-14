@@ -101,29 +101,6 @@ services:
     entrypoint: ["sh", "-c", "go build -o /tmp/fetch ./cmd/fetch && exec /tmp/fetch \"$$@\"", "--"]
 
 
-  # Grava no banco as matérias de um ZIP que o ingestor já baixou (#24). Bronze só
-  # para leitura; o endereço do db vai nas variáveis PG*, que o pgx lê.
-  persist:
-    image: golang:1.26.8-alpine
-    profiles: [ingestor]
-    working_dir: /app
-    environment:
-      GOCACHE: /gocache
-      GOMODCACHE: /gomodcache
-      PGHOST: db
-      PGUSER: ${POSTGRES_USER}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-      PGDATABASE: ${POSTGRES_DB}
-    volumes:
-      - ./src/ingestor:/app:ro
-      - ./data/bronze:/data/bronze:ro
-      - gocache:/gocache
-      - gomodcache:/gomodcache
-    depends_on:
-      db:
-        condition: service_healthy
-    entrypoint: ["sh", "-c", "go build -o /tmp/persist ./cmd/persist && exec /tmp/persist \"$$@\"", "--"]
-
   # Testes do ingestor. Tudo :ro e sem credencial no ambiente. Mantém rede — ao
   # contrário do carga — porque o GOMODCACHE nasce vazio e a primeira execução
   # precisa baixar os módulos; o que é hermético é o código de teste, que só fala
@@ -140,29 +117,6 @@ services:
       - ./src/ingestor:/app:ro
       - gocache:/gocache
       - gomodcache:/gomodcache
-    entrypoint: []
-
-  # Testes do ingestor que gravam no banco (#19). Igual ao ingestor-test, mais o
-  # endereço do db nas variáveis PG* que o pgx lê. Cada teste roda numa transação
-  # desfeita no fim: o banco fica como estava.
-  ingestor-db-test:
-    image: golang:1.26.8-alpine
-    profiles: [ingestor]
-    working_dir: /app
-    environment:
-      GOCACHE: /gocache
-      GOMODCACHE: /gomodcache
-      PGHOST: db
-      PGUSER: ${POSTGRES_USER}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-      PGDATABASE: ${POSTGRES_DB}
-    volumes:
-      - ./src/ingestor:/app:ro
-      - gocache:/gocache
-      - gomodcache:/gomodcache
-    depends_on:
-      db:
-        condition: service_healthy
     entrypoint: []
 
   # Camada analítica em Delta Lake (ADR 0006)
@@ -222,7 +176,7 @@ services:
 
   # Testes do dou (#52). Os sem banco rodam no serviço carga (sem rede, como os
   # da planilha); estes são os que gravam no banco, cada um numa transação
-  # desfeita no fim, o par do ingestor-db-test.
+  # desfeita no fim, como o internal/dbtest do Go fazia.
   dou-db-test:
     image: python:3.12.14-slim
     profiles: [ingestor]

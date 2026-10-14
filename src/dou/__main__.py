@@ -5,12 +5,13 @@ Cada fatia da migração registra o seu subcomando em SUBCOMANDOS.
 
 import sys
 
-from . import extract, fetch_mensal
+from . import extract, fetch_mensal, persist
 
 # nome -> função(argv) que devolve o código de saída. Uma entrada por fatia.
 SUBCOMANDOS = {
     "fetch-mensal": fetch_mensal.main,  # #53
     "extract": extract.main,  # #54
+    "persist": persist.main,  # #55
 }
 
 

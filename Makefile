@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-py-dou test-db-go test-db-py vet-go reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos
+.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-py-dou test-db-py vet-go reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -80,7 +80,7 @@ persist: .env ## grava no banco as matérias dos ZIPs de DATA já baixados; pode
 	@$(TEM_EDICAO)
 	@# Como no extract: uma execução por edição, e a segunda roda mesmo se a primeira falhar.
 	@falhou=$(ZIPS_FALHOU); for zip in $(EDICOES:data/%=/data/%); do \
-		docker compose --progress quiet run --rm -T persist $$zip || falhou=1; \
+		docker compose --progress quiet run --rm -T dou persist $$zip || falhou=1; \
 	done; exit $$falhou
 
 ingest: .env ## baixa e grava no banco os JANELA dias que terminam em DATA (padrão: 7); pode rodar de novo, não duplica
@@ -107,7 +107,7 @@ fetch-mensal: ## baixa a Seção 1 do DOU de um mês inteiro dos dados abertos, 
 persist-mensal: .env ## grava no banco as matérias do ZIP mensal de MES já baixado; pode rodar de novo, não duplica
 	@$(TEM_MES)
 	@if [ ! -f "$(ZIP_MENSAL)" ]; then echo "nenhum $(notdir $(ZIP_MENSAL)) em data/bronze/dados-abertos/ — rode make fetch-mensal MES=$(MES)" >&2; exit 1; fi
-	docker compose --progress quiet run --rm -T persist /$(ZIP_MENSAL)
+	docker compose --progress quiet run --rm -T dou persist /$(ZIP_MENSAL)
 
 ingest-mensal: .env ## baixa o mês MES dos dados abertos e grava as matérias de conselho no banco; pode rodar de novo, não duplica
 	@# Sem o ZIP não há o que gravar: se o fetch falha, o persist nem roda.
@@ -126,9 +126,6 @@ test-db-py: .env ## testes do ingestor em Python que gravam no banco, em transa�
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
 	docker compose --progress quiet run --rm -T ingestor-test go test -count=1 ./...
 
-test-db-go: .env ## testes do ingestor que gravam no banco, em transação desfeita (precisa do banco no ar e migrado)
-	docker compose --progress quiet run --rm -T ingestor-db-test go test -count=1 ./internal/oltp/ ./cmd/persist/
-
 vet-go: ## gofmt e go vet do ingestor, em container
 	docker compose --progress quiet run --rm -T ingestor-test sh -c 'test -z "$$(gofmt -l .)" || { gofmt -l .; echo "FALHOU: arquivos fora do gofmt"; exit 1; }; go vet ./...'
 
@@ -142,7 +139,6 @@ test: .env test-go test-py-dou ## testes: Go e Python do ingestor, infra, esquem
 	bash tests/ingest/test_janela.sh
 	bash tests/lake/test_lake.sh
 	bash tests/lake/test_cdc.sh
-	$(MAKE) --no-print-directory test-db-go
 	$(MAKE) --no-print-directory test-db-py
 
 reset: ## APAGA o banco, sobe do zero, migra e carrega a planilha
