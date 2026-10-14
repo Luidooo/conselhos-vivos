@@ -1,40 +1,50 @@
 {
-  "total_atos": 215,
+  "total_atos": 311,
+  "base_referencia": "311 atos (215 históricos da planilha 2003-2020 + 96 atos de agosto/2026 do DOU)",
   "alternativas": {
     "A_opcao_nula_recarga_periodica": {
-      "descricao": "Recarga periódica completa agendada (make lake sob demanda ou cron)",
-      "latencia_processamento_ms": 92.52,
+      "descricao": "Recarga periódica completa agendada (make lake sob demanda ou via cron)",
+      "fonte_tempo": "medido",
+      "tempo_parede_compose_s": 7.0,
+      "latencia_processamento_ms": 92.47,
       "detalhe_tempos": {
-        "extracao_oltp_ms": 16.77,
-        "merge_delta_ms": 75.75
+        "extracao_oltp_ms": 25.76,
+        "merge_delta_ms": 66.71
       },
-      "latencia_chegada_efetiva": "0 a 60 min (conforme intervalo de agendamento em lote)",
+      "latencia_chegada_efetiva": "Sob demanda (make lake) ou lote agendado (ex.: cron); ~7,0 s de container efêmero por execução",
       "containers_permanentes": 0,
       "ram_permanente_mb": 0,
       "ram_transitoria_pico_mb": 45,
+      "fonte_infra": "estimativa (container efêmero)",
       "dependencias_externas": "Nenhuma (stdlib + deltalake efêmero)",
       "comportamento_reprocessamento": "Varre novamente todo o OLTP e todas as partições do Delta (O(N)), redundante e pesado em I/O"
     },
     "B_cdc_logico_consumidor_proprio": {
       "descricao": "CDC com decodificação lógica nativa (test_decoding), slot lógico e consumidor Python idempotente",
-      "latencia_processamento_ms": 73.4,
+      "fonte_tempo": "medido",
+      "fonte_wal": "medido no ADR 0007",
+      "tempo_parede_compose_s": 6.8,
+      "latencia_processamento_ms": 65.4,
       "detalhe_tempos": {
-        "extracao_oltp_ms": 2.85,
-        "merge_delta_ms": 70.56
+        "extracao_oltp_ms": 1.71,
+        "merge_delta_ms": 63.69
       },
-      "latencia_chegada_efetiva": "< 1 s (orientado a evento ou sob demanda com make cdc)",
+      "latencia_chegada_efetiva": "Sob demanda (make cdc) ou agendado; ~6,6-7,0 s de container efêmero (mesma categoria da opção A: até rodar o comando; difere no trabalho por execução: O(Δ) vs O(N))",
       "containers_permanentes": 0,
       "ram_permanente_mb": 0,
       "ram_transitoria_pico_mb": 45,
+      "fonte_infra": "estimativa (container efêmero)",
       "wal_retido_em_dia_bytes": 56,
-      "wal_retido_transacao_bytes": 25872,
+      "wal_retido_transacao_bytes": 512,
       "dependencias_externas": "Nenhuma (Postgres nativo wal_level=logical, sem JVM)",
       "comportamento_reprocessamento": "Entrega pelo menos uma vez no slot com absorção idempotente no MERGE do Delta Lake (effectively-once provado no teste de caos)"
     },
     "C_debezium_kafka": {
       "descricao": "Debezium PostgreSQL Connector + Cluster Apache Kafka + Schema Registry + Consumidor Spark/Python",
+      "fonte": "estimativa",
+      "nota": "Estimativas teóricas/de literatura para arquitetura distribuída com JVM, não executada no projeto",
       "latencia_processamento_ms": 1500,
-      "latencia_chegada_efetiva": "1 a 3 segundos (streaming contínuo)",
+      "latencia_chegada_efetiva": "1 a 3 segundos (estimativa de streaming contínuo, não medida)",
       "containers_permanentes": 4,
       "ram_permanente_mb": 2048,
       "ram_transitoria_pico_mb": 2560,
@@ -43,9 +53,12 @@
     }
   },
   "conclusoes": {
-    "speedup_extracao_oltp": 5.89,
-    "speedup_processamento_total": 1.26,
-    "economia_ram_permanente_mb": 2048,
-    "diferenca_containers_permanentes": 4
+    "speedup_extracao_oltp": 15.09,
+    "speedup_processamento_total": 1.41,
+    "comparativo_parede_compose": "Empate prático (~7 s cada, dominado pelo overhead de inicialização do container efêmero)",
+    "comparativo_cpu_python": "Empate prático (92.5 ms vs 65.4 ms, speedup total de 1.41x; MERGE domina o tempo)",
+    "criterio_decisao": "CDC escolhido pelo requisito de fluxo de mudanças da E2 com semântica demonstrada e custo zero de containers/RAM permanente",
+    "economia_ram_permanente_mb_estimada": 2048,
+    "diferenca_containers_permanentes_estimada": 4
   }
 }
