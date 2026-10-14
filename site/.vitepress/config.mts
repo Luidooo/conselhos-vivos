@@ -116,6 +116,7 @@ export default withMermaid(defineConfig({
           { text: '0002 · PostgreSQL 16', link: '/docs/adr/0002-manter-postgresql-como-motor-do-oltp' },
           { text: '0003 · Planilha como rótulo', link: '/docs/adr/0003-carregar-a-planilha-como-rotulo-da-curadoria' },
           { text: '0004 · Identidade dos conselhos', link: '/docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada' },
+          { text: '0005 · Ingestão no OLTP e CDC vs opção nula', link: '/docs/adr/0005-ingerir-dou-no-oltp-e-propagar-ao-delta-via-cdc' },
           { text: '0006 · Camada analítica em Delta', link: '/docs/adr/0006-armazenar-a-camada-analitica-em-tabelas-delta' },
           { text: '0007 · CDC por slot lógico', link: '/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica' },
         ],

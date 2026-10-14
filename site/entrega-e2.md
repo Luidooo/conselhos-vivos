@@ -72,9 +72,15 @@ Pré-requisitos: Docker com Compose v2 e `make`. A ingestão mensal não precisa
 
 ## 7. ADR sobre o mecanismo de ingestão, com a opção nula considerada
 
-::: warning Pendente
-Em andamento na [#32](https://github.com/Luidooo/conselhos-vivos/issues/32), com o número 0005 reservado. Parte do conteúdo já está medido em outros ADRs: CDC contra recarga completa no [ADR 0007](/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica), Delta contra Iceberg no [ADR 0006](/docs/adr/0006-armazenar-a-camada-analitica-em-tabelas-delta). Faltam a fonte mensal contra o INLABS, a opção nula da ingestão e por que o DOU passou a entrar no OLTP, que o ADR 0001 dizia não ser o caso.
-:::
+- **Método de Decisão com 3 alternativas:** [ADR 0005](/docs/adr/0005-ingerir-dou-no-oltp-e-propagar-ao-delta-via-cdc) compara formalmente a **Opção Nula** (A, recarga periódica completa agendada), o **CDC lógico nativo** (B, adotada) e **Debezium com Kafka** (C).
+- **Medição reproduzível no repositório:** comando `docker compose run --rm lake python docs/adr/medicoes/0005-ingestao/bench.py` afere latência, containers, consumo de RAM permanente e comportamento no reprocessamento com os dados reais do domínio.
+  - *Containers e RAM permanente:* Opção B adiciona **0 containers e 0 MB de RAM permanente** (contra 4 containers e ~2 GB de RAM JVM permanente do Debezium + Kafka).
+  - *Latência de processamento:* extração pontual no OLTP é **~5,9× mais rápida** (2,8 ms vs 16,8 ms) e o tempo total de processamento é **1,26× mais rápido** do que varrer a base inteira, com ganho $O(\Delta)$ vs $O(N)$ que se amplia conforme novos anos acumulam HTMLs no OLTP.
+  - *Reprocessamento e tolerância a falhas:* entrega *effectively-once* comprovada sem duplicação no Delta Lake ([ADR 0007](/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica)).
+- **Por que o DOU agora entra no OLTP:** o ADR 0001 previa o DOU apenas como bronze/OLAP. O ADR 0005 documenta a evolução: a curadoria humana em 3NF exige que `classificacao` aponte para uma chave estrangeira real em `ato(id)`, a fila de resolução de aliases de órgãos ([ADR 0004](/docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada)) é transacional viva, e o OLTP não espelha o DOU (em agosto/2026, 8.494 matérias alheias a conselho foram descartadas e apenas as 96 matérias pertinentes foram gravadas).
+- **Dados Abertos vs INLABS:** a ingestão automática oficial adotou os Dados Abertos mensais públicos (sem login, com histórico desde 2002 e DO1E), contornando o bloqueio de login com erro 502 que o INLABS impôs a scripts em 12/10.
+- **Delta × Iceberg e compressão zstd:** critérios explícitos consolidados no [ADR 0006](/docs/adr/0006-armazenar-a-camada-analitica-em-tabelas-delta).
+
 
 ## 8. Diário de bordo das semanas 7 a 10
 

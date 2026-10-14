@@ -1,0 +1,51 @@
+{
+  "total_atos": 215,
+  "alternativas": {
+    "A_opcao_nula_recarga_periodica": {
+      "descricao": "Recarga periódica completa agendada (make lake sob demanda ou cron)",
+      "latencia_processamento_ms": 92.52,
+      "detalhe_tempos": {
+        "extracao_oltp_ms": 16.77,
+        "merge_delta_ms": 75.75
+      },
+      "latencia_chegada_efetiva": "0 a 60 min (conforme intervalo de agendamento em lote)",
+      "containers_permanentes": 0,
+      "ram_permanente_mb": 0,
+      "ram_transitoria_pico_mb": 45,
+      "dependencias_externas": "Nenhuma (stdlib + deltalake efêmero)",
+      "comportamento_reprocessamento": "Varre novamente todo o OLTP e todas as partições do Delta (O(N)), redundante e pesado em I/O"
+    },
+    "B_cdc_logico_consumidor_proprio": {
+      "descricao": "CDC com decodificação lógica nativa (test_decoding), slot lógico e consumidor Python idempotente",
+      "latencia_processamento_ms": 73.4,
+      "detalhe_tempos": {
+        "extracao_oltp_ms": 2.85,
+        "merge_delta_ms": 70.56
+      },
+      "latencia_chegada_efetiva": "< 1 s (orientado a evento ou sob demanda com make cdc)",
+      "containers_permanentes": 0,
+      "ram_permanente_mb": 0,
+      "ram_transitoria_pico_mb": 45,
+      "wal_retido_em_dia_bytes": 56,
+      "wal_retido_transacao_bytes": 25872,
+      "dependencias_externas": "Nenhuma (Postgres nativo wal_level=logical, sem JVM)",
+      "comportamento_reprocessamento": "Entrega pelo menos uma vez no slot com absorção idempotente no MERGE do Delta Lake (effectively-once provado no teste de caos)"
+    },
+    "C_debezium_kafka": {
+      "descricao": "Debezium PostgreSQL Connector + Cluster Apache Kafka + Schema Registry + Consumidor Spark/Python",
+      "latencia_processamento_ms": 1500,
+      "latencia_chegada_efetiva": "1 a 3 segundos (streaming contínuo)",
+      "containers_permanentes": 4,
+      "ram_permanente_mb": 2048,
+      "ram_transitoria_pico_mb": 2560,
+      "dependencias_externas": "Altíssima (Java/JVM, ZooKeeper/KRaft, Apache Kafka, Kafka Connect, Debezium, rede inter-container permanente)",
+      "comportamento_reprocessamento": "Replay complexo via reinicialização de offsets em tópicos, gerenciamento de snapshots iniciais e políticas de retenção de log"
+    }
+  },
+  "conclusoes": {
+    "speedup_extracao_oltp": 5.89,
+    "speedup_processamento_total": 1.26,
+    "economia_ram_permanente_mb": 2048,
+    "diferenca_containers_permanentes": 4
+  }
+}

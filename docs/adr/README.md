@@ -24,6 +24,6 @@ Levantadas na fase de entendimento do domínio, ainda sem ADR escrito:
 | [0002](0002-manter-postgresql-como-motor-do-oltp.md) | O OLTP de curadoria continua em PostgreSQL 16 | proposto |
 | [0003](0003-carregar-a-planilha-como-rotulo-da-curadoria.md) | A planilha da pesquisadora entra no OLTP como rótulo da curadoria, lida só com a biblioteca padrão | proposto |
 | [0004](0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md) | A identidade de um conselho sai de uma chave normalizada mais decisões registradas, nunca de similaridade de texto | proposto |
-| 0005 | Mecanismo de ingestão com opção nula (#32) | reservado |
+| [0005](0005-ingerir-dou-no-oltp-e-propagar-ao-delta-via-cdc.md) | Ingerir atos de conselho do DOU no OLTP e propagar ao Delta Lake por CDC lógico | proposto |
 | [0006](0006-armazenar-a-camada-analitica-em-tabelas-delta.md) | Armazenar a camada analítica em tabelas Delta particionadas por ano e comprimidas com zstd | proposto |
 | [0007](0007-propagar-mudancas-por-slot-de-replicacao-logica.md) | Propagar mudanças do OLTP ao Delta por slot de replicação lógica, sem Kafka | proposto |
