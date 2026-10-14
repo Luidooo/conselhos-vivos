@@ -65,6 +65,8 @@ Os dados ficam no volume `pgdata` e sobrevivem a `docker compose down`.
 make test      # testes: Go do ingestor, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos, carga e persistência do DOU
 make test-go   # só os testes do ingestor em Go, em container (sem rede, sem credencial)
 make test-db-go  # só os testes do ingestor que gravam no banco, em transação desfeita (banco no ar e migrado)
+make test-py-dou # só os testes do ingestor em Python que não usam banco (sem rede)
+make test-db-py  # só os testes do ingestor em Python que gravam no banco, em transação desfeita
 make fetch     # baixa as edições do DOU de hoje em Brasília; DATA=AAAA-MM-DD para outro dia
 make extract   # lê as matérias dos ZIPs já baixados de DATA e imprime uma por linha, em JSON
 make persist   # grava no banco as matérias dos ZIPs já baixados de DATA; pode rodar de novo, não duplica
@@ -272,7 +274,7 @@ Dia a dia: `make lake` uma vez, depois `make cdc` sempre que quiser aplicar as r
 
 ```
 sql/            DDL versionado do banco
-src/            ingestão, parsing e transformações
+src/            ingestão, parsing e transformações; src/ingestor/ (Go) está sendo migrado para src/dou/ (Python), fatia a fatia (#51)
 docs/adr/       decisões de arquitetura (o porquê de cada escolha)
 docs/diario/    registro semanal do andamento
 docs/carga/     relatórios da carga (gerados pelo make carga, versionados)

@@ -440,3 +440,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** a estrutura da ADR 0006, a query de consolidação com os nomes históricos e tipologia vigente, a lógica de merge no `sync.py` com `deltalake`, compressão ZSTD, medições comparativas reais, o serviço `lake` e o alvo `make lake`.
 - **Como foi verificado:** conferido que a extração preserva os 215 atos da planilha; executado `make lake` duas vezes comprovando idempotência (0 inserções na segunda); teste analítico com DuckDB rodando contra `data/silver/atos/`; suíte `make test` completa passando.
 - **Quem revisou:** Gabriel Moura e pendente (quem revisar o PR)
+
+### 2026-10-13 — Migração 0: pacote `src/dou/`, serviços e alvos de teste em Python (#52)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.1)
+- **Onde:** `src/dou/` (`__init__.py`, `__main__.py`, `requirements.txt`), `tests/dou/` e `tests/dou_db/` (fumaça e o apoio `dbtest.py`), `docker-compose.yml` (serviços `dou` e `dou-db-test`), `Makefile` (`test-py-dou`, `test-db-py`, os dois dentro do `make test`), `README.md`
+- **O que foi pedido:** a primeira fatia da migração Go → Python decidida na #51: a infra para as fatias seguintes, sem comportamento novo e sem tocar no Go.
+- **O que foi aproveitado:** tudo. **Decidido pela IA**, a revisar: o `python -m dou` tem um registro de subcomandos (`SUBCOMANDOS`) que as fatias preenchem, e sem nenhum sai com 2 e lista "nenhum ainda"; os testes sem banco rodam no serviço `carga` (sem rede), como os da planilha; os com banco rodam num serviço próprio, cada teste numa transação desfeita (`dbtest.CasoComBanco`, o par do `internal/dbtest` do Go), e são pulados — não falham — sem `PGHOST`; o `pip` instala em `--target /tmp/site` para rodar como o usuário do host sem gravar em `/usr/local`.
+- **Como foi verificado:** `make test` inteiro verde (o Go intacto: 11 pacotes `ok`; mais 3 testes de fumaça do CLI e 1 do banco, que grava um revisor e confere que o rollback o apaga); `docker compose config` válido; `python -m dou` sem argumento sai com 2, `--help` com 0, subcomando desconhecido com 2.
+- **Quem revisou:** pendente — a Luiza, no PR.
