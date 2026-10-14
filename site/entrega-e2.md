@@ -72,9 +72,15 @@ Pré-requisitos: Docker com Compose v2 e `make`. A ingestão mensal não precisa
 
 ## 7. ADR sobre o mecanismo de ingestão, com a opção nula considerada
 
-::: warning Pendente
-Em andamento na [#32](https://github.com/Luidooo/conselhos-vivos/issues/32), com o número 0005 reservado. Parte do conteúdo já está medido em outros ADRs: CDC contra recarga completa no [ADR 0007](/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica), Delta contra Iceberg no [ADR 0006](/docs/adr/0006-armazenar-a-camada-analitica-em-tabelas-delta). Faltam a fonte mensal contra o INLABS, a opção nula da ingestão e por que o DOU passou a entrar no OLTP, que o ADR 0001 dizia não ser o caso.
-:::
+- **Método de Decisão com 3 alternativas:** [ADR 0005](/docs/adr/0005-ingerir-dou-no-oltp-e-propagar-ao-delta-via-cdc) compara formalmente a **Opção Nula** (A, recarga periódica completa agendada), o **CDC lógico nativo** (B, adotada) e **Debezium com Kafka** (C).
+- **Medição reproduzível no repositório:** comando `docker compose run --rm lake python docs/adr/medicoes/0005-ingestao/bench.py` (não altera o banco) afere os tempos de extração e MERGE no Python para as opções A e B com os dados reais do domínio (base de referência com 311 atos: 215 históricos + 96 de agosto/2026), comparando-os com as estimativas arquiteturais da opção C (Debezium + Kafka).
+  - *Containers e RAM permanente:* Opção B adiciona **0 containers e 0 MB de RAM permanente** (o slot é nativo no PostgreSQL), contra a estimativa de 4 containers e ~2 GB de RAM JVM permanente que uma stack Debezium + Kafka demandaria em regime ocioso.
+  - *Tempo de processamento e parede:* em CPU no Python praticamente empatam (92,5 ms vs 65,4 ms; a extração pontual é mais rápida, 1,7 ms vs 25,8 ms, mas o MERGE no Delta Lake domina o tempo), e em tempo de parede no Compose efêmero ambos levam ~7 s de container. O CDC foi escolhido porque o checklist da E2 exige fluxo de mudanças com semântica demonstrada, porque custa zero container a mais, e porque escala em O(Δ) contra O(N) da opção nula (onde hoje N = 311 atos, acumulando ~1.150/ano com HTMLs de até 42 KB).
+  - *Reprocessamento e tolerância a falhas:* entrega *effectively-once* comprovada sem duplicação no Delta Lake ([ADR 0007](/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica)).
+- **Por que o DOU agora entra no OLTP:** o ADR 0001 previa o DOU apenas como bronze/OLAP. O ADR 0005 documenta a evolução e o que **não** mudou: o OLTP continua sendo a curadoria humana em 3NF (exigindo que `classificacao` aponte para uma chave estrangeira real em `ato(id)` com `origem = DOU|PLANILHA`), o espelho integral bruto segue no bronze (`data/bronze/`), a fila de resolução de aliases de órgãos ([ADR 0004](/docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada)) é transacional viva, e o OLTP não espelha indiscriminadamente o DOU (em agosto/2026, 8.494 matérias alheias a conselho geraram **626 nomes novos** na fila `orgao_alias` e apenas as 96 matérias pertinentes foram gravadas em `ato`).
+- **Dados Abertos vs INLABS:** a ingestão automática oficial adotou os Dados Abertos mensais públicos (sem login, com histórico desde 2002 e DO1E), contornando a recusa de login de script (502 Bad Gateway) imposta pelo INLABS em 12/10 (para publicações do dia corrente, a operação é baixar o ZIP pelo navegador na interface web e rodar `make persist`).
+- **Delta × Iceberg e compressão zstd:** critérios explícitos consolidados no [ADR 0006](/docs/adr/0006-armazenar-a-camada-analitica-em-tabelas-delta).
+
 
 ## 8. Diário de bordo das semanas 7 a 10
 

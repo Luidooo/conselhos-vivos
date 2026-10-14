@@ -30,6 +30,8 @@ Viável: é o que existe hoje e funcionou por 20 anos. Não foi escolhida porque
 
 ### B. Espelho do DOU no Postgres como OLTP
 
+> **Nota de status (2026-10-13):** Superado em parte pelo [ADR 0005](0005-ingerir-dou-no-oltp-e-propagar-ao-delta-via-cdc.md). O OLTP continua sendo o sistema de curadoria e não espelha indiscriminadamente o DOU (o espelho integral segue no bronze em `data/bronze/`). Contudo, as matérias identificadas como atos de conselho passam a ser gravadas em `public.ato` para que as classificações humanas e de máquina tenham uma entidade relacional com chave primária e integridade referencial 3NF para referenciar.
+
 Cumpre a letra do requisito. Mas o dado nasceu na Imprensa Nacional, e ninguém dá `UPDATE ... WHERE id = ?` nele: é a camada bronze da E2, com outra carga de trabalho.
 
 ### C. Entidades do Brasil Participativo (composição, mandatos, reuniões)
