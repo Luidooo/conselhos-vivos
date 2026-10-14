@@ -150,7 +150,7 @@ O código de saída diz o que aconteceu: `0` nada falhou, `1` a execução foi a
 
 ## Ler as matérias
 
-O `make extract` abre os ZIPs que o `make fetch` deixou em `data/bronze/inlabs/` para um dia (`DO1` e, se houver, `DO1E`) e imprime **uma matéria por linha, em JSON**, no stdout. Não fala com o banco nem com a rede, e não precisa de credencial.
+O `make extract` abre os ZIPs que o `make fetch` deixou em `data/bronze/inlabs/` para um dia (`DO1` e, se houver, `DO1E`) e imprime **uma matéria por linha, em JSON**, no stdout. Não fala com o banco nem com a rede, e não precisa de credencial. É Python (`python -m dou extract`, em `src/dou/materia.py`), a segunda fatia da migração do ingestor (#51): sobre a Seção 1 de agosto de 2026, a saída é idêntica à do comando em Go nas 8.590 matérias.
 
 ```bash
 make extract DATA=2026-10-01 > materias.jsonl   # o log e o resumo vão para o stderr

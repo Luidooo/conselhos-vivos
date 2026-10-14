@@ -7,8 +7,12 @@ teste de fumaça confere.
 
 import sys
 
-# nome -> função(argv) que devolve o código de saída. Preenchido pelas fatias.
-SUBCOMANDOS = {}
+from . import extract
+
+# nome -> função(argv) que devolve o código de saída. Uma entrada por fatia.
+SUBCOMANDOS = {
+    "extract": extract.main,  # #54
+}
 
 
 def main(argv):
