@@ -73,7 +73,7 @@ extract: ## lê as matérias dos ZIPs de DATA já baixados e imprime uma por lin
 	@# Uma execução por edição: o comando lê um ZIP só. A segunda roda mesmo se a
 	@# primeira falhar, e o make sai com erro se qualquer uma falhou.
 	@falhou=$(ZIPS_FALHOU); for zip in $(EDICOES:data/%=/data/%); do \
-		docker compose --progress quiet run --rm -T extract $(if $(HTML),-html) $$zip || falhou=1; \
+		docker compose --progress quiet run --rm -T dou extract $(if $(HTML),--html) $$zip || falhou=1; \
 	done; exit $$falhou
 
 persist: .env ## grava no banco as matérias dos ZIPs de DATA já baixados; pode rodar de novo, não duplica

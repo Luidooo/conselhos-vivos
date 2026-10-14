@@ -486,3 +486,11 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:** execução real do benchmark com `docker compose run --rm lake python docs/adr/medicoes/0005-ingestao/bench.py` com código 0 e geração de `resultados.json` sem modificar tabelas do OLTP; conferência de links no site e no índice de ADRs; e suíte de testes do projeto validada.
 - **Quem revisou:** pendente (PR #61).
 
+### 2026-10-13 — Migração 2: `extract` em Python (#54)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.1)
+- **Onde:** `src/dou/materia.py`, `src/dou/extract.py`, `src/dou/__main__.py`; `tests/dou/test_materia.py`, `tests/dou/test_extract.py`, `tests/dou/amostras/` (cópia de `src/ingestor/internal/article/testdata/`, que o Go ainda usa até a #55); `docker-compose.yml` (serviço Go `extract` removido), `Makefile` (`make extract` chama o Python; `HTML=1` vira `--html`), `README.md`
+- **O que foi pedido:** portar `internal/article` (parser do `<article>` e texto puro) e `cmd/extract` para Python, como o plano da #51 descreve.
+- **O que foi aproveitado:** tudo, só com a biblioteca padrão (`zipfile`, `xml.etree`, `html.parser`). Os 10 testes do `article` e os 3 do `extract` foram portados nome a nome (mais 1 novo: `extrair_texto` nunca falha). **Decidido pela IA**, a revisar: a flag aceita `-html` e `--html`, para o Makefile e a mão continuarem funcionando; os erros são classes (`NaoEXML`, `Malformada`, `ErroDeEntrada` com a causa em `__cause__`), o par dos sentinelas do Go.
+- **Como foi verificado:** `extract --html` Go e Python sobre `S01082026.zip` (8.590 matérias, 120 imagens, 0 falhas nos dois), saída normalizada com `jq -c -S`, **diff vazio nas 8.590 linhas** — HTML, texto puro e campos idênticos. Tempo: Go 2,1 s, Python 9,5 s (o `HTMLParser`, como o plano previa; aceitável para um job mensal e registrado aqui). `make test` inteiro verde.
+- **Quem revisou:** pendente — a Luiza, no PR.
