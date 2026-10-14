@@ -64,7 +64,6 @@ Os dados ficam no volume `pgdata` e sobrevivem a `docker compose down`.
 ```bash
 make test      # testes: Go do ingestor, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos, carga e persistência do DOU
 make test-go   # só os testes do ingestor em Go, em container (sem rede, sem credencial)
-make test-db-go  # só os testes do ingestor que gravam no banco, em transação desfeita (banco no ar e migrado)
 make test-py-dou # só os testes do ingestor em Python que não usam banco (sem rede)
 make test-db-py  # só os testes do ingestor em Python que gravam no banco, em transação desfeita
 make fetch     # baixa as edições do DOU de hoje em Brasília; DATA=AAAA-MM-DD para outro dia
@@ -208,7 +207,7 @@ O comando Go lê **um ZIP por execução**, como o `extract`, e grava tudo numa 
 
 Um `id` repetido no mesmo ZIP não derruba as demais matérias e é logado com as duas entradas. Só a primeira é gravada: gravar as duas faria da segunda uma versão nova da primeira, e cada execução seguinte criaria mais duas versões.
 
-Quem grava é o pacote `src/ingestor/internal/oltp`, em `ato` com `origem = 'DOU'`, insert-only ([ADR 0001](docs/adr/0001-adotar-sistema-de-curadoria-insert-only-como-oltp.md)):
+Quem grava é o `src/dou/oltp.py` (Python; a terceira fatia da migração do ingestor, #51), em `ato` com `origem = 'DOU'`, insert-only ([ADR 0001](docs/adr/0001-adotar-sistema-de-curadoria-insert-only-como-oltp.md)):
 
 | Coluna de `ato` | De onde vem |
 |---|---|
@@ -223,7 +222,7 @@ Quem grava é o pacote `src/ingestor/internal/oltp`, em `ato` com `origem = 'DOU
 
 **Órgão desconhecido.** A maioria das ~300 matérias de um dia não é de conselho. A matéria de um órgão que não é um dos conhecidos **não entra em `ato`**, e o nome do órgão entra uma vez em `orgao_alias`, com `fonte = 'DOU'`, `status = 'INDEFINIDO'`, sem órgão e com o `artCategory` inteiro no motivo: é a fila de decisão do ADR 0004. Quando alguém resolver o nome, a matéria é gravada reingerindo o ZIP, que continua em `data/bronze/`. Se a chave casar com **mais de um** órgão, nenhum é escolhido: o nome entra na fila como `AMBIGUO`. Um nome que **já está à espera de decisão**, por qualquer fonte, não ganha uma segunda linha: se a planilha o deixou como `AMBIGUO` ou `INDEFINIDO`, o status e o motivo dela continuam valendo, e a matéria fica de fora até alguém decidir.
 
-A chave do nome é calculada em dois lugares, em Python na carga e em Go na ingestão. As duas são conferidas contra o mesmo arquivo, `src/ingestor/internal/oltp/testdata/chaves.tsv`, com todos os nomes de `orgao_nome` e da planilha: nenhuma muda sem o teste da outra falhar.
+A chave do nome é calculada num lugar só, `chave()` em `src/conselhos/identidade.py`, usada pela carga e pela ingestão. `tests/conselhos/chaves.tsv` guarda os 169 nomes e as chaves com que `orgao_alias.chave` foi gravada: mudar a função exige migrar a coluna, e o teste avisa.
 
 A classificação não é tocada: continua da planilha e da curadoria ([ADR 0003](docs/adr/0003-carregar-a-planilha-como-rotulo-da-curadoria.md)).
 

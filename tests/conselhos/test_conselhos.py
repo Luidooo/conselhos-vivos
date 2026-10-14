@@ -23,7 +23,7 @@ PLANILHA = RAIZ / "data/raw/Cópia_bancos_dados_Carla_Rocha.xlsx"
 DECISOES = RAIZ / "data/referencia/conselhos-decisoes.csv"
 SIORG = RAIZ / "data/referencia/siorg-conselhos.csv"
 GABARITO = RAIZ / "docs/adr/medicoes/0004-identidade/gabarito.csv"
-CHAVES = RAIZ / "src/ingestor/internal/oltp/testdata/chaves.tsv"
+CHAVES = pathlib.Path(__file__).parent / "chaves.tsv"
 RES = resolver(PLANILHA, DECISOES, SIORG)
 ALIAS = {a.linha: a for a in RES.aliases}
 ORGAO = {o.nome: o for o in RES.orgaos}
@@ -65,9 +65,11 @@ class Chave(unittest.TestCase):
         self.assertEqual(chave("CONSELHO NACIONAL DAS ZONAS DE PROCESSAMENTO DE EXPORTAÇÃO-CZPE"),
                          chave("Conselho Nacional das Zonas de Processamento de Exportação"))
 
-    def test_a_chave_e_a_mesma_do_go(self):
-        # o ingestor em Go recalcula a chave (internal/oltp/key.go); os dois são conferidos
-        # contra o mesmo arquivo, então nenhum muda sem o teste do outro falhar
+    def test_a_chave_nao_mudou(self):
+        # chaves.tsv é o arquivo-ouro: 169 nomes e a chave que cada um tinha quando as
+        # chaves de orgao_alias foram gravadas (parte delas pelo ingestor em Go, até a
+        # #55). orgao_alias.chave já está no banco com esses valores, então mudar a
+        # chave() exige migrar a coluna — e este teste avisa.
         linhas = CHAVES.read_text(encoding="utf-8").rstrip("\n").split("\n")
         self.assertGreater(len(linhas), 150)
         for linha in linhas:
