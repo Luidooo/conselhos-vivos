@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-db-go vet-go reset pgadmin-reset psql logs lake cdc cdc-demo cdc-chaos cdc-drop
+.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-py-dou test-db-go test-db-py vet-go reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -117,6 +117,12 @@ ingest-mensal: .env ## baixa o mês MES dos dados abertos e grava as matérias d
 janela: ## lista os dias que o make ingest reprocessa, do mais antigo para o mais novo
 	@$(DIAS)
 
+test-py-dou: ## testes do ingestor em Python que não usam banco, no serviço carga (sem rede)
+	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/dou
+
+test-db-py: .env ## testes do ingestor em Python que gravam no banco, em transação desfeita (banco no ar e migrado)
+	docker compose --progress quiet run --rm -T dou-db-test
+
 test-go: ## testes do ingestor em Go, em container (sem rede no código de teste, sem credencial)
 	docker compose --progress quiet run --rm -T ingestor-test go test -count=1 ./...
 
@@ -126,7 +132,7 @@ test-db-go: .env ## testes do ingestor que gravam no banco, em transação desfe
 vet-go: ## gofmt e go vet do ingestor, em container
 	docker compose --progress quiet run --rm -T ingestor-test sh -c 'test -z "$$(gofmt -l .)" || { gofmt -l .; echo "FALHOU: arquivos fora do gofmt"; exit 1; }; go vet ./...'
 
-test: .env test-go ## testes: Go do ingestor, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos, carga e persistência do DOU
+test: .env test-go test-py-dou ## testes: Go e Python do ingestor, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos, carga e persistência do DOU
 	bash tests/infra/test_compose.sh
 	bash scripts/migrate.sh
 	bash tests/db/test_schema.sh
@@ -137,6 +143,7 @@ test: .env test-go ## testes: Go do ingestor, infra, esquema do OLTP, leitura da
 	bash tests/lake/test_lake.sh
 	bash tests/lake/test_cdc.sh
 	$(MAKE) --no-print-directory test-db-go
+	$(MAKE) --no-print-directory test-db-py
 
 reset: ## APAGA o banco, sobe do zero, migra e carrega a planilha
 	docker compose down -v
