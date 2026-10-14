@@ -468,6 +468,15 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:** `make test` inteiro verde; `docker compose run dou --help` sem o aviso de cache e sem download na segunda execução; `unittest discover -s tests` na raiz sem `ImportError`.
 - **Quem revisou:** o Moura, no PR; pendente a conferência dele depois desta rodada.
 
+### 2026-10-13 — Migração 1: `fetch-mensal` em Python (#53)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.1)
+- **Onde:** `src/dou/bronze.py`, `src/dou/dadosabertos.py`, `src/dou/fetch_mensal.py`, `src/dou/__main__.py`; `tests/dou/test_bronze.py` e `test_dadosabertos.py`; `docker-compose.yml` (serviço Go `fetch-mensal` removido; `dou` ganha `DADOS_ABERTOS_OUTPUT_DIR`), `Makefile` (`make fetch-mensal` chama o Python), `README.md`
+- **O que foi pedido:** portar `internal/store` e `internal/dadosabertos` do Go para Python, trocar o serviço e provar a equivalência, como o plano da #51 descreve.
+- **O que foi aproveitado:** tudo, só com a biblioteca padrão (`urllib`, `zipfile`, `tempfile`, `os.replace` + `fsync`). Os 16 testes do `store` e os 8 do `dadosabertos` foram portados nome a nome para `unittest` (26, mais 2 novos), com um `ThreadingHTTPServer` em `127.0.0.1` no papel do `httptest`; a corrida de dois gravadores usa threads de verdade. **Duas diferenças achadas pelos testes e corrigidas:** `strptime("%Y-%m")` aceita `2026-8`, que o Go recusava — entrou uma regex antes; e o teste de "só a Seção 1" estava mal montado. **Diferença aceita e registrada:** o Go tinha um teto de 10 min no mês inteiro; aqui o timeout (30 s) é por operação de socket, sem teto global. O `fetch` diário do INLABS (`internal/inlabs`) não foi tocado: continua em Go até a #56.
+- **Como foi verificado:** o ZIP de agosto baixado pelo Go foi guardado fora do repositório, o Python baixou o mesmo mês e o `cmp` deu **idêntico** (52.565.336 bytes, ~11 s); a segunda execução não fez pedido (`ja-baixada`); `MES=2026-10` saiu com 1 sem gravar nada e `MES=2026-9` com 2; `make test` inteiro verde (28 testes em `tests/dou`). **Achado colateral:** `MES=2026-09` baixou: setembro de 2026 foi publicado nos dados abertos em 13/10 (286 MB, 8.927 XMLs), e ficou em `data/bronze/dados-abertos/`.
+- **Quem revisou:** pendente — a Luiza, no PR.
+
 ### 2026-10-13 — ADR 0005: Ingestão no OLTP, CDC vs Opção Nula e Debezium+Kafka (#32)
 
 - **Ferramenta:** Antigravity (Gemini 3.8 Flash)
