@@ -1,14 +1,16 @@
 """python -m dou <subcomando> — a porta de entrada da ingestão em Python.
 
-Cada fatia da migração registra o seu subcomando em SUBCOMANDOS. Enquanto não
-há nenhum, o comando só sabe dizer isso: é o que a #52 entrega, e o que o
-teste de fumaça confere.
+Cada fatia da migração registra o seu subcomando em SUBCOMANDOS.
 """
 
 import sys
 
-# nome -> função(argv) que devolve o código de saída. Preenchido pelas fatias.
-SUBCOMANDOS = {}
+from . import fetch_mensal
+
+# nome -> função(argv) que devolve o código de saída. Uma entrada por fatia.
+SUBCOMANDOS = {
+    "fetch-mensal": fetch_mensal.main,  # #53
+}
 
 
 def main(argv):
