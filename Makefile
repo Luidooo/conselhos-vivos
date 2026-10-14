@@ -118,7 +118,7 @@ janela: ## lista os dias que o make ingest reprocessa, do mais antigo para o mai
 	@$(DIAS)
 
 test-py-dou: ## testes do ingestor em Python que não usam banco, no serviço carga (sem rede)
-	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/dou -t tests/dou
+	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/dou
 
 test-db-py: .env ## testes do ingestor em Python que gravam no banco, em transação desfeita (banco no ar e migrado)
 	docker compose --progress quiet run --rm -T dou-db-test

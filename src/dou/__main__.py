@@ -12,10 +12,13 @@ SUBCOMANDOS = {}
 
 
 def main(argv):
-    if not argv or argv[0] in ("-h", "--help"):
-        nomes = ", ".join(sorted(SUBCOMANDOS)) or "nenhum ainda"
-        print(f"uso: python -m dou <subcomando> [opções]\nsubcomandos: {nomes}", file=sys.stderr)
-        return 2 if not argv else 0
+    uso = f"uso: python -m dou <subcomando> [opções]\nsubcomandos: {', '.join(sorted(SUBCOMANDOS)) or 'nenhum ainda'}"
+    if argv and argv[0] in ("-h", "--help"):
+        print(uso)  # ajuda pedida é saída normal: stdout, código 0
+        return 0
+    if not argv:
+        print(uso, file=sys.stderr)  # falta o subcomando: erro de uso, código 2
+        return 2
     if argv[0] not in SUBCOMANDOS:
         print(f"dou: subcomando desconhecido: {argv[0]}", file=sys.stderr)
         return 2

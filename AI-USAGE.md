@@ -449,3 +449,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** tudo. **Decidido pela IA**, a revisar: o `python -m dou` tem um registro de subcomandos (`SUBCOMANDOS`) que as fatias preenchem, e sem nenhum sai com 2 e lista "nenhum ainda"; os testes sem banco rodam no serviço `carga` (sem rede), como os da planilha; os com banco rodam num serviço próprio, cada teste numa transação desfeita (`dbtest.CasoComBanco`, o par do `internal/dbtest` do Go), e são pulados — não falham — sem `PGHOST`; o `pip` instala em `--target /tmp/site` para rodar como o usuário do host sem gravar em `/usr/local`.
 - **Como foi verificado:** `make test` inteiro verde (o Go intacto: 11 pacotes `ok`; mais 3 testes de fumaça do CLI e 1 do banco, que grava um revisor e confere que o rollback o apaga); `docker compose config` válido; `python -m dou` sem argumento sai com 2, `--help` com 0, subcomando desconhecido com 2.
 - **Quem revisou:** pendente — a Luiza, no PR.
+
+### 2026-10-13 — Revisão do Moura no PR #58 aplicada (#52)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.1)
+- **Onde:** `docker-compose.yml` (serviço `dou`), `Makefile`, `src/dou/__main__.py`, `tests/dou/` e `tests/dou_db/`
+- **O que foi pedido:** aplicar os dez pontos da revisão do @thegm445 no PR #58.
+- **O que foi aproveitado:** os dez. Dois eram bugs de verdade, confirmados antes de corrigir: o volume `pipcache` nasce `root:root 755`, então o serviço `dou` como usuário comum rodava com o cache do pip desligado e baixava o `psycopg` da rede a cada execução (agora roda como root, como o `lake`, e faz `chown` do bronze no fim); e o `__init__.py` em `tests/dou` fazia o `unittest discover -s tests` da raiz confundir a pasta de testes com o pacote `src/dou` (removido, e o de `tests/dou_db` também). Os outros: `import psycopg` protegido, para o skip valer num host sem as bibliotecas; `POSTGRES_HOST` entra na condição do skip; `tearDown` com `try/finally`; `--help` vai para o stdout com código 0 e o teste confere os dois fluxos; `--disable-pip-version-check`; `-t` redundante fora do Makefile; e o teste de fumaça do banco virou dois métodos, um que grava sem desfazer e outro que confere, noutra conexão, que a linha não ficou — antes ele só provava o `rollback()` da biblioteca.
+- **Como foi verificado:** `make test` inteiro verde; `docker compose run dou --help` sem o aviso de cache e sem download na segunda execução; `unittest discover -s tests` na raiz sem `ImportError`.
+- **Quem revisou:** o Moura, no PR; pendente a conferência dele depois desta rodada.

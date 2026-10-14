@@ -229,7 +229,6 @@ services:
     image: python:3.12.14-slim
     profiles: [ingestor]
     working_dir: /app
-    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
     environment:
       PYTHONPATH: /app/src
       PYTHONDONTWRITEBYTECODE: "1"
@@ -238,6 +237,8 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD}
       PGDATABASE: ${POSTGRES_DB}
       PIP_CACHE_DIR: /tmp/pipcache
+      DOCKER_UID: ${DOCKER_UID:-1000}
+      DOCKER_GID: ${DOCKER_GID:-1000}
     volumes:
       - ./src:/app/src:ro
       - ./data/bronze:/data/bronze
@@ -245,7 +246,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    entrypoint: ["sh", "-c", "pip install -q --root-user-action=ignore --no-warn-script-location --target /tmp/site -r /app/src/dou/requirements.txt && PYTHONPATH=/app/src:/tmp/site exec python -m dou \"$$@\"", "sh"]
+    # Roda como root, como o lake: o volume pipcache nasce root:root e um usuário
+    # comum não grava nele. O que o fetch-mensal (#53) gravar no bronze recebe
+    # chown no fim, como o lake faz com o silver.
+    entrypoint: ["sh", "-c", "pip install -q --disable-pip-version-check --root-user-action=ignore --no-warn-script-location --target /tmp/site -r /app/src/dou/requirements.txt && PYTHONPATH=/app/src:/tmp/site python -m dou \"$$@\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data/bronze; exit $$rc", "sh"]
 
   # Testes do dou (#52). Os sem banco rodam no serviço carga (sem rede, como os
   # da planilha); estes são os que gravam no banco, cada um numa transação
@@ -269,7 +273,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    entrypoint: ["sh", "-c", "pip install -q --root-user-action=ignore --no-warn-script-location --target /tmp/site -r /app/src/dou/requirements.txt && exec python -m unittest discover -s tests/dou_db -t tests/dou_db \"$$@\"", "sh"]
+    entrypoint: ["sh", "-c", "pip install -q --disable-pip-version-check --root-user-action=ignore --no-warn-script-location --target /tmp/site -r /app/src/dou/requirements.txt && exec python -m unittest discover -s tests/dou_db \"$$@\"", "sh"]
 
   # Fluxo de mudanças OLTP -> Delta (ADR 0007): aplica no Delta o que está pendente no slot lógico.
   # Mesma imagem e volumes do lake. Argumentos: [destino] ou --drop-slot.
