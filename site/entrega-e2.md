@@ -16,6 +16,7 @@ make ingest-mensal MES=2026-08    # baixa agosto de 2026 dos dados abertos e gra
 make ingest-mensal MES=2026-08    # de novo: 0 gravadas, nada muda no banco
 make lake                         # OLTP → tabela Delta em data/silver/atos/; de novo: 0 inseridas
 make cdc-demo                     # reclassifica um ato e mostra a mudança atravessando o slot até o Delta
+make cdc-chaos                    # derruba o consumidor pós-gravação e reprocessa provando que nada duplica
 ```
 Pré-requisitos: Docker com Compose v2 e `make`. A ingestão mensal não precisa de credencial. Detalhes em [Como rodar](/visao-geral#como-rodar).
 :::
@@ -51,11 +52,9 @@ Pré-requisitos: Docker com Compose v2 e `make`. A ingestão mensal não precisa
 
 ## 4. Semântica de entrega declarada e demonstrada
 
-**Declarada:** pelo menos uma vez. O consumidor espia o slot, grava o Delta e só então consome até o último LSN; se cair no meio, o evento volta e o `MERGE` por `ato_id` absorve a repetição ([ADR 0007](/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica), decisão 3). Reexecutar o `make cdc` sem nada pendente dá `pendentes=0`, e o `make lake` de novo dá `atualizadas=0`.
-
-::: warning Pendente
-A demonstração forçada, derrubar o consumidor entre gravar o Delta e consumir o slot e mostrar que a reexecução não duplica, está na [#30](https://github.com/Luidooo/conselhos-vivos/issues/30).
-:::
+- **Declarada:** pelo menos uma vez na leitura, efetivamente uma vez no destino. O consumidor espia o slot (`pg_logical_slot_peek_changes`), grava o Delta por `MERGE` atômico na chave primária (`ato_id`) e checksum de integridade, e só então consome até o último LSN (`pg_logical_slot_get_changes`). Se o processo cair antes de avançar o slot, o evento permanece no WAL e é entregue de novo na próxima execução (*at-least-once*); o `MERGE` idempotente detecta que a versão no Delta já coincide e absorve a repetição (`inalteradas=N`, `inseridas=0`, `atualizadas=0`), assegurando semântica *effectively-once*. Conferir: [ADR 0007](/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica), decisão 3.
+- **Demonstrada por teste automatizado:** [`tests/lake/test_cdc.sh`](https://github.com/Luidooo/conselhos-vivos/blob/main/tests/lake/test_cdc.sh) (integrado ao `make test` e CI) simula a interrupção forçada (`--falhar-apos-gravar`, exit code 42), confirma que o slot permaneceu sem avançar (`pendentes > 0`), reexecuta o consumidor normal e afere via DuckDB que a contagem total de registros no Delta Lake permaneceu estritamente inalterada e com 0 duplicações.
+- **Demonstrada por comando interativo:** `make cdc-chaos` roda o roteiro reproduzível [`scripts/cdc_chaos_demo.sh`](https://github.com/Luidooo/conselhos-vivos/blob/main/scripts/cdc_chaos_demo.sh): reclassifica um ato no OLTP, derruba o consumidor intencionalmente após o MERGE no Delta, inspeciona o slot e o Delta Lake durante a falha, reexecuta o consumidor e valida via DuckDB que a contagem de atos (215) se mantém idêntica, sem linhas duplicadas.
 
 ## 5. Dado atrasado e reprocessamento de janela
 

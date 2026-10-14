@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-py-dou test-db-go test-db-py vet-go reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop
+.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-py-dou test-db-go test-db-py vet-go reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -177,6 +177,9 @@ cdc: .env ## aplica no Delta as mudanças de classificacao pendentes no slot ló
 
 cdc-demo: .env ## demonstração: reclassifica um ato (insert-only) e mostra a mudança chegando ao Delta
 	bash scripts/cdc_demo.sh
+
+cdc-chaos: .env ## demonstração de tolerância a falhas: interrompe o consumidor após gravar no Delta e reprocessa
+	bash scripts/cdc_chaos_demo.sh
 
 cdc-drop: .env ## remove o slot de replicação (slot parado retém WAL)
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T cdc --drop-slot
