@@ -5,9 +5,11 @@ Os atos afetados são relidos do OLTP pela mesma consulta do `make lake`, então
 "revisão humana vence pipeline" e o checksum continuam num lugar só. O slot só avança
 depois que o Delta foi gravado: entrega pelo menos uma vez, absorvida pelo MERGE idempotente.
 
-Uso: python -m lake.cdc [destino]      (padrão: /data/silver/atos, o volume do container)
-     python -m lake.cdc --drop-slot    (remove o slot; slot parado retém WAL)
+Uso: python -m lake.cdc [destino]                  (padrão: /data/silver/atos, o volume do container)
+     python -m lake.cdc --drop-slot                (remove o slot; slot parado retém WAL)
+     python -m lake.cdc --falhar-apos-gravar       (simula queda após o Delta e antes do slot avançar)
 Variável CDC_SLOT muda o nome do slot (padrão: conselhos_lake).
+Variável CDC_FALHAR_APOS_GRAVAR=1 ativa simulação de queda (código de saída 42).
 """
 
 import logging
@@ -92,7 +94,12 @@ def main(argv: List[str]) -> None:
                 logger.info("Slot %s %s.", slot, "removido" if remover_slot(conn, slot) else "não existia")
                 return
 
-            destino = Path(argv[0]) if argv else DESTINO_PADRAO
+            falhar_apos_gravar = (
+                "--falhar-apos-gravar" in argv
+                or os.getenv("CDC_FALHAR_APOS_GRAVAR") in ("1", "true", "True")
+            )
+            pos_args = [a for a in argv if a != "--falhar-apos-gravar"]
+            destino = Path(pos_args[0]) if pos_args else DESTINO_PADRAO
             if garantir_slot(conn, slot):
                 logger.warning(
                     "Slot %s criado agora: só captura mudanças a partir deste momento. "
@@ -108,12 +115,22 @@ def main(argv: List[str]) -> None:
                 return
 
             metricas = aplicar(destino, conn, ato_ids)
+            if falhar_apos_gravar:
+                logger.warning(
+                    "Simulação de queda (--falhar-apos-gravar): dados aplicados no Delta Lake, "
+                    "interrompendo processo antes de avançar o slot %s (LSN %s).",
+                    slot, lsn,
+                )
+                sys.exit(42)
+
             confirmar(conn, slot, lsn)
             logger.info(
                 "Concluído: pendentes=%d atos_afetados=%d inseridas=%d atualizadas=%d inalteradas=%d total_lake=%d",
                 eventos, len(ato_ids), metricas["inseridas"], metricas["atualizadas"],
                 metricas["inalteradas"], metricas["total_lake"],
             )
+    except SystemExit:
+        raise
     except Exception as e:
         logger.error("Falha no consumidor CDC: %s", e)
         sys.exit(1)

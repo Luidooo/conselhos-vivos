@@ -440,3 +440,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** a estrutura da ADR 0006, a query de consolidação com os nomes históricos e tipologia vigente, a lógica de merge no `sync.py` com `deltalake`, compressão ZSTD, medições comparativas reais, o serviço `lake` e o alvo `make lake`.
 - **Como foi verificado:** conferido que a extração preserva os 215 atos da planilha; executado `make lake` duas vezes comprovando idempotência (0 inserções na segunda); teste analítico com DuckDB rodando contra `data/silver/atos/`; suíte `make test` completa passando.
 - **Quem revisou:** Gabriel Moura e pendente (quem revisar o PR)
+
+### 2026-10-13 — Semântica de entrega e tolerância a falhas do CDC (#30)
+
+- **Ferramenta:** Gemini for Developers
+- **Onde:** `src/lake/cdc.py`, `scripts/cdc_chaos_demo.sh`, `Makefile` (`cdc-chaos`), `tests/lake/test_cdc.sh`, `docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica.md`, `site/entrega-e2.md`, `docs/diario/2026-10-13.md`, `README.md`
+- **O que foi pedido:** implementar e demonstrar a semântica de entrega do consumidor CDC requerida pela Entrega E2 ("demonstre, não afirme"): derrubar o consumidor após aplicar a mudança no Delta Lake e antes de avançar o slot lógico do Postgres, reexecutar e provar que nada duplica e que a contagem permanece igual (leitura *at-least-once* + MERGE idempotente = entrega *effectively-once*).
+- **O que foi aproveitado:** suporte à injeção controlada de falha no consumidor (`--falhar-apos-gravar` / `CDC_FALHAR_APOS_GRAVAR=1`, saindo com exit code 42 logo após `aplicar()` e antes de `confirmar()`); roteiro executável `scripts/cdc_chaos_demo.sh` com alvo `make cdc-chaos`; extensão do teste automatizado `tests/lake/test_cdc.sh` com o ciclo de caos; formalização da semântica de entrega e tolerância a falhas no ADR 0007; atualização da página da E2 no site com links das evidências e comandos reproduzíveis; e registro das medições no diário da semana.
+- **Como foi verificado:** `tests/lake/test_cdc.sh` executado e aprovado com sucesso (exit code 0); `make cdc-chaos` executado comprovando na prática: consumidor abortado com código 42, slot com 6 eventos retidos no WAL pós-queda, Delta já gravado, reprocessamento completado com `inalteradas=1, atualizadas=0, inseridas=0`, slot consumido (`pendentes=0`), contagem final no Delta exatamente igual à inicial (215 atos) e 0 chaves duplicadas. Suíte `make test` completa rodada e verde.
+- **Quem revisou:** Gabriel Moura e pendente (revisão no PR).
