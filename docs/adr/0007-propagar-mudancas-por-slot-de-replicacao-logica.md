@@ -12,7 +12,11 @@ O `make lake` ([ADR 0006](0006-armazenar-a-camada-analitica-em-tabelas-delta.md)
 
 1. **Decodificação lógica do próprio Postgres** (`wal_level=logical` no serviço `db`), com um **slot** `conselhos_lake` e o plugin `test_decoding`, que vem na imagem oficial. Sem Kafka, Debezium nem outro processo permanente.
 2. **O slot só diz *quais* atos mudaram.** O consumidor (`python -m lake.cdc`, `make cdc`) extrai o `ato_id` dos `INSERT` em `public.classificacao`, relê esses atos do OLTP com a mesma consulta do `make lake` e faz o `MERGE` por `ato_id`. A regra "revisão humana vence pipeline" e o checksum ficam num lugar só.
-3. **Entrega pelo menos uma vez.** O consumidor espia o slot (`pg_logical_slot_peek_changes`), grava o Delta e só então consome até o último LSN visto (`pg_logical_slot_get_changes`). Se cair no meio, o evento volta, e o `MERGE` idempotente absorve a repetição.
+3. **Semântica de entrega: pelo menos uma vez na leitura, efetivamente uma vez no destino.** O consumidor segue um protocolo estrito de confirmação tardia:
+   - **Espia:** lê os eventos pendentes sem avançar o cursor (`pg_logical_slot_peek_changes`).
+   - **Aplica:** executa a consulta analítica do ato no OLTP e realiza a escrita no Delta Lake por `MERGE` atômico baseado na chave primária (`ato_id`) e no `checksum` de integridade.
+   - **Confirma:** somente após o sucesso da gravação no Delta, o consumidor consome o lote e avança o cursor LSN (`pg_logical_slot_get_changes`).
+   Se o consumidor sofrer queda forçada ou falhar entre a aplicação e a confirmação, o slot retém os eventos no WAL. Na reinicialização, os mesmos eventos são entregues novamente (*at-least-once*). Como o Delta Lake já contém as alterações, a condição `target.checksum != source.checksum` resulta em 0 inserções e 0 atualizações (`inalteradas=N`), absorvendo o reprocessamento de forma idempotente e garantindo entrega *effectively-once*.
 4. O slot nasce vazio: **o Delta precisa de uma carga completa (`make lake`) antes**, e o consumidor recusa rodar sem ela.
 
 ## Alternativas consideradas
@@ -52,7 +56,7 @@ Com os 215 atos reais e medições no PostgreSQL 16 (conforme `docs/adr/medicoes
 **Perdemos / riscos:**
 - **Slot sem consumidor retém WAL e pode encher o disco.** Se o fluxo for abandonado, rode `make cdc-drop`.
 - **Custo de memória com `test_decoding` descartando dados de outras tabelas.** O plugin `test_decoding` decodifica todas as linhas alteradas de todas as tabelas em formato texto. Durante ingestões em lote (como `make ingest-mensal`), atos novos geram centenas de KB ou MB de HTML em `ato.conteudo`; o `ler_pendentes` carrega essas linhas na memória do Python apenas para descartar via regex o que não for `classificacao`. Manter `test_decoding` sem `pgoutput` é defensável no volume do projeto, mas requer atenção a esse consumo de memória transitório.
-- **Queda forçada e at-least-once.** A ordem operacional garante pelo menos uma vez (peek -> grava Delta -> consome LSN), mas a demonstração automatizada de caos (queda forçada do processo entre a gravação e o consumo) está reservada para a issue #30.
+- **Queda forçada e tolerância a falhas comprovada (#30).** A ordem operacional garante pelo menos uma vez (peek -> grava Delta -> consome LSN). A resiliência a falhas é testada de ponta a ponta em `tests/lake/test_cdc.sh` e demonstrável via `make cdc-chaos` (`scripts/cdc_chaos_demo.sh`): derrubando intencionalmente o processo consumidor (`--falhar-apos-gravar`) após a aplicação no Delta Lake e antes de avançar o slot, o reprocessamento subsequente absorve as mudanças via `MERGE` idempotente sem gerar duplicações ou alterações na contagem total da tabela analítica.
 - O texto do `test_decoding` não é um contrato estável entre versões do Postgres; o consumidor depende só do formato `table public.classificacao: INSERT: ... ato_id[bigint]:N`. Está coberto por `tests/lake/test_cdc.sh` e a imagem do Postgres está fixada.
 - Mudanças anteriores à criação do slot não são vistas: vale a carga completa.
 - O fluxo cobre `classificacao`. Mudanças em outras tabelas (por exemplo nome de órgão) continuam dependendo do `make lake`.

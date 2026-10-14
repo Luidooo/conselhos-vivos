@@ -262,6 +262,14 @@ make cdc-demo
 
 O `make cdc-demo` roda `make lake` (carga completa) e `make cdc` (cria o slot), mostra a tipologia de um ato no Delta, **reclassifica** o ato (um `INSERT` novo em `classificacao`, que é insert-only), consome o slot, mostra a mudança no Delta e, por fim, **restaura a tipologia original** com novo `INSERT`, provando o ciclo completo sem alterar a distribuição analítica real. `ATO_ID=123 make cdc-demo` escolhe o ato.
 
+Para testar a tolerância a falhas e a semântica de entrega (queda simulada do consumidor pós-gravação no Delta Lake):
+
+```bash
+make cdc-chaos
+```
+
+O `make cdc-chaos` interrompe abruptamente o consumidor logo após aplicar a alteração no Delta Lake e antes de avançar o slot lógico no PostgreSQL. Ao reexecutar, o consumidor reprocessa os eventos e o `MERGE` idempotente garante que nenhuma linha duplique, mantendo a contagem total estritamente inalterada.
+
 Dia a dia: `make lake` uma vez, depois `make cdc` sempre que quiser aplicar as reclassificações pendentes (pode rodar de novo, não duplica).
 
 > **Slot parado retém WAL.** Se for abandonar o fluxo, rode `make cdc-drop`, senão o disco do banco cresce. Mudanças anteriores à criação do slot só entram com `make lake`.
