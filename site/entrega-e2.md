@@ -63,7 +63,7 @@ Pré-requisitos: Docker com Compose v2 e `make`. A ingestão mensal não precisa
 - **O que chega depois da janela** não entra sozinho; está escrito o que fazer.
 - **Na fonte mensal não há janela:** o ZIP de um mês fechado já traz a edição extra (`DO1E`) de todos os dias, e uma retificação sai como matéria nova, na data em que foi publicada.
 
-- **No Delta:** como o `make lake` relê o OLTP inteiro e grava por `ato_id`, um ato que chega atrasado cai na partição do ano em que foi publicado (`ano` vem de `data_publicacao`), sem mexer nas outras. A demonstração disso com um ato de data antiga ainda está em aberto na [#31](https://github.com/Luidooo/conselhos-vivos/issues/31).
+- **No Delta, demonstrado de ponta a ponta:** [`tests/lake/test_atrasado.sh`](https://github.com/Luidooo/conselhos-vivos/blob/main/tests/lake/test_atrasado.sh) grava pelo `persist` um ato publicado em 15/03/2024 que chega hoje, roda o `make lake` e confere no DuckDB que ele entrou em `ano=2024` (`inseridas=1`), que nenhuma outra partição mudou e que a reexecução não duplica (`inseridas=0 atualizadas=0`). Roda no `make test`.
 
 ## 6. Serialização e compressão justificadas pelo padrão de acesso
 

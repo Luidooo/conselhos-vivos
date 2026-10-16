@@ -138,6 +138,7 @@ test: .env test-go test-py-dou ## testes: Go e Python do ingestor, infra, esquem
 	bash tests/db/test_carga.sh
 	bash tests/ingest/test_janela.sh
 	bash tests/lake/test_lake.sh
+	bash tests/lake/test_atrasado.sh
 	bash tests/lake/test_cdc.sh
 	$(MAKE) --no-print-directory test-db-py
 
