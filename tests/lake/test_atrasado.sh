@@ -26,7 +26,12 @@ duck() {
 INSTALL delta; LOAD delta; $1" | tr -d '[:space:]'
 }
 limpa() {
-  rm -rf "$TMP_HOST_DIR" "$ZIP_HOST" data/bronze/_atrasada_$$.xml
+  # Nada aqui pode falhar o teste: a limpeza roda depois do veredito. O ZIP é
+  # gravado pelo root do container; no CI o host não consegue apagá-lo, então
+  # quem apaga é o próprio container, que monta data/bronze.
+  rm -rf "$TMP_HOST_DIR" data/bronze/_atrasada_$$.xml 2>/dev/null || true
+  rm -f "$ZIP_HOST" 2>/dev/null || \
+    docker compose --progress quiet run --rm -T --entrypoint rm dou -f "$ZIP_CONTAINER" >/dev/null 2>&1 || true
   psql_db "DELETE FROM ato WHERE origem = 'DOU' AND id_dou = '$ID_DOU'" >/dev/null 2>&1 || true
 }
 trap limpa EXIT INT TERM
