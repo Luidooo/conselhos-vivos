@@ -26,7 +26,7 @@ duck() {
 INSTALL delta; LOAD delta; $1" | tr -d '[:space:]'
 }
 limpa() {
-  rm -rf "$TMP_HOST_DIR" "$ZIP_HOST"
+  rm -rf "$TMP_HOST_DIR" "$ZIP_HOST" data/bronze/_atrasada_$$.xml
   psql_db "DELETE FROM ato WHERE origem = 'DOU' AND id_dou = '$ID_DOU'" >/dev/null 2>&1 || true
 }
 trap limpa EXIT INT TERM
@@ -42,13 +42,21 @@ echo "    total=$antes_total, ano=2024: $antes_2024"
 echo "==> [test_atrasado] 2. Um ato publicado em 15/03/2024 chega hoje, num ZIP de edição corrente"
 # A amostra construída (CONAMA) com outro id e a data antiga; o ZIP leva o nome de hoje,
 # como o fetch deixaria: o que vale é o pubDate da matéria, não o nome do arquivo.
+# data/bronze/ não está no git: num clone limpo (o CI) ele ainda não existe.
+mkdir -p data/bronze
+XML_HOST="data/bronze/_atrasada_$$.xml"
 sed -e "s/id=\"900000001\"/id=\"$ID_DOU\"/" -e 's|pubDate="02/10/2026"|pubDate="15/03/2024"|' \
-  tests/dou/amostras/conselho-construido.xml > "data/bronze/_atrasada_$$.xml"
-( cd data/bronze && python3 -c "
-import zipfile, sys
-with zipfile.ZipFile('_test_atrasado_$$.zip', 'w') as z:
-    z.write('_atrasada_$$.xml', 'conselho-atrasada.xml')
-" ) && rm -f "data/bronze/_atrasada_$$.xml"
+  tests/dou/amostras/conselho-construido.xml > "$XML_HOST"
+# O ZIP é montado pelo Python do serviço dou (que monta data/bronze), não pelo do
+# host: o runner do CI não promete python3.
+# O entrypoint do dou faz chown do bronze no fim; com --entrypoint ele não roda,
+# então o próprio comando devolve o ZIP ao usuário do host.
+DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T --entrypoint sh dou -c "
+python -c \"
+import zipfile
+with zipfile.ZipFile('$ZIP_CONTAINER', 'w') as z:
+    z.write('/data/bronze/_atrasada_$$.xml', 'conselho-atrasada.xml')
+\" && chown \$DOCKER_UID:\$DOCKER_GID '$ZIP_CONTAINER'" && rm -f "$XML_HOST"
 
 saida=$(docker compose --progress quiet run --rm -T dou persist "$ZIP_CONTAINER" 2>&1)
 echo "$saida" | grep -q "gravadas=1" || { echo "FALHOU: o persist não gravou o ato atrasado:"; echo "$saida"; exit 1; }
