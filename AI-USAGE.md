@@ -512,3 +512,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** o teste inteiro, no molde do `test_lake.sh`: Delta temporário em `data/silver/_test_atrasado_$$`, a amostra construída do CONAMA com outro id e `pubDate` 15/03/2024 num ZIP de edição corrente, gravada pelo `persist` real (Python, #55), depois `make lake` e DuckDB. Confere a data no OLTP, `inseridas=1`, o ato em `ano=2024`, o diretório `ano=2024/` criado, as demais partições com a mesma contagem, e reexecução `inseridas=0 atualizadas=0`. **Decidido pela IA**, a revisar: o ato de teste é apagado no fim (`ato` não é insert-only; só `classificacao` é, e o ato não ganha classificação), então o teste não deixa resíduo — diferente do `test_cdc.sh`, que precisa restaurar via novo INSERT.
 - **Como foi verificado:** o teste passou sobre o banco com 311 atos (ano=2024: 0 → 1, total 311 → 312 no Delta temporário, depois o ato apagado e o banco de volta a 311); `make test` inteiro verde com ele dentro; nenhum `_test_atrasado_*` sobrou em `data/`.
 - **Quem revisou:** pendente — a Luiza, no PR.
+
+### 2026-10-16 — Fechamento da E2: clone limpo conferido (#34)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.1)
+- **Onde:** nenhum arquivo de código; esta entrada e a tag `e2`
+- **O que foi pedido:** os critérios da #34: `git clone` numa pasta nova, `make setup` e `make test` verdes, e os comandos da E2 rodando a partir do README, antes de criar a tag.
+- **O que foi aproveitado:** a conferência inteira, feita no commit `95a82b4` do `main` (o candidato à tag), num clone novo em diretório temporário fora do repositório de trabalho, com o compose de trabalho derrubado antes para a porta 5050 do pgAdmin não colidir — como a monitoria faria. O ZIP de agosto foi copiado para o bronze do clone para não baixar 52 MB de novo; isso exercitou o `desfecho=ja-baixada` em vez do download, que o PR #60 já tinha provado byte a byte.
+- **Como foi verificado:** `make setup` ok (6 migrações, 82 conselhos, 215 atos); `make test` verde (Go 5 pacotes; Python 42 + 28 + 23 + 21 testes; `test_lake`, `test_cdc` e `test_atrasado` ok); `make ingest-mensal MES=2026-08` duas vezes (`gravadas=96` e depois `inalteradas=96`); `make lake` duas vezes (`inseridas=311` e depois `inalteradas=311`); `make cdc-demo` nos 8 passos; `make cdc-chaos` (queda com código 42, 311 atos antes e depois, 0 duplicatas). CI do `main` verde no mesmo commit. Depois, o compose do clone foi derrubado com o volume, e o ambiente de trabalho religado.
+- **Quem revisou:** a squad, ao criar a tag.
