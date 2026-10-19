@@ -135,8 +135,11 @@ body {
 .vp-doc p, .vp-doc li { font-size: 16.5px; line-height: 1.7; }
 
 .vp-doc table {
-  /* block + overflow: tabela larga rola dentro dela, sem estourar a página no celular */
+  /* block + overflow: tabela larga rola dentro dela, sem estourar a página no celular.
+     fit-content: sem isso, a borda (do bloco) ocupa a coluna inteira e as células não. */
   display: block;
+  width: fit-content;
+  max-width: 100%;
   overflow-x: auto;
   border-collapse: separate;
   border-spacing: 0;
@@ -235,3 +238,66 @@ body {
 .vp-doc .mermaid .labelBkg { background-color: var(--vp-c-bg-soft) !important; }
 .vp-doc .mermaid .edgeLabel rect { fill: var(--vp-c-bg-soft) !important; }
 .vp-doc .mermaid .edgeLabel { color: var(--vp-c-text-2) !important; }
+
+/* arquitetura da E2: SVG interativo à esquerda, painel de detalhes à direita */
+.cv-arq {
+  display: grid;
+  grid-template-columns: 1fr;   /* o diagrama ocupa a largura toda; o painel é a legenda ativa, embaixo */
+  gap: 14px;
+  margin: 20px 0 6px;
+}
+.cv-arq-svg {
+  border-radius: 18px;
+  background: var(--vp-c-bg-soft);
+  padding: 12px;
+  overflow-x: auto;
+}
+.cv-arq-svg svg { width: 100%; height: auto; display: block; min-width: 900px; }
+/* o SVG inline da arquitetura não pode ter <style> (o compilador Vue ignora); as regras vivem aqui.
+   A cópia estática em public/arquitetura-e2.svg leva as regras claras num <style> próprio. */
+.cv-arq-svg svg .caixa rect { fill: #ffffff; stroke: #e5e5ea; stroke-width: 1.5; rx: 16; transition: stroke .15s; }
+.cv-arq-svg svg .caixa { cursor: pointer; }
+.cv-arq-svg svg .caixa:hover > rect, .cv-arq-svg svg .caixa.ativa > rect { stroke: #0071e3; stroke-width: 3; }
+.cv-arq-svg svg .caixa.destaque rect { fill: #e8f2fd; stroke: #0071e3; }
+.cv-arq-svg svg .caixa.conteiner rect { fill: rgba(0,113,227,0.05); stroke: #0071e3; stroke-width: 1.5; rx: 22; }
+.cv-arq-svg svg .caixa.interna rect { fill: #ffffff; stroke: #d2d2d7; rx: 12; }
+.cv-arq-svg svg .caixa.interna.slot rect { stroke: #0071e3; stroke-dasharray: 5 4; }
+.cv-arq-svg svg .caixa.rotulo .alvo { fill: transparent; stroke: none; }
+.cv-arq-svg svg .caixa.rotulo:hover .alvo, .cv-arq-svg svg .caixa.rotulo.ativa .alvo { fill: rgba(0,113,227,0.08); stroke: none; }
+.cv-arq-svg svg .titulo { font-size: 18px; font-weight: 700; fill: #1d1d1f; letter-spacing: -0.015em; }
+.cv-arq-svg svg .tab { font-size: 15px; font-weight: 700; fill: #1d1d1f; font-family: 'SF Mono', ui-monospace, Menlo, monospace; }
+.cv-arq-svg svg .sub { font-size: 13px; fill: #6e6e73; }
+.cv-arq-svg svg .num { font-size: 12.5px; fill: #0071e3; font-weight: 600; }
+.cv-arq-svg svg .cmd { font-size: 13px; font-weight: 700; fill: #1d1d1f; font-family: 'SF Mono', ui-monospace, Menlo, monospace; }
+.cv-arq-svg svg .cmd.cdc, .cv-arq-svg svg .cmd-sub.cdc { fill: #0071e3; }
+.cv-arq-svg svg .cmd-sub { font-size: 12px; fill: #6e6e73; }
+.cv-arq-svg svg .legenda { font-size: 13px; fill: #6e6e73; }
+.cv-arq-svg svg .fluxo { fill: none; stroke: #8e8e93; stroke-width: 2; marker-end: url(#seta); }
+.cv-arq-svg svg .fluxo.cdc { stroke: #0071e3; stroke-dasharray: 7 5; marker-end: url(#seta-azul); }
+
+.dark .cv-arq-svg svg .caixa rect, .dark .cv-arq-svg svg .caixa.interna rect { fill: #1c1c1e; stroke: #3a3a3c; }
+.dark .cv-arq-svg svg .caixa.destaque rect { fill: rgba(41,151,255,0.16); stroke: #2997ff; }
+.dark .cv-arq-svg svg .caixa.conteiner rect { fill: rgba(41,151,255,0.07); stroke: #2997ff; }
+.dark .cv-arq-svg svg .caixa.interna.slot rect { stroke: #2997ff; }
+.dark .cv-arq-svg svg .caixa.rotulo .alvo { fill: transparent; }
+.dark .cv-arq-svg svg .titulo, .dark .cv-arq-svg svg .tab, .dark .cv-arq-svg svg .cmd { fill: #f5f5f7; }
+.dark .cv-arq-svg svg .sub, .dark .cv-arq-svg svg .cmd-sub, .dark .cv-arq-svg svg .legenda { fill: #a1a1a6; }
+.dark .cv-arq-svg svg .num, .dark .cv-arq-svg svg .cmd.cdc, .dark .cv-arq-svg svg .cmd-sub.cdc { fill: #2997ff; }
+
+.cv-arq-painel {
+  border-radius: 16px;
+  padding: 18px 20px;
+  background: var(--vp-c-brand-soft);
+  box-shadow: var(--cv-card-shadow);
+  min-height: 220px;
+}
+.cv-arq-painel .cv-rotulo { color: var(--vp-c-brand-1); }
+.cv-arq-painel strong { display: block; font-size: 18px; letter-spacing: -0.015em; margin: 4px 0 8px; }
+.cv-arq-painel { min-height: 0; }
+@media (min-width: 900px) { .cv-arq-painel { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; } .cv-arq-painel .cv-rotulo, .cv-arq-painel strong { grid-column: 1 / -1; } }
+.cv-arq-painel p, .cv-arq-painel li { font-size: 14px !important; line-height: 1.5 !important; margin: 0 0 8px !important; }
+.cv-arq-painel ul { padding-left: 18px; margin: 0 0 10px !important; }
+.cv-arq-painel li { color: var(--vp-c-text-1); margin-bottom: 4px !important; }
+.cv-arq-painel .cv-arq-cmd { display: block; font-size: 12.5px; padding: 8px 10px; border-radius: 8px; background: var(--vp-c-bg); word-break: break-all; margin-bottom: 10px; }
+.cv-arq-painel .cv-arq-links { font-size: 13px !important; margin: 0 !important; }
+.cv-arq-painel .cv-arq-dica { color: var(--vp-c-text-2); font-style: italic; }

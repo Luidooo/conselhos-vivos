@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 440" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8e8e93"/></marker>
+    <marker id="seta-azul" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0071e3"/></marker>
+    <filter id="sombra" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.07"/></filter>
+    <style>
+
+.caixa rect { fill: #ffffff; stroke: #e5e5ea; stroke-width: 1.5; rx: 16; transition: stroke .15s; }
+.caixa { cursor: pointer; }
+.caixa:hover > rect, .caixa.ativa > rect { stroke: #0071e3; stroke-width: 3; }
+.caixa.destaque rect { fill: #e8f2fd; stroke: #0071e3; }
+.caixa.conteiner rect { fill: rgba(0,113,227,0.05); stroke: #0071e3; stroke-width: 1.5; rx: 22; }
+.caixa.interna rect { fill: #ffffff; stroke: #d2d2d7; rx: 12; }
+.caixa.interna.slot rect { stroke: #0071e3; stroke-dasharray: 5 4; }
+.caixa.rotulo .alvo { fill: transparent; stroke: none; }
+.caixa.rotulo:hover .alvo, .caixa.rotulo.ativa .alvo { fill: rgba(0,113,227,0.08); stroke: none; }
+.titulo { font-size: 18px; font-weight: 700; fill: #1d1d1f; letter-spacing: -0.015em; }
+.tab { font-size: 15px; font-weight: 700; fill: #1d1d1f; font-family: 'SF Mono', ui-monospace, Menlo, monospace; }
+.sub { font-size: 13px; fill: #6e6e73; }
+.num { font-size: 12.5px; fill: #0071e3; font-weight: 600; }
+.cmd { font-size: 13px; font-weight: 700; fill: #1d1d1f; font-family: 'SF Mono', ui-monospace, Menlo, monospace; }
+.cmd.cdc, .cmd-sub.cdc { fill: #0071e3; }
+.cmd-sub { font-size: 12px; fill: #6e6e73; }
+.legenda { font-size: 13px; fill: #6e6e73; }
+.fluxo { fill: none; stroke: #8e8e93; stroke-width: 2; marker-end: url(#seta); }
+.fluxo.cdc { stroke: #0071e3; stroke-dasharray: 7 5; marker-end: url(#seta-azul); }
+
+</style>
+  </defs>
+  <g class="caixa conteiner" data-id="oltp">
+    <rect x="498" y="44" width="250" height="332"/>
+    <text class="titulo" x="623" y="72" text-anchor="middle">Postgres 16 · OLTP</text>
+  </g>
+  <path class="fluxo" d="M178,128 H260"/>
+  <path class="fluxo" d="M414,128 H516"/>
+  <path class="fluxo" d="M750,168 H832"/>
+  <path class="fluxo" d="M1006,128 H1054"/>
+  <g>
+    <text class="cmd" x="219" y="118" text-anchor="middle">fetch-mensal</text>
+    <text class="cmd-sub" x="219" y="148" text-anchor="middle">ZIP do mês</text>
+  </g>
+  <g>
+    <text class="cmd" x="465" y="118" text-anchor="middle">persist</text>
+    <text class="cmd-sub" x="465" y="148" text-anchor="middle">só conselhos</text>
+  </g>
+  <g>
+    <text class="cmd" x="791" y="158" text-anchor="middle">make lake</text>
+    <text class="cmd-sub" x="791" y="188" text-anchor="middle">relê tudo</text>
+  </g>
+  <g>
+    <text class="cmd" x="1030" y="118" text-anchor="middle">delta_scan</text>
+    <text class="cmd-sub" x="1030" y="148" text-anchor="middle">lê o Delta</text>
+  </g>
+  <g class="caixa" data-id="fonte" filter="url(#sombra)">
+    <rect x="16" y="92" width="160" height="116"/>
+    <text class="titulo" x="96" y="124" text-anchor="middle">Dados abertos</text>
+    <text class="sub" x="96" y="146" text-anchor="middle">Imprensa Nacional</text>
+    <text class="sub" x="96" y="164" text-anchor="middle">1 ZIP/mês, sem login</text>
+    <text class="num" x="96" y="194" text-anchor="middle">8.590 matérias · ago/26</text>
+  </g>
+  <g class="caixa" data-id="bronze" filter="url(#sombra)">
+    <rect x="262" y="92" width="150" height="116"/>
+    <text class="titulo" x="337" y="124" text-anchor="middle">Bronze</text>
+    <text class="sub" x="337" y="146" text-anchor="middle">data/bronze/</text>
+    <text class="sub" x="337" y="164" text-anchor="middle">ZIP como veio</text>
+    <text class="num" x="337" y="194" text-anchor="middle">52,6 MB, byte a byte</text>
+  </g>
+  <g class="caixa destaque" data-id="delta" filter="url(#sombra)">
+    <rect x="834" y="92" width="170" height="188"/>
+    <text class="titulo" x="919" y="124" text-anchor="middle">Delta Lake</text>
+    <text class="sub" x="919" y="146" text-anchor="middle">data/silver/atos/</text>
+    <text class="sub" x="919" y="164" text-anchor="middle">Parquet · ano= · zstd</text>
+    <text class="sub" x="919" y="182" text-anchor="middle">MERGE por ato_id</text>
+    <text class="num" x="919" y="266" text-anchor="middle">311 linhas · −29% disco</text>
+  </g>
+  <g class="caixa" data-id="duckdb" filter="url(#sombra)">
+    <rect x="1056" y="92" width="112" height="116"/>
+    <text class="titulo" x="1112" y="124" text-anchor="middle">DuckDB</text>
+    <text class="sub" x="1112" y="146" text-anchor="middle">consulta</text>
+    <text class="sub" x="1112" y="164" text-anchor="middle">analítica</text>
+    <text class="num" x="1112" y="194" text-anchor="middle">~0,85 ms</text>
+  </g>
+  <g class="caixa interna" data-id="oltp">
+    <rect x="518" y="96" width="210" height="56"/>
+    <text class="tab" x="623" y="120" text-anchor="middle">ato</text>
+    <text class="num" x="623" y="140" text-anchor="middle">96 atos de conselho · versões</text>
+  </g>
+  <g class="caixa interna" data-id="curadoria">
+    <rect x="518" y="168" width="210" height="56"/>
+    <text class="tab" x="623" y="192" text-anchor="middle">classificacao</text>
+    <text class="num" x="623" y="212" text-anchor="middle">insert-only · humano vence</text>
+  </g>
+  <g class="caixa interna slot" data-id="slot">
+    <rect x="518" y="290" width="210" height="66"/>
+    <text class="tab" x="623" y="314" text-anchor="middle">slot lógico</text>
+    <text class="num" x="623" y="334" text-anchor="middle">test_decoding · 512 B por mudança</text>
+  </g>
+  <path class="fluxo cdc" d="M623,226 V288"/>
+  <text class="cmd-sub cdc" x="633" y="262">WAL (wal_level=logical)</text>
+  <g class="caixa" data-id="curadoria" filter="url(#sombra)">
+    <rect x="262" y="250" width="150" height="96"/>
+    <text class="titulo" x="337" y="282" text-anchor="middle">Curadoria</text>
+    <text class="sub" x="337" y="304" text-anchor="middle">reclassifica um ato</text>
+    <text class="num" x="337" y="332" text-anchor="middle">INSERT, nunca UPDATE</text>
+  </g>
+  <path class="fluxo cdc" d="M414,290 H465 V196 H516"/>
+  <path class="fluxo cdc" d="M750,323 H919 V282"/>
+  <g class="caixa rotulo" data-id="cdc"><rect class="alvo" x="774" y="291" width="130" height="58"/>
+    <text class="cmd cdc" x="839" y="313" text-anchor="middle">make cdc</text>
+    <text class="cmd-sub" x="839" y="343" text-anchor="middle">só o que mudou</text>
+  </g>
+  <path class="fluxo" d="M24,414 h36" marker-end="none"/><text class="legenda" x="68" y="418">lote: a fonte pública chega ao OLTP e ao Delta</text>
+  <path class="fluxo cdc" d="M420,414 h36" marker-end="none"/><text class="legenda" x="464" y="418">mudanças: o que a curadoria altera chega ao Delta (CDC)</text>
+  <text class="legenda" x="1164" y="418" text-anchor="end">clique numa caixa para os detalhes</text>
+</svg>

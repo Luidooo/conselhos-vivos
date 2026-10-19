@@ -47,6 +47,7 @@ export default withMermaid(defineConfig({
     'site/entrega-e1.md': 'entrega-e1.md',
     'site/entrega-e2.md': 'entrega-e2.md',
     'site/jornada-do-dado.md': 'jornada-do-dado.md',
+    'site/arquitetura.md': 'arquitetura.md',
     'README.md': 'visao-geral.md',
     'docs/adr/README.md': 'docs/adr/index.md',
   },
@@ -92,6 +93,7 @@ export default withMermaid(defineConfig({
     nav: [
       { text: 'Entrega E2', link: '/entrega-e2' },
       { text: 'Entrega E1', link: '/entrega-e1' },
+      { text: 'Arquitetura', link: '/arquitetura' },
       { text: 'Jornada do dado', link: '/jornada-do-dado' },
       { text: 'Visão geral', link: '/visao-geral' },
       { text: 'Decisões', link: '/docs/adr/' },
@@ -104,6 +106,7 @@ export default withMermaid(defineConfig({
         items: [
           { text: 'Entrega E2', link: '/entrega-e2' },
           { text: 'Entrega E1', link: '/entrega-e1' },
+          { text: 'Arquitetura final', link: '/arquitetura' },
           { text: 'Jornada do dado', link: '/jornada-do-dado' },
           { text: 'Visão geral e como rodar', link: '/visao-geral' },
         ],

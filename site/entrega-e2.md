@@ -1,11 +1,233 @@
 ---
 title: Entrega E2
 outline: [2, 3]
+aside: false
 ---
+
+<script setup>
+import { onMounted } from 'vue'
+
+const PAINEIS = {
+  fonte: {
+    rotulo: 'Fonte pública', titulo: 'Dados abertos da Imprensa Nacional',
+    texto: 'Um ZIP por mês e por seção, público (CC0), sem login, com o mesmo XML do INLABS e as edições extras dentro. Substituiu o INLABS como fonte automática porque o login dele é recusado a scripts (502). Histórico desde 2002.',
+    numeros: ['Agosto/2026: 8.590 matérias, 120 imagens, 0 falhas de leitura', 'O mês sai ~2 semanas depois de acabar (setembro apareceu em 13/10)'],
+    comando: 'make fetch-mensal MES=2026-08',
+    links: [['ADR 0005', '/docs/adr/0005-ingerir-dou-no-oltp-e-propagar-ao-delta-via-cdc'], ['Como o link é encontrado', '/visao-geral#ingerir-um-mes-pelos-dados-abertos']],
+  },
+  bronze: {
+    rotulo: 'Camada bronze', titulo: 'O ZIP guardado como veio',
+    texto: 'O arquivo só ganha o nome final depois de validado como ZIP: temporário, cópia, fsync, validação, rename. Mês já em disco não é baixado de novo. Marcadores .sem-edicao e .falhou registram o que foi pedido e não veio.',
+    numeros: ['S01082026.zip: 52.565.336 bytes, idêntico (cmp) entre o cliente antigo em Go e o atual em Python', 'Segunda execução: nenhuma requisição'],
+    comando: 'ls data/bronze/dados-abertos/',
+    links: [['PR #60', 'https://github.com/Luidooo/conselhos-vivos/pull/60'], ['src/dou/bronze.py', 'https://github.com/Luidooo/conselhos-vivos/blob/main/src/dou/bronze.py']],
+  },
+  oltp: {
+    rotulo: 'OLTP de curadoria', titulo: 'Postgres 16: ato e classificacao',
+    texto: 'O persist lê cada matéria do ZIP, acha o conselho pela chave normalizada (ADR 0004) e grava em ato só o que é de conselho; o resto vai para a fila orgao_alias. Cada matéria é comparada com todas as versões já gravadas: igual, nada; diferente, versão nova. A classificação é insert-only.',
+    numeros: ['96 atos de conselho em agosto; 8.494 de órgão desconhecido fora de ato', 'Rodar de novo: gravadas=0, inalteradas=96, banco idêntico linha a linha'],
+    comando: 'make persist-mensal MES=2026-08',
+    links: [['ADR 0001', '/docs/adr/0001-adotar-sistema-de-curadoria-insert-only-como-oltp'], ['Gravar as matérias', '/visao-geral#gravar-as-materias-no-banco']],
+  },
+  delta: {
+    rotulo: 'Camada analítica', titulo: 'Tabela Delta sobre Parquet',
+    texto: 'Uma tabela consolidada (ato, órgão vigente na data, tipologia vigente) em data/silver/atos/, particionada por ano de publicação e comprimida com zstd, gravada por MERGE em ato_id. Sem JVM: biblioteca deltalake (Rust/Python). Um ato que chega atrasado cai na partição do ano certo.',
+    numeros: ['311 linhas; make lake 2×: inseridas=311, depois inalteradas=311', 'zstd: mesmo tempo de consulta e 20–29% menos disco que snappy; partição anual 12 arquivos contra 112 da diária'],
+    comando: 'make lake',
+    links: [['ADR 0006', '/docs/adr/0006-armazenar-a-camada-analitica-em-tabelas-delta'], ['test_atrasado.sh', 'https://github.com/Luidooo/conselhos-vivos/blob/main/tests/lake/test_atrasado.sh']],
+  },
+  duckdb: {
+    rotulo: 'Consumo', titulo: 'DuckDB lendo o Delta',
+    texto: 'O formato é aberto de verdade: o DuckDB lê a tabela com delta_scan sem passar pelo motor que a escreveu. É daqui que sai a distribuição da tipologia por conselho, o insumo do indicador de vitalidade da E3.',
+    numeros: ['Agregação tipologia × conselho × ano: ~0,85 ms', 'Contagem do DuckDB bate com o count(*) do banco (teste automatizado)'],
+    comando: "SELECT orgao_sigla, tipologia_sigla, count(*) FROM delta_scan('data/silver/atos') GROUP BY 1, 2",
+    links: [['test_lake.sh', 'https://github.com/Luidooo/conselhos-vivos/blob/main/tests/lake/test_lake.sh']],
+  },
+  curadoria: {
+    rotulo: 'Origem das mudanças', titulo: 'A curadoria reclassifica',
+    texto: 'Reclassificar um ato é inserir uma linha nova em classificacao; nada é sobrescrito, e a view classificacao_vigente devolve a última de cada revisor, com a humana vencendo a do pipeline. É a única fonte de mudança que o CDC precisa levar ao Delta.',
+    numeros: ['215 classificações da pesquisadora como gabarito', 'make cdc-demo reclassifica, mostra no Delta e restaura'],
+    comando: 'make cdc-demo',
+    links: [['ADR 0001', '/docs/adr/0001-adotar-sistema-de-curadoria-insert-only-como-oltp']],
+  },
+  slot: {
+    rotulo: 'Captura', titulo: 'Slot de replicação lógica do Postgres',
+    texto: 'O banco sobe com wal_level=logical; um slot (conselhos_lake) com o plugin test_decoding, que vem na imagem oficial, guarda as mudanças de classificacao até alguém consumir. Sem Kafka, sem Debezium, sem JVM: zero containers a mais.',
+    numeros: ['Slot em dia: 56 bytes de WAL retido; uma reclassificação pendente: 512 bytes', 'Slot parado retém WAL: make cdc-drop libera'],
+    comando: 'make cdc',
+    links: [['ADR 0007', '/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica'], ['Fluxo de mudanças', '/visao-geral#fluxo-de-mudancas-do-oltp-ao-delta-cdc']],
+  },
+  cdc: {
+    rotulo: 'Consumidor', titulo: 'make cdc: espia, grava, confirma',
+    texto: 'O consumidor espia o slot, relê do OLTP só os atos alterados com a mesma consulta do make lake, grava no Delta por MERGE e só então avança o cursor. Se cair no meio, o evento volta e o MERGE idempotente absorve: pelo menos uma vez na leitura, efetivamente uma vez no destino.',
+    numeros: ['Queda forçada entre gravar e confirmar (código 42): reexecução com inalteradas=1, 311 atos antes e depois, 0 duplicatas', 'Incremental de 1 ato: ~58 ms contra ~68 ms da recarga completa'],
+    comando: 'make cdc-chaos',
+    links: [['ADR 0007', '/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica'], ['test_cdc.sh', 'https://github.com/Luidooo/conselhos-vivos/blob/main/tests/lake/test_cdc.sh']],
+  },
+}
+
+onMounted(() => {
+  const host = document.getElementById('cv-arq-svg')
+  const painel = document.getElementById('cv-arq-painel')
+  if (!host || !painel) return
+  const inicial = painel.innerHTML
+  let fixo = null
+  const mostra = (id) => {
+    const p = PAINEIS[id]
+    if (!p) return
+    painel.innerHTML = `
+      <span class="cv-rotulo">${p.rotulo}</span>
+      <strong>${p.titulo}</strong>
+      <p>${p.texto}</p>
+      <ul>${p.numeros.map(n => `<li>${n}</li>`).join('')}</ul>
+      <code class="cv-arq-cmd">${p.comando}</code>
+      <p class="cv-arq-links">${p.links.map(([t, h]) => `<a href="${h}"${h.startsWith('http') ? ' target="_blank"' : ''}>${t}</a>`).join(' · ')}</p>`
+  }
+  host.querySelectorAll('.caixa').forEach(c => {
+    const id = c.dataset.id
+    c.addEventListener('mouseenter', () => { if (!fixo) mostra(id) })
+    c.addEventListener('mouseleave', () => { if (!fixo) painel.innerHTML = inicial })
+    c.addEventListener('click', () => {
+      host.querySelectorAll('.caixa').forEach(o => o.classList.remove('ativa'))
+      if (fixo === id) { fixo = null; painel.innerHTML = inicial; return }
+      fixo = id; c.classList.add('ativa'); mostra(id)
+    })
+  })
+})
+</script>
+
 
 # Entrega E2 · Ingestão em lote e captura de mudanças
 
-Cada item do [checklist de aceite da E2](https://unb-bd2.github.io/PlanoEnsino/projeto/e2/), na ordem da página da disciplina, com o lugar exato onde conferir. O que ainda não está no `main` aparece marcado como pendente, com a issue ou o PR em que está sendo feito.
+Entregue na tag [`e2`](https://github.com/Luidooo/conselhos-vivos/releases/tag/e2) (commit `95a82b4`, 16/10/2026). Esta página tem três partes: **a arquitetura**, num diagrama interativo; **os entregáveis**, o que foi construído e onde está; e **o checklist de aceite** da disciplina, item a item, com o lugar exato onde conferir.
+
+## Arquitetura
+
+O dado sai da Imprensa Nacional e chega ao DuckDB por dois caminhos de natureza diferente, como a E2 pede: um **lote** mensal, idempotente, e um **fluxo de mudanças** que leva ao Delta o que a curadoria altera no OLTP. Clique numa caixa.
+
+<div class="cv-arq">
+  <div class="cv-arq-svg" id="cv-arq-svg">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 440" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8e8e93"/></marker>
+    <marker id="seta-azul" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0071e3"/></marker>
+    <filter id="sombra" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.07"/></filter>
+  </defs>
+  <g class="caixa conteiner" data-id="oltp">
+    <rect x="498" y="44" width="250" height="332"/>
+    <text class="titulo" x="623" y="72" text-anchor="middle">Postgres 16 · OLTP</text>
+  </g>
+  <path class="fluxo" d="M178,128 H260"/>
+  <path class="fluxo" d="M414,128 H516"/>
+  <path class="fluxo" d="M750,168 H832"/>
+  <path class="fluxo" d="M1006,128 H1054"/>
+  <g>
+    <text class="cmd" x="219" y="118" text-anchor="middle">fetch-mensal</text>
+    <text class="cmd-sub" x="219" y="148" text-anchor="middle">ZIP do mês</text>
+  </g>
+  <g>
+    <text class="cmd" x="465" y="118" text-anchor="middle">persist</text>
+    <text class="cmd-sub" x="465" y="148" text-anchor="middle">só conselhos</text>
+  </g>
+  <g>
+    <text class="cmd" x="791" y="158" text-anchor="middle">make lake</text>
+    <text class="cmd-sub" x="791" y="188" text-anchor="middle">relê tudo</text>
+  </g>
+  <g>
+    <text class="cmd" x="1030" y="118" text-anchor="middle">delta_scan</text>
+    <text class="cmd-sub" x="1030" y="148" text-anchor="middle">lê o Delta</text>
+  </g>
+  <g class="caixa" data-id="fonte" filter="url(#sombra)">
+    <rect x="16" y="92" width="160" height="116"/>
+    <text class="titulo" x="96" y="124" text-anchor="middle">Dados abertos</text>
+    <text class="sub" x="96" y="146" text-anchor="middle">Imprensa Nacional</text>
+    <text class="sub" x="96" y="164" text-anchor="middle">1 ZIP/mês, sem login</text>
+    <text class="num" x="96" y="194" text-anchor="middle">8.590 matérias · ago/26</text>
+  </g>
+  <g class="caixa" data-id="bronze" filter="url(#sombra)">
+    <rect x="262" y="92" width="150" height="116"/>
+    <text class="titulo" x="337" y="124" text-anchor="middle">Bronze</text>
+    <text class="sub" x="337" y="146" text-anchor="middle">data/bronze/</text>
+    <text class="sub" x="337" y="164" text-anchor="middle">ZIP como veio</text>
+    <text class="num" x="337" y="194" text-anchor="middle">52,6 MB, byte a byte</text>
+  </g>
+  <g class="caixa destaque" data-id="delta" filter="url(#sombra)">
+    <rect x="834" y="92" width="170" height="188"/>
+    <text class="titulo" x="919" y="124" text-anchor="middle">Delta Lake</text>
+    <text class="sub" x="919" y="146" text-anchor="middle">data/silver/atos/</text>
+    <text class="sub" x="919" y="164" text-anchor="middle">Parquet · ano= · zstd</text>
+    <text class="sub" x="919" y="182" text-anchor="middle">MERGE por ato_id</text>
+    <text class="num" x="919" y="266" text-anchor="middle">311 linhas · −29% disco</text>
+  </g>
+  <g class="caixa" data-id="duckdb" filter="url(#sombra)">
+    <rect x="1056" y="92" width="112" height="116"/>
+    <text class="titulo" x="1112" y="124" text-anchor="middle">DuckDB</text>
+    <text class="sub" x="1112" y="146" text-anchor="middle">consulta</text>
+    <text class="sub" x="1112" y="164" text-anchor="middle">analítica</text>
+    <text class="num" x="1112" y="194" text-anchor="middle">~0,85 ms</text>
+  </g>
+  <g class="caixa interna" data-id="oltp">
+    <rect x="518" y="96" width="210" height="56"/>
+    <text class="tab" x="623" y="120" text-anchor="middle">ato</text>
+    <text class="num" x="623" y="140" text-anchor="middle">96 atos de conselho · versões</text>
+  </g>
+  <g class="caixa interna" data-id="curadoria">
+    <rect x="518" y="168" width="210" height="56"/>
+    <text class="tab" x="623" y="192" text-anchor="middle">classificacao</text>
+    <text class="num" x="623" y="212" text-anchor="middle">insert-only · humano vence</text>
+  </g>
+  <g class="caixa interna slot" data-id="slot">
+    <rect x="518" y="290" width="210" height="66"/>
+    <text class="tab" x="623" y="314" text-anchor="middle">slot lógico</text>
+    <text class="num" x="623" y="334" text-anchor="middle">test_decoding · 512 B por mudança</text>
+  </g>
+  <path class="fluxo cdc" d="M623,226 V288"/>
+  <text class="cmd-sub cdc" x="633" y="262">WAL (wal_level=logical)</text>
+  <g class="caixa" data-id="curadoria" filter="url(#sombra)">
+    <rect x="262" y="250" width="150" height="96"/>
+    <text class="titulo" x="337" y="282" text-anchor="middle">Curadoria</text>
+    <text class="sub" x="337" y="304" text-anchor="middle">reclassifica um ato</text>
+    <text class="num" x="337" y="332" text-anchor="middle">INSERT, nunca UPDATE</text>
+  </g>
+  <path class="fluxo cdc" d="M414,290 H465 V196 H516"/>
+  <path class="fluxo cdc" d="M750,323 H919 V282"/>
+  <g class="caixa rotulo" data-id="cdc"><rect class="alvo" x="774" y="291" width="130" height="58"/>
+    <text class="cmd cdc" x="839" y="313" text-anchor="middle">make cdc</text>
+    <text class="cmd-sub" x="839" y="343" text-anchor="middle">só o que mudou</text>
+  </g>
+  <path class="fluxo" d="M24,414 h36" marker-end="none"/><text class="legenda" x="68" y="418">lote: a fonte pública chega ao OLTP e ao Delta</text>
+  <path class="fluxo cdc" d="M420,414 h36" marker-end="none"/><text class="legenda" x="464" y="418">mudanças: o que a curadoria altera chega ao Delta (CDC)</text>
+  <text class="legenda" x="1164" y="418" text-anchor="end">clique numa caixa para os detalhes</text>
+</svg>
+
+  </div>
+  <aside class="cv-arq-painel" id="cv-arq-painel">
+    <span class="cv-rotulo">Arquitetura da E2</span>
+    <strong>Dois caminhos, um destino</strong>
+    <p>Em cima, o lote: um ZIP por mês entra no bronze como veio, o <code>persist</code> grava só as matérias de conselho no Postgres, e o <code>make lake</code> leva tudo a uma tabela Delta particionada por ano. Embaixo, as mudanças: cada reclassificação da curadoria é um <code>INSERT</code> que o slot lógico do Postgres captura e o <code>make cdc</code> aplica no Delta por <code>MERGE</code>.</p>
+    <p class="cv-arq-dica">Passe o mouse ou clique numa caixa para ver o comando, os números medidos e onde conferir.</p>
+  </aside>
+</div>
+
+<p class="cv-legenda">A mesma figura, estática, para imprimir ou colar numa apresentação: <a href="/conselhos-vivos/arquitetura-e2.svg" target="_blank">arquitetura-e2.svg</a>.</p>
+
+## Entregáveis
+
+| O que | Onde está | Como conferir |
+|---|---|---|
+| **Ingestão mensal da fonte pública**, idempotente | `make ingest-mensal MES=AAAA-MM` · `src/dou/` (Python) | 2ª execução: `gravadas=0 inalteradas=96`; banco idêntico linha a linha |
+| **OLTP de curadoria** com versões e fila de órgãos | Postgres 16 · `sql/` · `ato`, `classificacao`, `orgao_alias` | `make test` (23 testes de banco em transação desfeita) |
+| **Tabela Delta em formato aberto** (Parquet, `ano=`, zstd) | `make lake` · `data/silver/atos/` · `src/lake/` | 2ª execução: `inseridas=0`; DuckDB lê com `delta_scan` |
+| **CDC por slot lógico**, sem Kafka | `make cdc` · `src/lake/cdc.py` · `wal_level=logical` | `make cdc-demo`: reclassifica, chega ao Delta, restaura |
+| **Semântica de entrega demonstrada** | `make cdc-chaos` · `scripts/cdc_chaos_demo.sh` | queda forçada (código 42) → reexecução sem duplicar |
+| **Dado atrasado e janela** | `make ingest` (janela de 7 dias) · `tests/lake/test_atrasado.sh` | ato de 2024 chegado hoje cai em `ano=2024` |
+| **ADRs da E2** | [0005](/docs/adr/0005-ingerir-dou-no-oltp-e-propagar-ao-delta-via-cdc) ingestão · [0006](/docs/adr/0006-armazenar-a-camada-analitica-em-tabelas-delta) Delta/zstd · [0007](/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica) CDC | medições em `docs/adr/medicoes/` |
+| **Diários** das semanas 7 a 10 | `docs/diario/` | [Processo](/docs/diario/2026-10-13) |
+| **Migração do ingestor Go → Python** (#51–#55) | `src/dou/`, provada byte a byte e linha a linha contra o Go | [plano](/docs/planos/2026-10-13-migracao-ingestor-go-para-python) · PRs #58, #60, #62, #63 |
+
+## Checklist de aceite
+
+Cada item do [checklist da E2](https://unb-bd2.github.io/PlanoEnsino/projeto/e2/), na ordem da página da disciplina, com o lugar exato onde conferir.
 
 ::: tip Conferir em máquina limpa
 ```bash
