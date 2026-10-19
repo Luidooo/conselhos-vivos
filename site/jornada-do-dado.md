@@ -162,6 +162,8 @@ Com a planilha replicada e classificada para os 82 conselhos, o **indicador de v
 
 Com as decisões guardadas e classificadas, o último passo é deixar qualquer pessoa **perguntar em linguagem natural**, por exemplo: *"o que o CONAMA decidiu sobre licenciamento em 2023?"* ou *"quais conselhos não publicam nada há mais de um ano?"*.
 
+Como as peças e as ferramentas se encaixam está na [arquitetura final](/arquitetura).
+
 O assistente usa **RAG** (geração aumentada por recuperação): antes de responder, ele **busca no banco as decisões relevantes** e só então escreve a resposta, **citando o ato do Diário Oficial** de onde tirou cada informação. Assim, a resposta pode ser conferida, e o assistente não inventa o que não está nos documentos.
 
 O que isso exige das etapas anteriores:
