@@ -1,0 +1,22 @@
+==> partição 2026-07-01
+STEP_SUCCESS atos_do_mes
+STEP_SUCCESS silver__atos
+STEP_SUCCESS gold
+RUN_SUCCESS 
+persist: gravadas=161 versoes-novas=0 inalteradas=0 orgao-desconhecido=9278 repetidas=15 ignoradas=2244 falhou=0
+==> partição 2026-08-01
+STEP_SUCCESS atos_do_mes
+STEP_SUCCESS silver__atos
+STEP_SUCCESS gold
+RUN_SUCCESS 
+persist: gravadas=0 versoes-novas=0 inalteradas=96 orgao-desconhecido=8494 repetidas=0 ignoradas=120 falhou=0
+==> partição 2026-09-01
+STEP_SUCCESS atos_do_mes
+STEP_SUCCESS silver__atos
+STEP_SUCCESS gold
+RUN_SUCCESS 
+persist: gravadas=132 versoes-novas=0 inalteradas=0 orgao-desconhecido=8794 repetidas=1 ignoradas=2019 falhou=0
+==> atos por mês depois do backfill
+2026-07-01|161
+2026-08-01|96
+2026-09-01|132

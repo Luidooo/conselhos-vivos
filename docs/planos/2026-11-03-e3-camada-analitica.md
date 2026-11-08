@@ -782,7 +782,7 @@ git add dbt && git diff --cached --stat
 
 - [ ] **Passo 0: o Dagster no serviço**
 
-No serviço `orquestrador` do `docker-compose.yml`, acrescente:
+No serviço `orquestrador` do `docker-compose.yml`, acrescente estas linhas às chaves que já existem (`environment` e `volumes`) e crie `ports` e `command`. O `DAGSTER_HOME` também vale para os scripts dos passos 4 e 5: sem ele, cada `dagster asset materialize` usa um histórico temporário.
 
 ```yaml
     environment:
@@ -806,11 +806,14 @@ No alvo `gold` do `Makefile`, troque `mkdir -p data/gold` por `mkdir -p data/gol
 ```python
 """Orquestração da E3: ingestão do mês, silver e gold, num grafo mensal com retry e backfill."""
 
+import os
 import subprocess
 from pathlib import Path
 
 import dagster as dg
 from dagster_dbt import DbtCliResource, DbtProject, dbt_assets
+
+from dou import dadosabertos
 
 DBT = DbtProject(project_dir=Path("/app/dbt"), profiles_dir=Path("/app/dbt"))
 DBT.prepare_if_dev()
@@ -829,9 +832,11 @@ def _roda(context: dg.AssetExecutionContext, *cmd: str) -> None:
 @dg.asset(partitions_def=MENSAL, retry_policy=RETRY, group_name="ingestao")
 def atos_do_mes(context: dg.AssetExecutionContext) -> None:
     """Baixa o ZIP do mês dos dados abertos e grava os atos de conselho no Postgres."""
-    ano, mes = context.partition_key[:7].split("-")
-    _roda(context, "python", "-m", "dou", "fetch-mensal", "--month", f"{ano}-{mes}")
-    _roda(context, "python", "-m", "dou", "persist", f"/data/bronze/dados-abertos/S01{mes}{ano}.zip")
+    mes = dadosabertos.Mes.parse(context.partition_key[:7])
+    _roda(context, "python", "-m", "dou", "fetch-mensal", "--month", str(mes))
+    # O mesmo nome e o mesmo diretório que o fetch-mensal usa ao gravar.
+    zip_do_mes = Path(os.environ["DADOS_ABERTOS_OUTPUT_DIR"]) / dadosabertos.nome_do_zip(mes)
+    _roda(context, "python", "-m", "dou", "persist", str(zip_do_mes))
 
 
 # shortcut: silver e gold são recalculadas inteiras a cada mês (MERGE idempotente, tabelas pequenas);
@@ -860,7 +865,7 @@ defs = dg.Definitions(
 
 O `key=["silver", "atos"]` é o mesmo nome da fonte `silver.atos` do dbt. Assim o Dagster liga a silver aos modelos sem configuração a mais. Confira no grafo, no Passo 3.
 
-O `prepare_if_dev()` só gera o manifesto do dbt dentro do `dagster dev`. Os scripts dos passos 4 e 5 usam `dagster asset materialize`, que lê o `dbt/target/manifest.json` deixado pelo último `make gold`. Por isso, rode `make gold` antes deles sempre que um modelo mudar.
+O `prepare_if_dev()` só gera o manifesto do dbt dentro do `dagster dev`. Os scripts dos passos 4 e 5 usam `dagster asset materialize`, que lê o `dbt/target/manifest.json` deixado pelo último `make gold`. Por isso, rode `make gold` antes deles sempre que um modelo mudar. Sem o manifesto, o módulo nem carrega: o `@dbt_assets` lê o arquivo ao importar. Os dois scripts conferem isso antes de começar.
 
 - [ ] **Passo 2: alvos no Makefile**
 
@@ -878,6 +883,15 @@ demo-backfill: .env ## E3: reprocessa um intervalo de meses (DE=AAAA-MM ATE=AAAA
 
 - [ ] **Passo 3: o grafo aparece**
 
+Antes de subir a interface, confira que o módulo carrega:
+
+```bash
+make gold
+DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T orquestrador dagster definitions validate -m orquestracao
+```
+
+Esperado: `Validation successful`. Depois:
+
 ```bash
 make orquestrador
 ```
@@ -891,32 +905,43 @@ Abra http://localhost:3000. Esperado: `atos_do_mes`, depois `silver/atos`, depoi
 ```bash
 #!/usr/bin/env bash
 # Backfill de um intervalo de meses pelo Dagster: um run por mês, em ordem, cada um com retry.
-# Uso: bash scripts/demo_backfill.sh 2026-06 2026-08
+# Uso: bash scripts/demo_backfill.sh 2026-07 2026-09
 set -euo pipefail
 cd "$(dirname "$0")/.."
 de=${1:?mês inicial AAAA-MM}; ate=${2:?mês final AAAA-MM}
+test -f dbt/target/manifest.json || { echo "falta o manifesto do dbt: rode make gold antes"; exit 1; }
+command -v sqlite3 >/dev/null || { echo "falta o sqlite3, que lê o log de eventos do Dagster"; exit 1; }
 mkdir -p data/gold data/dagster docs/adr/medicoes/0009-gold
 saida=docs/adr/medicoes/0009-gold/backfill-$de-a-$ate.txt
+[[ -e "$saida" ]] && saida=${saida%.txt}-de-novo.txt   # a segunda rodada, que prova que nada duplica
 : > "$saida"
 mes=$de
 while [[ "$mes" < "$ate" || "$mes" == "$ate" ]]; do
   echo "==> partição $mes-01" | tee -a "$saida"
-  DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T orquestrador \
-    dagster asset materialize -m orquestracao --select '*' --partition "$mes-01" 2>&1 \
-    | grep -E "RUN_SUCCESS|RUN_FAILURE|STEP_SUCCESS|STEP_FAILURE|STEP_UP_FOR_RETRY" | tee -a "$saida"
+  log=$(DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T orquestrador \
+    dagster asset materialize -m orquestracao --select '*' --partition "$mes-01" 2>&1) || { tail -30 <<<"$log"; exit 1; }
+  run=$(grep -m1 -oE '[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}' <<<"$log")
+  # Cada passo roda noutro processo: os eventos dele ficam no log do run, e a saída do persist nos compute logs.
+  sqlite3 "data/dagster/history/runs/$run.db" \
+    "select replace(dagster_event_type, 'PIPELINE_', 'RUN_') || ' ' || coalesce(step_key, '') from event_logs where dagster_event_type in ('STEP_SUCCESS','STEP_FAILURE','STEP_UP_FOR_RETRY','PIPELINE_SUCCESS','PIPELINE_FAILURE') order by id" | tee -a "$saida"
+  grep -ho "done gravadas.*" data/dagster/storage/"$run"/compute_logs/*.err | sed 's/^done /persist: /' | tee -a "$saida"
   mes=$(date -j -v+1m -f "%Y-%m-%d" "$mes-01" +%Y-%m 2>/dev/null || date -d "$mes-01 +1 month" +%Y-%m)
 done
 echo "==> atos por mês depois do backfill" | tee -a "$saida"
 docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select date_trunc('"'"'month'"'"', data_publicacao)::date, count(*) from ato where origem = '"'"'DOU'"'"' group by 1 order by 1"' | tee -a "$saida"
 ```
 
-Rode com três meses. O download de cada mês tem de 50 a 290 MB:
+Rode com três meses. O bronze já tem agosto e setembro, então só julho é baixado (de 50 a 290 MB; peça o ok antes de baixar). Setembro entra no banco pela primeira vez. Outubro ainda não serve: só sai por volta do dia 15 de novembro.
 
 ```bash
-make demo-backfill DE=2026-06 ATE=2026-08
+make demo-backfill DE=2026-07 ATE=2026-09
 ```
 
-Esperado: `RUN_SUCCESS` nas três partições, e junho, julho e agosto na contagem final. Rodar de novo não duplica nada: o persist grava `inalteradas`. Essa segunda rodada também vai para o ADR.
+Os eventos de cada passo não aparecem na saída do `dagster asset materialize`: cada passo roda noutro processo. Os scripts leem o log de eventos do run (`data/dagster/history/runs/<run>.db`, com `sqlite3`) e o resumo do `persist` nos compute logs. Nesse log, o fim do run se chama `PIPELINE_SUCCESS`; os scripts mostram como `RUN_SUCCESS`.
+
+Esperado: `RUN_SUCCESS` nas três partições, e julho, agosto e setembro na contagem final. Rodar de novo não duplica nada: o persist grava `inalteradas`. Essa segunda rodada também vai para o ADR, em `backfill-…-de-novo.txt`.
+
+Resultado em 08/11/2026: o ZIP de julho tem 555 MB. A primeira rodada gravou 161 atos de julho e 132 de setembro, e agosto ficou `inalteradas=96`; a segunda deu `gravadas=0` nos três meses. Levou 3 min 8 s com o download e 1 min 38 s sem ele.
 
 - [ ] **Passo 5: o retry, com uma dependência derrubada de propósito**
 
@@ -929,17 +954,33 @@ Esperado: `RUN_SUCCESS` nas três partições, e junho, julho e agosto na contag
 set -euo pipefail
 cd "$(dirname "$0")/.."
 MES=${MES:-2026-08}
-mkdir -p docs/adr/medicoes/0009-gold
+mkdir -p data/dagster/history/runs docs/adr/medicoes/0009-gold
 saida=docs/adr/medicoes/0009-gold/retry-$MES.txt
-trap 'docker compose start db >/dev/null' EXIT   # o banco volta mesmo se o script cair
+test -f dbt/target/manifest.json || { echo "falta o manifesto do dbt: rode make gold antes"; exit 1; }
+command -v sqlite3 >/dev/null || { echo "falta o sqlite3, que lê o log de eventos do Dagster"; exit 1; }
+eventos() {  # os eventos de passo e de run, do log que o Dagster grava durante o run
+  sqlite3 "$1" "select replace(dagster_event_type, 'PIPELINE_', 'RUN_') || ' ' || coalesce(step_key, '') from event_logs where dagster_event_type in ('STEP_START','STEP_FAILURE','STEP_UP_FOR_RETRY','STEP_RESTARTED','STEP_SUCCESS','PIPELINE_SUCCESS','PIPELINE_FAILURE') order by id"
+}
+marca=$(mktemp)   # o run desta demonstração é o único log de eventos mais novo que esta marca
+trap 'docker compose start db >/dev/null; rm -f "$marca"' EXIT   # o banco volta mesmo se o script cair
 docker compose stop db
 DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T --no-deps orquestrador \
-  dagster asset materialize -m orquestracao --select atos_do_mes --partition "$MES-01" > "$saida" 2>&1 &
-run=$!
-sleep 15                      # o pip install e a primeira tentativa, com o banco fora
+  dagster asset materialize -m orquestracao --select atos_do_mes --partition "$MES-01" > "$saida.log" 2>&1 &
+pid=$!
+# Só religa o banco depois que a primeira tentativa cair: o pip install leva uns 30 s, e um tempo fixo
+# pode religar cedo demais. O retry espera 30 s, tempo de o Postgres subir.
+db=""
+for _ in $(seq 180); do
+  db=${db:-$(find data/dagster/history/runs -name '*.db' -newer "$marca" | head -1)}
+  [[ -n "$db" ]] && eventos "$db" 2>/dev/null | grep -q STEP_UP_FOR_RETRY && break
+  sleep 1
+done
 docker compose start db
-wait "$run"; rc=$?
-grep -E "STEP_FAILURE|STEP_UP_FOR_RETRY|STEP_RESTARTED|STEP_SUCCESS|RUN_SUCCESS|RUN_FAILURE" "$saida"
+rc=0; wait "$pid" || rc=$?   # sem o || o set -e encerraria o script antes da conferência
+[[ -n "$db" ]] || { echo "FALHOU: o run não começou"; tail -20 "$saida.log"; exit 1; }
+{ echo "run $(basename "$db" .db), mês $MES, banco parado antes da primeira tentativa"; eventos "$db"; } > "$saida"
+rm -f "$saida.log"
+cat "$saida"
 grep -q STEP_UP_FOR_RETRY "$saida" || { echo "FALHOU: não houve retry"; exit 1; }
 grep -q RUN_SUCCESS "$saida" || { echo "FALHOU: o retry não recuperou"; exit 1; }
 echo "OK: a primeira tentativa caiu com o banco fora e o retry recuperou (rc=$rc)"
@@ -949,12 +990,14 @@ echo "OK: a primeira tentativa caiu com o banco fora e o retry recuperou (rc=$rc
 make demo-retry
 ```
 
-Esperado: `STEP_UP_FOR_RETRY`, depois `STEP_SUCCESS` e `RUN_SUCCESS`. Se o pip demorar mais que 15 s e a primeira tentativa já encontrar o banco no ar, aumente o `sleep`. O teste confere que o retry aconteceu.
+Esperado: `STEP_UP_FOR_RETRY`, depois `STEP_SUCCESS` e `RUN_SUCCESS`. O script confere que o retry aconteceu e que recuperou.
+
+Resultado em 08/11/2026: `STEP_START`, `STEP_UP_FOR_RETRY`, `STEP_RESTARTED`, `STEP_SUCCESS` e `RUN_SUCCESS`, em 57 s. A primeira tentativa caiu no `persist`, com `Name or service not known` para o host `db`.
 
 - [ ] **Passo 6: stage**
 
 ```bash
-git add src/orquestracao scripts/demo_retry.sh scripts/demo_backfill.sh Makefile docs/adr/medicoes && git diff --cached --stat
+git add src/orquestracao scripts/demo_retry.sh scripts/demo_backfill.sh Makefile docker-compose.yml docs/adr/medicoes && git diff --cached --stat
 ```
 
 ---
