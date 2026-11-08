@@ -547,3 +547,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** o projeto, o staging, o serviço `orquestrador` e o alvo `gold`, como no plano corrigido. **Decidido pela IA**, a revisar: a porta e o comando do Dagster ficaram para a #73 e o `gold-docs` para a #76, para não subir configuração sem uso; e foi acrescentado um teste unitário do dbt, porque o banco de trabalho não tem nenhum ato com versão acima de 1.
 - **Como foi verificado:** `make lake && make gold` com 11 de 11 em `PASS`; 96 matérias do DOU e 215 da planilha no `stg_atos`, os mesmos números do OLTP; `duckdb_databases()` mostra `oltp` com `readonly = True`; o teste unitário falha quando a ordenação de `versao` é invertida; `pip` resolveu as versões fixadas no container. A Tarefa 0 achou 92 atos fora da tabela `conselho`, registrados na #68 para a decisão da #70.
 - **Quem revisou:** pendente — a Luiza, no PR.
+
+### 2026-11-08 — Dimensão do conselho com variação lenta e ADR 0010 (#69)
+
+- **Ferramenta:** Claude Code (Claude Sonnet 5.5)
+- **Onde:** `dbt/models/marts/`, `dbt/tests/`, `dbt/dbt_project.yml`, `docs/adr/0010-*.md`, `docs/adr/0004-*.md`, `docs/adr/README.md`, `docs/adr/medicoes/0009-gold/dim_conselho-renomeados.txt`, `docs/planos/2026-11-03-e3-camada-analitica.md`
+- **O que foi pedido:** executar a Tarefa 2 do plano da E3: `dim_conselho` como SCD tipo 2, com os dois testes de vigência.
+- **O que foi aproveitado:** o modelo e os dois testes do plano. **Decidido pela IA**, a revisar: o `valido_de` nulo do OLTP (ADR 0004, ponto 4) virou `0001-01-01` com a coluna `inicio_nao_verificado`, porque o teste `not_null` falhou em 55 linhas e o fato do ato descartaria esses atos sem erro; e a `eh_participativo` entra como nula quando a pesquisadora não avaliou. A mudança de escopo (de 5 para os 62 órgãos com "Conselho" no nome) **não foi da IA**: veio da squad, depois que o critério "conselho com mais de um nome" não tinha dado nos 5, e a IA só redigiu o ADR 0010.
+- **Como foi verificado:** `make gold` com 18 de 18 em `PASS`, incluindo os dois testes singulares; CNDPI, CNDM e CNDH aparecem com dois nomes e um só `atual`; 62 conselhos e 65 linhas. Não rodou `make test`.
+- **Quem revisou:** pendente — a Luiza, no PR. O ADR 0010 precisa da aprovação da squad.

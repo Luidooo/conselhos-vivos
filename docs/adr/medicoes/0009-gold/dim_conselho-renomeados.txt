@@ -1,0 +1,14 @@
+# dim_conselho: conselhos com mais de um nome (issue #69), make gold de 2026-11-08
+
+| orgao_id | sigla |  valido_de | valido_ate | atual | inicio_nao_verifi... |
+| -------- | ----- | ---------- | ---------- | ----- | -------------------- |
+|       75 | CNDPI | 0001-01-01 | 2019-06-26 | False |                 True |
+|       75 | CNDPI | 2019-06-27 | 9999-12-31 |  True |                False |
+|       76 | CNDM  | 1985-08-29 | 2022-12-31 | False |                False |
+|       76 | CNDM  | 2023-01-01 | 9999-12-31 |  True |                False |
+|       78 | CNDH  | 1964-03-16 | 2014-06-01 | False |                False |
+|       78 | CNDH  | 2014-06-02 | 9999-12-31 |  True |                False |
+
+| linhas | conselhos | atuais | participativos |
+| ------ | --------- | ------ | -------------- |
+|     65 |        62 |     62 |              5 |

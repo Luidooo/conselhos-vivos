@@ -344,8 +344,9 @@ O OLTP já guarda o histórico: cada nome de órgão tem início e fim de vigên
 - Criar: `dbt/models/marts/dim_conselho.sql`, `dbt/models/marts/marts.yml`, `dbt/tests/dim_uma_linha_atual_por_conselho.sql`, `dbt/tests/dim_vigencias_nao_se_sobrepoem.sql`
 
 **Interfaces:**
-- Consome: `ref('stg_orgao_nome')`, `source('oltp','conselho')`, `source('oltp','orgao')`.
-- Produz: `ref('dim_conselho')`, com `conselho_sk, orgao_id, nome, sigla, codigo_siorg, valido_de, valido_ate, atual`.
+- Consome: `ref('stg_orgao_nome')`, `source('oltp','orgao')`, `source('oltp','conselho')` (só para a marca `eh_participativo`).
+- Produz: `ref('dim_conselho')`, com `conselho_sk, orgao_id, nome, sigla, codigo_siorg, valido_de, inicio_nao_verificado, valido_ate, atual, eh_participativo`.
+- Escopo: todo órgão que tem ou já teve "Conselho" no nome ([ADR 0010](../adr/0010-tratar-como-conselho-todo-orgao-com-conselho-no-nome.md)), 62 dos 82 órgãos. Com a tabela `conselho` seriam 5, nenhum renomeado.
 
 - [ ] **Passo 1: os testes, antes do modelo**
 
@@ -386,18 +387,31 @@ Esperado: erro de compilação, porque `dim_conselho` não existe.
 
 ```sql
 -- SCD tipo 2: uma linha por nome que o conselho teve, com a vigência. Renomear é inserir, não sobrescrever.
+-- Início nulo no OLTP (ADR 0004, ponto 4) vira limite aberto aqui, marcado em inicio_nao_verificado:
+-- um valido_de nulo faria o fato descartar, sem erro, os atos desse conselho.
+-- É conselho todo órgão que tem ou já teve "Conselho" no nome (ADR 0010); vale por órgão, não por linha.
+with escopo as (
+    select orgao_id
+    from {{ ref('stg_orgao_nome') }}
+    group by orgao_id
+    having bool_or(nome ilike 'conselho%')
+)
+
 select
     n.orgao_nome_id as conselho_sk,
     n.orgao_id,
     n.nome,
     o.sigla,
     o.codigo_siorg,
-    n.data_inicio as valido_de,
+    coalesce(n.data_inicio, date '0001-01-01') as valido_de,
+    n.data_inicio is null as inicio_nao_verificado,
     coalesce(n.data_fim, date '9999-12-31') as valido_ate,
-    n.data_fim is null as atual
+    n.data_fim is null as atual,
+    c.eh_participativo -- nulo = não avaliado pela pesquisadora, não falso
 from {{ ref('stg_orgao_nome') }} n
-join {{ source('oltp', 'conselho') }} c on c.orgao_id = n.orgao_id
+join escopo e on e.orgao_id = n.orgao_id
 join {{ source('oltp', 'orgao') }} o on o.id = n.orgao_id
+left join {{ source('oltp', 'conselho') }} c on c.orgao_id = n.orgao_id
 ```
 
 `dbt/models/marts/marts.yml`:
@@ -409,7 +423,8 @@ models:
   - name: dim_conselho
     description: >
       Dimensão de variação lenta (SCD tipo 2). Granularidade: uma linha por nome que um conselho
-      teve, com valido_de e valido_ate. O nome vigente tem atual = true.
+      teve, com valido_de e valido_ate. O nome vigente tem atual = true. O escopo é todo órgão que
+      tem ou já teve "Conselho" no nome (ADR 0010).
     columns:
       - name: conselho_sk
         tests: [unique, not_null]
@@ -417,6 +432,10 @@ models:
         tests: [not_null]
       - name: valido_de
         tests: [not_null]
+      - name: eh_participativo
+        description: "Marca da pesquisadora. Nulo significa não avaliado, não falso."
+      - name: inicio_nao_verificado
+        description: "Verdadeiro quando o OLTP não tem a data de início do nome (ADR 0004, ponto 4). Nesse caso valido_de é 0001-01-01, um limite aberto, não uma data real."
 ```
 
 - [ ] **Passo 4: rodar e ver passar**
@@ -433,7 +452,9 @@ Esperado: `dim_conselho` criada e os dois testes singulares em `PASS`. Se `dim_v
 docker compose --progress quiet run --rm -T --entrypoint python orquestrador -c "import duckdb; print(duckdb.connect('/data/gold/conselhos.duckdb', read_only=True).sql('select orgao_id, nome, valido_de, valido_ate, atual from dim_conselho where orgao_id in (select orgao_id from dim_conselho group by 1 having count(*) > 1) order by orgao_id, valido_de limit 12'))"
 ```
 
-Esperado: conselhos com mais de um nome, cada nome numa linha, um só com `atual = true`. Esse print vai para o ADR.
+Esperado: conselhos com mais de um nome (CNDPI, CNDM e CNDH), cada nome numa linha, um só com `atual = true`. Esse print vai para o ADR 0009, em `docs/adr/medicoes/0009-gold/dim_conselho-renomeados.txt`.
+
+O python do container não tem o `duckdb` fora do `dbt`. Para esta conferência, use `dbt show --project-dir /app/dbt --inline "select ... from {{ ref('dim_conselho') }}"`.
 
 - [ ] **Passo 6: stage**
 
