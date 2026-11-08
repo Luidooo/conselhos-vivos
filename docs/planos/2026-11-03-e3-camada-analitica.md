@@ -18,6 +18,7 @@
 - Nenhum teste ou demonstração deixa o banco de trabalho diferente do que encontrou.
 - Commit e push só com o ok da Luiza. Cada tarefa termina com o diff em stage.
 - Toda tarefa que usa IA ganha uma entrada no `AI-USAGE.md`, no formato das existentes.
+- Nos YAML do dbt, use `data_tests:` e, nos testes com parâmetro, `arguments:`. `tests:` ainda funciona, mas é a forma antiga, e o dbt 2 exige `arguments`.
 - O ADR da E3 é o **0009**. O 0008 está reservado para a migração Go → Python (#57).
 
 ## Mapa de arquivos
@@ -31,7 +32,8 @@
 | `dbt/tests/` | testes singulares: volume, vigências, distribuição e SLA |
 | `src/orquestracao/__init__.py` | o grafo do Dagster: assets, retry, partição, agenda |
 | `src/orquestracao/requirements.txt` | dbt, Dagster e as dependências do dou e do lake |
-| `src/painel/app.py`, `src/painel/requirements.txt` | o painel |
+| `src/painel/requirements.txt` | as versões do painel, fixadas já na Tarefa 1 |
+| `src/painel/app.py` | o painel |
 | `sql/007_*.sql` | o índice que sair da Tarefa 7 |
 | `scripts/demo_retry.sh`, `scripts/demo_backfill.sh` | as duas demonstrações da orquestração |
 | `docs/adr/0009-*.md`, `docs/adr/medicoes/0009-gold/` | o ADR e as medições |
@@ -75,7 +77,7 @@ O fato liga cada ato a `dim_conselho`, que só tem conselhos. Se esta consulta d
 docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select a.orgao_id, count(*) from ato a left join conselho c using (orgao_id) where c.orgao_id is null group by 1"'
 ```
 
-Esperado: nenhuma linha.
+O `persist` aceita qualquer órgão de `orgao_nome`, não só conselho. Resultado em 06/11/2026: 92 atos do DOU, de 19 órgãos, estão fora da tabela `conselho`, que tem só os 5 da planilha. A Tarefa 3 (#70) precisa decidir o que fazer com eles. Detalhes na #68.
 
 - [ ] **Passo 3: não baixar nada agora**
 
@@ -87,8 +89,8 @@ Os meses extras entram pelo backfill da Tarefa 6, que é a demonstração pedida
 
 **Arquivos:**
 - Criar: `dbt/dbt_project.yml`, `dbt/profiles.yml`, `dbt/models/fontes.yml`, `dbt/models/staging/stg_atos.sql`, `dbt/models/staging/stg_orgao_nome.sql`, `dbt/models/staging/staging.yml`
-- Criar: `src/orquestracao/requirements.txt`
-- Modificar: `docker-compose.yml` (serviço `orquestrador`), `Makefile` (alvos `gold` e `gold-test`), `.gitignore`
+- Criar: `src/orquestracao/requirements.txt`, `src/painel/requirements.txt`
+- Modificar: `docker-compose.yml` (serviço `orquestrador`), `Makefile` (alvo `gold`), `.gitignore`, `AI-USAGE.md`
 
 **Interfaces:**
 - Produz: `ref('stg_atos')`, com uma linha por matéria (a chave `materia`), e as colunas da silver mais `mes`.
@@ -97,22 +99,25 @@ Os meses extras entram pelo backfill da Tarefa 6, que é a demonstração pedida
 
 - [ ] **Passo 1: fixar as versões**
 
-Rode no container, para pegar versões que convivam com `duckdb==1.5.6`:
+Versões conferidas no PyPI em 04/11/2026. O `dbt-duckdb` aceita `duckdb>=1.0.0`, o `dagster-dbt` aceita `dbt-core<1.13`, e o `dagster-dbt` 0.29.28 exige `dagster==1.13.28`. Quem prova que tudo convive é o `pip` do Passo 6.
 
-```bash
-docker run --rm python:3.12.14-slim sh -c "pip index versions dbt-duckdb; pip index versions dbt-core; pip index versions dagster; pip index versions dagster-dbt; pip index versions streamlit" 2>/dev/null | grep -E "^[a-z-]+ \("
-```
-
-Use a versão mais recente de cada um em `src/orquestracao/requirements.txt`. O `dagster-dbt` segue o `dagster`: core `1.X.Y` casa com bibliotecas `0.(X+16).Y`, então `1.13.8` casa com `0.29.8`.
+`src/orquestracao/requirements.txt`:
 
 ```text
 -r ../dou/requirements.txt
 -r ../lake/requirements.txt
-dbt-core==<versão do passo 1>
-dbt-duckdb==<versão do passo 1>
-dagster==<versão do passo 1>
-dagster-webserver==<mesma do dagster>
-dagster-dbt==<a casada com o dagster>
+dbt-core==1.12.6
+dbt-duckdb==1.11.1
+dagster==1.13.28
+dagster-webserver==1.13.28
+dagster-dbt==0.29.28
+```
+
+`src/painel/requirements.txt`:
+
+```text
+duckdb==1.5.6
+streamlit==1.66.1
 ```
 
 Os `-r` repetem `psycopg` e `duckdb`, e isso não conflita: as versões são as mesmas.
@@ -188,12 +193,8 @@ sources:
 select
     *,
     date_trunc('month', data_publicacao)::date as mes,
-    case when origem = 'DOU' then 'DOU:' || id_origem else 'PLANILHA:' || ato_id end as materia
+    case when origem = 'DOU' then 'DOU:' || id_origem else 'PLANILHA:' || ato_id::varchar end as materia
 from {{ source('silver', 'atos') }}
-{% if var('excluir_mes', none) %}
--- shortcut: só para demonstrar o teste de distribuição (Tarefa 4); nunca use em produção.
-where date_trunc('month', data_publicacao)::date <> date '{{ var("excluir_mes") }}'
-{% endif %}
 qualify row_number() over (partition by materia order by versao desc) = 1
 ```
 
@@ -214,25 +215,49 @@ models:
     description: "Granularidade: uma linha por matéria publicada, na versão mais recente."
     columns:
       - name: materia
-        tests: [unique, not_null]
+        data_tests: [unique, not_null]
       - name: ato_id
-        tests: [unique, not_null]
+        data_tests: [unique, not_null]
       - name: data_publicacao
-        tests: [not_null]
+        data_tests: [not_null]
       - name: origem
-        tests:
+        data_tests:
           - accepted_values:
-              values: ['DOU', 'PLANILHA']
+              arguments:
+                values: ['DOU', 'PLANILHA']
 
   - name: stg_orgao_nome
     columns:
       - name: orgao_nome_id
-        tests: [unique, not_null]
+        data_tests: [unique, not_null]
+
+unit_tests:
+  - name: stg_atos_fica_com_a_versao_mais_recente_de_cada_materia
+    description: "Retificação do DOU vira uma linha só. Atos da planilha com o mesmo id_origem continuam separados."
+    model: stg_atos
+    given:
+      # format sql: a fonte é um delta_scan, e o dbt não consegue ler as colunas dela para montar a fixture.
+      - input: source('silver', 'atos')
+        format: sql
+        rows: |
+          select * from (values
+            (1, 'DOU', 'A', 1, date '2026-08-03'),
+            (2, 'DOU', 'A', 2, date '2026-08-10'),
+            (3, 'PLANILHA', '7', 1, date '2003-01-08'),
+            (4, 'PLANILHA', '7', 1, date '2004-02-09')
+          ) as t(ato_id, origem, id_origem, versao, data_publicacao)
+    expect:
+      rows:
+        - {materia: "DOU:A", ato_id: 2, mes: 2026-08-01}
+        - {materia: "PLANILHA:3", ato_id: 3, mes: 2003-01-01}
+        - {materia: "PLANILHA:4", ato_id: 4, mes: 2004-02-01}
 ```
+
+O banco de trabalho não tem nenhum ato com versão acima de 1, então só este teste exercita a retificação.
 
 - [ ] **Passo 4: o serviço `orquestrador`**
 
-Em `docker-compose.yml`, depois do `cdc`:
+Em `docker-compose.yml`, depois do `cdc`. A porta, o `DAGSTER_HOME` e o comando do Dagster só entram na Tarefa 6, quando existir o que rodar:
 
 ```yaml
   # E3: dbt e Dagster no mesmo serviço, porque o Dagster roda o dbt, o dou e o lake.
@@ -243,8 +268,6 @@ Em `docker-compose.yml`, depois do `cdc`:
     working_dir: /app
     environment:
       PYTHONPATH: /app/src:/tmp/site
-      DAGSTER_HOME: /data/dagster
-      DADOS_ABERTOS_OUTPUT_DIR: /data/bronze/dados-abertos
       PGHOST: db
       PGUSER: ${POSTGRES_USER}
       PGPASSWORD: ${POSTGRES_PASSWORD}
@@ -253,22 +276,16 @@ Em `docker-compose.yml`, depois do `cdc`:
       DBT_PROFILES_DIR: /app/dbt
       DOCKER_UID: ${DOCKER_UID:-1000}
       DOCKER_GID: ${DOCKER_GID:-1000}
-    ports:
-      - "127.0.0.1:3000:3000"
     volumes:
       - ./src:/app/src:ro
       - ./dbt:/app/dbt
-      - ./docs:/app/docs
-      - ./data/bronze:/data/bronze
       - ./data/silver:/data/silver
       - ./data/gold:/data/gold
-      - ./data/dagster:/data/dagster
       - pipcache:/tmp/pipcache
     depends_on:
       db:
         condition: service_healthy
     entrypoint: ["sh", "-c", "pip install -q --disable-pip-version-check --root-user-action=ignore --no-warn-script-location --target /tmp/site -r /app/src/orquestracao/requirements.txt && export PATH=/tmp/site/bin:$$PATH && \"$$@\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data /app/dbt; exit $$rc", "sh"]
-    command: ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000", "-m", "orquestracao"]
 ```
 
 - [ ] **Passo 5: alvos no Makefile e `.gitignore`**
@@ -277,12 +294,11 @@ No `Makefile`, depois de `cdc-drop`:
 
 ```make
 gold: .env ## E3: roda o dbt (modelos e testes) e grava a gold em data/gold/conselhos.duckdb (rode make lake antes)
-	mkdir -p data/gold data/dagster
+	mkdir -p data/gold
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt build --project-dir /app/dbt
-
-gold-docs: .env ## E3: gera o catálogo e a linhagem do dbt em dbt/target/
-	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt docs generate --project-dir /app/dbt
 ```
+
+Acrescente `gold` à linha `.PHONY`.
 
 No `.gitignore`, junto dos dados brutos:
 
@@ -301,10 +317,20 @@ make lake && make gold
 
 Esperado: `Completed successfully`, com os dois modelos de staging e os testes deles em `PASS`. Se `delta_scan` não for encontrado, a extensão `delta` não carregou: confira `extensions` no `profiles.yml`.
 
+O serviço instala as dependências a cada execução, como o `dou`. Medido em 06/11/2026: 62 s na primeira execução e 30 s nas seguintes.
+
+Prove que o OLTP está só para leitura:
+
+```bash
+DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt show --project-dir /app/dbt --inline "select database_name, readonly from duckdb_databases() where database_name = 'oltp'"
+```
+
+Esperado: `oltp | True`.
+
 - [ ] **Passo 7: stage**
 
 ```bash
-git add dbt src/orquestracao/requirements.txt docker-compose.yml Makefile .gitignore
+git add dbt src/orquestracao/requirements.txt src/painel/requirements.txt docker-compose.yml Makefile .gitignore AI-USAGE.md
 git diff --cached --stat
 ```
 
@@ -656,7 +682,16 @@ Esperado: os quatro marts e todos os testes em `PASS`. O número de linhas de `m
 
 - [ ] **Passo 4: provar que o teste de distribuição pega o erro**
 
-Precisa de três meses seguidos de DOU, o que só existe depois do backfill da Tarefa 6. Com eles, tire o mês do meio:
+Precisa de três meses seguidos de DOU, o que só existe depois do backfill da Tarefa 6. Primeiro, em `dbt/models/staging/stg_atos.sql`, entre o `from` e o `qualify`, acrescente:
+
+```sql
+{% if var('excluir_mes', none) %}
+-- shortcut: só para demonstrar o teste de distribuição (Tarefa 4); nunca use em produção.
+where date_trunc('month', data_publicacao)::date <> date '{{ var("excluir_mes") }}'
+{% endif %}
+```
+
+Depois tire o mês do meio:
 
 ```bash
 DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt build --project-dir /app/dbt --vars '{excluir_mes: "2026-08-01"}' 2>&1 | tee docs/adr/medicoes/0009-gold/teste-distribuicao-pega-o-mes.txt
@@ -739,11 +774,30 @@ git add dbt && git diff --cached --stat
 
 **Arquivos:**
 - Criar: `src/orquestracao/__init__.py`, `scripts/demo_retry.sh`, `scripts/demo_backfill.sh`
-- Modificar: `Makefile` (alvos `orquestrador`, `demo-retry`, `demo-backfill`)
+- Modificar: `Makefile` (alvos `orquestrador`, `demo-retry`, `demo-backfill`), `docker-compose.yml` (o Dagster no serviço `orquestrador`)
 
 **Interfaces:**
 - Consome: `python -m dou fetch-mensal --month AAAA-MM`, `python -m dou persist ZIP`, `python -m lake /data/silver/atos` e o projeto dbt da Tarefa 1.
 - Produz: os assets `atos_do_mes`, `silver/atos` e os modelos do dbt, num job `mensal` particionado por mês, com agenda no dia 15.
+
+- [ ] **Passo 0: o Dagster no serviço**
+
+No serviço `orquestrador` do `docker-compose.yml`, acrescente:
+
+```yaml
+    environment:
+      DAGSTER_HOME: /data/dagster
+      DADOS_ABERTOS_OUTPUT_DIR: /data/bronze/dados-abertos
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./docs:/app/docs
+      - ./data/bronze:/data/bronze
+      - ./data/dagster:/data/dagster
+    command: ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000", "-m", "orquestracao"]
+```
+
+No alvo `gold` do `Makefile`, troque `mkdir -p data/gold` por `mkdir -p data/gold data/dagster`, porque o volume agora existe nesse serviço.
 
 - [ ] **Passo 1: o grafo**
 
@@ -985,7 +1039,7 @@ git add sql/007_indice_vigencia_orgao_nome.sql docs/adr/medicoes/0009-gold && gi
 Ele responde só à pergunta da E1. São quatro blocos, nenhum gráfico decorativo.
 
 **Arquivos:**
-- Criar: `src/painel/app.py`, `src/painel/requirements.txt`
+- Criar: `src/painel/app.py`
 - Modificar: `docker-compose.yml` (serviço `painel`), `Makefile` (alvo `painel`)
 
 **Interfaces:**
@@ -993,12 +1047,7 @@ Ele responde só à pergunta da E1. São quatro blocos, nenhum gráfico decorati
 
 - [ ] **Passo 1: dependências**
 
-`src/painel/requirements.txt`:
-
-```text
-duckdb==1.5.6
-streamlit==<versão da Tarefa 1, Passo 1>
-```
+Já estão em `src/painel/requirements.txt`, da Tarefa 1.
 
 - [ ] **Passo 2: o app**
 
@@ -1147,6 +1196,13 @@ npm --prefix site run build
 Esperado: `build complete`, sem link quebrado.
 
 - [ ] **Passo 4: o catálogo**
+
+No `Makefile`, depois de `gold`, e com `gold-docs` na linha `.PHONY`:
+
+```make
+gold-docs: .env ## E3: gera o catálogo e a linhagem do dbt em dbt/target/
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt docs generate --project-dir /app/dbt
+```
 
 ```bash
 make gold-docs

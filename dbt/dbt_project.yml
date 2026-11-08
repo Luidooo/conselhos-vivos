@@ -1,0 +1,13 @@
+name: conselhos_vivos
+version: "1.0.0"
+profile: conselhos_vivos
+model-paths: ["models"]
+test-paths: ["tests"]
+
+models:
+  conselhos_vivos:
+    staging:
+      +materialized: view
+    # Sem modelo até a #69; o dbt avisa "unused configuration paths" até lá.
+    marts:
+      +materialized: table

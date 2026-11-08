@@ -539,3 +539,11 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** os scripts, os planos e o resultado. **Decidido pela IA**, a revisar: não criar a migração `007`, porque o índice do plano (`orgao_nome`) não teve ganho medido e o nó mais caro (`classificacao`) já tem índice; o resultado vale só para o volume atual (311 atos).
 - **Como foi verificado:** o `explain.sh` roda com a consulta do código, nos dois caminhos (`make lake` e `make cdc`); o `testar-indice.sh` desfaz tudo e deixa 0 índices no banco; `tests/db/test_schema.sh` em `OK`. A LuizaMaluf rodou o `explain.sh` no banco dela (mesma forma de plano, ~2,5 ms) e apontou três erros que foram corrigidos: a conta de buffers (o certo é 933 de 1.429, não 930 de 1.386), a tabela de índice sem script, e a falta desta entrada. Na correção, a IA achou outro erro próprio: o "15× pior" do `seqscan off` era o JIT, não o índice.
 - **Quem revisou:** a Luiza, no PR #78 (revisão parcial: o item de depois do backfill depende da #73).
+### 2026-11-06 — Projeto dbt lendo a silver e o OLTP (#68)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `dbt/`, `src/orquestracao/requirements.txt`, `src/painel/requirements.txt`, `docker-compose.yml`, `Makefile`, `.gitignore`, `docs/planos/2026-11-03-e3-camada-analitica.md`
+- **O que foi pedido:** executar as Tarefas 0 e 1 do plano da E3: conferir os dados, criar o projeto dbt com o adaptador do DuckDB, o staging e o `make gold`.
+- **O que foi aproveitado:** o projeto, o staging, o serviço `orquestrador` e o alvo `gold`, como no plano corrigido. **Decidido pela IA**, a revisar: a porta e o comando do Dagster ficaram para a #73 e o `gold-docs` para a #76, para não subir configuração sem uso; e foi acrescentado um teste unitário do dbt, porque o banco de trabalho não tem nenhum ato com versão acima de 1.
+- **Como foi verificado:** `make lake && make gold` com 11 de 11 em `PASS`; 96 matérias do DOU e 215 da planilha no `stg_atos`, os mesmos números do OLTP; `duckdb_databases()` mostra `oltp` com `readonly = True`; o teste unitário falha quando a ordenação de `versao` é invertida; `pip` resolveu as versões fixadas no container. A Tarefa 0 achou 92 atos fora da tabela `conselho`, registrados na #68 para a decisão da #70.
+- **Quem revisou:** pendente — a Luiza, no PR.

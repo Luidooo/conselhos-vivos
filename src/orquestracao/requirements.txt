@@ -1,0 +1,7 @@
+-r ../dou/requirements.txt
+-r ../lake/requirements.txt
+dbt-core==1.12.6
+dbt-duckdb==1.11.1
+dagster==1.13.28
+dagster-webserver==1.13.28
+dagster-dbt==0.29.28
