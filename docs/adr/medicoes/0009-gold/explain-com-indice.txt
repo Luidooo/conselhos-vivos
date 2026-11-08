@@ -1,0 +1,71 @@
+Sort  (cost=4644.26..4645.04 rows=311 width=1569) (actual time=19.844..20.287 rows=311 loops=1)
+  Sort Key: a.data_publicacao, a.id
+  Sort Method: quicksort  Memory: 265kB
+  Buffers: shared hit=1412
+  ->  Nested Loop Left Join  (cost=25.61..4631.39 rows=311 width=1569) (actual time=1.349..19.274 rows=311 loops=1)
+        Buffers: shared hit=1412
+        ->  Nested Loop Left Join  (cost=25.46..4604.37 rows=311 width=1072) (actual time=1.335..17.482 rows=311 loops=1)
+              Buffers: shared hit=1408
+              ->  Hash Left Join  (cost=10.86..56.63 rows=311 width=1064) (actual time=0.974..3.230 rows=311 loops=1)
+                    Hash Cond: (o.id = nome_epoca.orgao_id)
+                    Join Filter: ((a.data_publicacao >= nome_epoca.data_inicio) AND ((nome_epoca.data_fim IS NULL) OR (a.data_publicacao <= nome_epoca.data_fim)))
+                    Rows Removed by Join Filter: 92
+                    Buffers: shared hit=37
+                    ->  Hash Join  (cost=6.95..46.33 rows=311 width=1016) (actual time=0.722..2.093 rows=311 loops=1)
+                          Hash Cond: (a.orgao_id = o.id)
+                          Buffers: shared hit=35
+                          ->  Seq Scan on ato a  (cost=0.00..35.11 rows=311 width=958) (actual time=0.005..0.437 rows=311 loops=1)
+                                Buffers: shared hit=32
+                          ->  Hash  (cost=5.92..5.92 rows=82 width=62) (actual time=0.709..0.723 rows=82 loops=1)
+                                Buckets: 1024  Batches: 1  Memory Usage: 16kB
+                                Buffers: shared hit=3
+                                ->  Hash Right Join  (cost=2.85..5.92 rows=82 width=62) (actual time=0.251..0.602 rows=82 loops=1)
+                                      Hash Cond: (n_vigente.orgao_id = o.id)
+                                      Buffers: shared hit=3
+                                      ->  Seq Scan on orgao_nome n_vigente  (cost=0.00..2.85 rows=82 width=52) (actual time=0.004..0.116 rows=82 loops=1)
+                                            Filter: (data_fim IS NULL)
+                                            Rows Removed by Filter: 3
+                                            Buffers: shared hit=2
+                                      ->  Hash  (cost=1.82..1.82 rows=82 width=14) (actual time=0.241..0.245 rows=82 loops=1)
+                                            Buckets: 1024  Batches: 1  Memory Usage: 12kB
+                                            Buffers: shared hit=1
+                                            ->  Seq Scan on orgao o  (cost=0.00..1.82 rows=82 width=14) (actual time=0.005..0.122 rows=82 loops=1)
+                                                  Buffers: shared hit=1
+                    ->  Hash  (cost=2.85..2.85 rows=85 width=60) (actual time=0.243..0.247 rows=85 loops=1)
+                          Buckets: 1024  Batches: 1  Memory Usage: 16kB
+                          Buffers: shared hit=2
+                          ->  Seq Scan on orgao_nome nome_epoca  (cost=0.00..2.85 rows=85 width=60) (actual time=0.002..0.122 rows=85 loops=1)
+                                Buffers: shared hit=2
+              ->  Limit  (cost=14.60..14.60 rows=1 width=17) (actual time=0.040..0.041 rows=1 loops=311)
+                    Buffers: shared hit=1371
+                    ->  Sort  (cost=14.60..14.60 rows=1 width=17) (actual time=0.037..0.037 rows=1 loops=311)
+                          Sort Key: (((r_1.tipo)::text = 'HUMANO'::text)) DESC, classificacao.criado_em DESC
+                          Sort Method: quicksort  Memory: 25kB
+                          Buffers: shared hit=1371
+                          ->  Nested Loop  (cost=6.35..14.59 rows=1 width=17) (actual time=0.028..0.033 rows=1 loops=311)
+                                Buffers: shared hit=1371
+                                ->  Unique  (cost=6.21..6.22 rows=1 width=44) (actual time=0.023..0.026 rows=1 loops=311)
+                                      Buffers: shared hit=933
+                                      ->  Sort  (cost=6.21..6.21 rows=1 width=44) (actual time=0.020..0.021 rows=1 loops=311)
+                                            Sort Key: classificacao.revisor_id, classificacao.criado_em DESC, classificacao.id DESC
+                                            Sort Method: quicksort  Memory: 25kB
+                                            Buffers: shared hit=933
+                                            ->  Seq Scan on classificacao  (cost=0.00..6.20 rows=1 width=44) (actual time=0.009..0.015 rows=1 loops=311)
+                                                  Filter: (ato_id = a.id)
+                                                  Rows Removed by Filter: 261
+                                                  Buffers: shared hit=933
+                                ->  Index Scan using revisor_pkey on revisor r_1  (cost=0.14..8.16 rows=1 width=62) (actual time=0.002..0.002 rows=1 loops=219)
+                                      Index Cond: (id = classificacao.revisor_id)
+                                      Buffers: shared hit=438
+        ->  Memoize  (cost=0.15..8.17 rows=1 width=62) (actual time=0.001..0.001 rows=1 loops=311)
+              Cache Key: classificacao.revisor_id
+              Cache Mode: logical
+              Hits: 308  Misses: 3  Evictions: 0  Overflows: 0  Memory Usage: 1kB
+              Buffers: shared hit=4
+              ->  Index Scan using revisor_pkey on revisor r  (cost=0.14..8.16 rows=1 width=62) (actual time=0.002..0.003 rows=1 loops=3)
+                    Index Cond: (id = classificacao.revisor_id)
+                    Buffers: shared hit=4
+Planning:
+  Buffers: shared hit=23
+Planning Time: 0.399 ms
+Execution Time: 20.730 ms
