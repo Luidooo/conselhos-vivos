@@ -1,0 +1,13 @@
+conselhos_vivos:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: /data/gold/conselhos.duckdb
+      extensions: [delta, postgres]
+      attach:
+        # A curadoria e os nomes dos órgãos vêm do OLTP, só para leitura.
+        - path: "host=db dbname={{ env_var('PGDATABASE') }} user={{ env_var('PGUSER') }} password={{ env_var('PGPASSWORD') }}"
+          type: postgres
+          alias: oltp
+          read_only: true

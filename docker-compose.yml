@@ -224,6 +224,33 @@ services:
         condition: service_healthy
     entrypoint: ["sh", "-c", "pip install -q --root-user-action=ignore --no-warn-script-location -r /app/src/lake/requirements.txt && { python -m lake.cdc \"$$@\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data/silver; exit $$rc; }", "sh"]
 
+  # E3: dbt e Dagster no mesmo serviço, porque o Dagster roda o dbt, o dou e o lake.
+  # Mesmo molde do lake: pip com cache em volume, chown do que gravar em data/.
+  orquestrador:
+    image: python:3.12.14-slim
+    profiles: [e3]
+    working_dir: /app
+    environment:
+      PYTHONPATH: /app/src:/tmp/site
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      PIP_CACHE_DIR: /tmp/pipcache
+      DBT_PROFILES_DIR: /app/dbt
+      DOCKER_UID: ${DOCKER_UID:-1000}
+      DOCKER_GID: ${DOCKER_GID:-1000}
+    volumes:
+      - ./src:/app/src:ro
+      - ./dbt:/app/dbt
+      - ./data/silver:/data/silver
+      - ./data/gold:/data/gold
+      - pipcache:/tmp/pipcache
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "pip install -q --disable-pip-version-check --root-user-action=ignore --no-warn-script-location --target /tmp/site -r /app/src/orquestracao/requirements.txt && export PATH=/tmp/site/bin:$$PATH && \"$$@\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data /app/dbt; exit $$rc", "sh"]
+
 # servers.json e pgpass gerados a partir do .env: o pgAdmin já abre conectado no banco.
 # O servers.json só é importado na 1ª subida do volume `pgadmin`; se mudar
 # POSTGRES_USER ou POSTGRES_DB, rode `make pgadmin-reset`. Senha sem `:` nem `\`

@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-py-dou test-db-py vet-go reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos
+.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-py-dou test-db-py vet-go reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos gold
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -177,6 +177,10 @@ cdc-demo: .env ## demonstração: reclassifica um ato (insert-only) e mostra a m
 
 cdc-chaos: .env ## demonstração de tolerância a falhas: interrompe o consumidor após gravar no Delta e reprocessa
 	bash scripts/cdc_chaos_demo.sh
+
+gold: .env ## E3: roda o dbt (modelos e testes) e grava a gold em data/gold/conselhos.duckdb (rode make lake antes)
+	mkdir -p data/gold
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt build --project-dir /app/dbt
 
 cdc-drop: .env ## remove o slot de replicação (slot parado retém WAL)
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T cdc --drop-slot

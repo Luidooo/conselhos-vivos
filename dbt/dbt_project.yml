@@ -1,0 +1,12 @@
+name: conselhos_vivos
+version: "1.0.0"
+profile: conselhos_vivos
+model-paths: ["models"]
+test-paths: ["tests"]
+
+models:
+  conselhos_vivos:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
