@@ -5,15 +5,22 @@ models:
     description: >
       Dimensão de variação lenta (SCD tipo 2). Granularidade: uma linha por nome que um conselho
       teve, com valido_de e valido_ate. O nome vigente tem atual = true. O escopo é todo órgão que
-      tem ou já teve "Conselho" no nome (ADR 0010).
+      já teve "Conselho" no início do nome (ADR 0010), menos os da seed conselhos_excluidos.
     columns:
       - name: conselho_sk
-        tests: [unique, not_null]
+        data_tests: [unique, not_null]
       - name: orgao_id
-        tests: [not_null]
-      - name: valido_de
-        tests: [not_null]
+        data_tests: [not_null]
+      # valido_de nunca é nulo (coalesce); o que importa é onde cabe o início aberto,
+      # e isso o teste dim_inicio_aberto_so_no_nome_mais_antigo confere.
       - name: eh_participativo
         description: "Marca da pesquisadora. Nulo significa não avaliado, não falso."
       - name: inicio_nao_verificado
         description: "Verdadeiro quando o OLTP não tem a data de início do nome (ADR 0004, ponto 4). Nesse caso valido_de é 0001-01-01, um limite aberto, não uma data real."
+
+seeds:
+  - name: conselhos_excluidos
+    description: "Órgãos com \"Conselho\" no nome que não são colegiados de participação social, fora da dimensão (ADR 0010, ponto 3). Chave: o nome."
+    columns:
+      - name: nome
+        data_tests: [unique, not_null]

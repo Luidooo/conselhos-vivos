@@ -21,6 +21,17 @@ models:
       - name: orgao_nome_id
         data_tests: [unique, not_null]
 
+  - name: stg_orgao
+    columns:
+      - name: orgao_id
+        data_tests: [unique, not_null]
+
+  - name: stg_conselho
+    description: "Os conselhos que a pesquisadora avaliou, com a marca eh_participativo."
+    columns:
+      - name: orgao_id
+        data_tests: [unique, not_null]
+
 unit_tests:
   - name: stg_atos_fica_com_a_versao_mais_recente_de_cada_materia
     description: "Retificação do DOU vira uma linha só. Atos da planilha com o mesmo id_origem continuam separados."
