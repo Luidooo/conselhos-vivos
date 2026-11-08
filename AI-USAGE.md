@@ -531,6 +531,14 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:** build do site sem link quebrado; no servidor local, os 8 painéis abrem com o comando certo e o painel volta ao texto inicial; checagem geométrica no navegador (caixa de cada texto pelo `getBBox`): nenhuma sobreposição entre etiquetas, caixas e títulos de faixa, e nenhum texto passando da borda da sua caixa — a primeira versão tinha uma colisão e dez textos vazando, corrigidos; as 3 tabelas da página com borda igual ao conteúdo; no celular (375 px) e no modo escuro, a página não rola de lado (o diagrama rola dentro da própria caixa) e as cores trocam; console sem erro. Os números do diagrama vêm dos ADRs 0005–0007 e dos PRs #43, #60, #62, #63 e #64.
 - **Quem revisou:** pendente — a Luiza, no PR.
 
+### 2026-11-08 — EXPLAIN da extração do lake (#74)
+
+- **Ferramenta:** Claude Code (Claude Sonnet 5.5)
+- **Onde:** `docs/adr/medicoes/0009-gold/` (`explain.sh`, `testar-indice.sh`, planos `*.txt`, `resultado.md`)
+- **O que foi pedido:** executar a Tarefa 7 do plano da E3: medir a consulta de extração do lake com `EXPLAIN (ANALYZE, BUFFERS)` e otimizar pelo nó mais caro.
+- **O que foi aproveitado:** os scripts, os planos e o resultado. **Decidido pela IA**, a revisar: não criar a migração `007`, porque o índice do plano (`orgao_nome`) não teve ganho medido e o nó mais caro (`classificacao`) já tem índice; o resultado vale só para o volume atual (311 atos).
+- **Como foi verificado:** o `explain.sh` roda com a consulta do código, nos dois caminhos (`make lake` e `make cdc`); o `testar-indice.sh` desfaz tudo e deixa 0 índices no banco; `tests/db/test_schema.sh` em `OK`. A LuizaMaluf rodou o `explain.sh` no banco dela (mesma forma de plano, ~2,5 ms) e apontou três erros que foram corrigidos: a conta de buffers (o certo é 933 de 1.429, não 930 de 1.386), a tabela de índice sem script, e a falta desta entrada. Na correção, a IA achou outro erro próprio: o "15× pior" do `seqscan off` era o JIT, não o índice.
+- **Quem revisou:** a Luiza, no PR #78 (revisão parcial: o item de depois do backfill depende da #73).
 ### 2026-11-06 — Projeto dbt lendo a silver e o OLTP (#68)
 
 - **Ferramenta:** Claude Code (Claude Opus 5.5)
