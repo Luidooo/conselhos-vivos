@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: silver
+    description: "Camada silver da E2, em Delta (ADR 0006)."
+    meta:
+      external_location: "delta_scan('/data/silver/{name}')"
+    tables:
+      - name: atos
+        description: "Uma linha por versão de ato no OLTP, com o nome do órgão na época e a classificação vigente."
+
+  - name: oltp
+    description: "OLTP de curadoria (ADR 0001), anexado só para leitura."
+    database: oltp
+    schema: public
+    tables:
+      - name: orgao
+      - name: orgao_nome
+        description: "Histórico de nomes de cada órgão, com início e fim de vigência. É a origem da dimensão de variação lenta."
+      - name: conselho

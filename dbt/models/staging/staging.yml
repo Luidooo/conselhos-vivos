@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: stg_atos
+    description: "Granularidade: uma linha por matéria publicada, na versão mais recente."
+    columns:
+      - name: materia
+        data_tests: [unique, not_null]
+      - name: ato_id
+        data_tests: [unique, not_null]
+      - name: data_publicacao
+        data_tests: [not_null]
+      - name: origem
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['DOU', 'PLANILHA']
+
+  - name: stg_orgao_nome
+    columns:
+      - name: orgao_nome_id
+        data_tests: [unique, not_null]
+
+unit_tests:
+  - name: stg_atos_fica_com_a_versao_mais_recente_de_cada_materia
+    description: "Retificação do DOU vira uma linha só. Atos da planilha com o mesmo id_origem continuam separados."
+    model: stg_atos
+    given:
+      # format sql: a fonte é um delta_scan, e o dbt não consegue ler as colunas dela para montar a fixture.
+      - input: source('silver', 'atos')
+        format: sql
+        rows: |
+          select * from (values
+            (1, 'DOU', 'A', 1, date '2026-08-03'),
+            (2, 'DOU', 'A', 2, date '2026-08-10'),
+            (3, 'PLANILHA', '7', 1, date '2003-01-08'),
+            (4, 'PLANILHA', '7', 1, date '2004-02-09')
+          ) as t(ato_id, origem, id_origem, versao, data_publicacao)
+    expect:
+      rows:
+        - {materia: "DOU:A", ato_id: 2, mes: 2026-08-01}
+        - {materia: "PLANILHA:3", ato_id: 3, mes: 2003-01-01}
+        - {materia: "PLANILHA:4", ato_id: 4, mes: 2004-02-01}
