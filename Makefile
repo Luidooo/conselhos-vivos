@@ -178,9 +178,10 @@ cdc-demo: .env ## demonstração: reclassifica um ato (insert-only) e mostra a m
 cdc-chaos: .env ## demonstração de tolerância a falhas: interrompe o consumidor após gravar no Delta e reprocessa
 	bash scripts/cdc_chaos_demo.sh
 
-gold: .env ## E3: roda o dbt (modelos e testes) e grava a gold em data/gold/conselhos.duckdb (rode make lake antes)
-	mkdir -p data/gold
-	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt build --project-dir /app/dbt
-
 cdc-drop: .env ## remove o slot de replicação (slot parado retém WAL)
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T cdc --drop-slot
+
+gold: .env ## E3: roda o dbt (modelos e testes) e grava a gold em data/gold/conselhos.duckdb (rode make lake antes)
+	@test -d data/silver/atos/_delta_log || { echo "falta a silver: rode make lake antes"; exit 1; }
+	mkdir -p data/gold
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt build --project-dir /app/dbt

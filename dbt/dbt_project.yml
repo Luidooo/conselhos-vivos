@@ -8,5 +8,6 @@ models:
   conselhos_vivos:
     staging:
       +materialized: view
+    # Sem modelo até a #69; o dbt avisa "unused configuration paths" até lá.
     marts:
       +materialized: table

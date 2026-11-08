@@ -7,6 +7,7 @@ conselhos_vivos:
       extensions: [delta, postgres]
       attach:
         # A curadoria e os nomes dos órgãos vêm do OLTP, só para leitura.
+        # shortcut: valores sem aspas na string libpq; senha com espaço ou ' quebra a conexão. Pôr entre aspas se a senha mudar.
         - path: "host=db dbname={{ env_var('PGDATABASE') }} user={{ env_var('PGUSER') }} password={{ env_var('PGPASSWORD') }}"
           type: postgres
           alias: oltp
