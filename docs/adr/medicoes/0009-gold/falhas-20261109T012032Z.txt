@@ -1,0 +1,33 @@
+# make demo-falhas, 2026-11-09 01:24:22 UTC, mês corrente 2026-11, gerado por scripts/demo_falhas.sh (horários em UTC)
+==> caso nao-publicado, run 169e4c80-d4f5-4a19-a830-055be4022371
+2026-11-09 01:20:52 STEP_START fetch_mes_corrente
+2026-11-09 01:20:52 STEP_FAILURE fetch_mes_corrente | causa: mês ainda não publicado nos dados abertos; a agenda tenta de novo amanhã: 2026-11-09 01:20:52,863 [ERROR] mes ainda nao publicado mes=2026-11 err=S01112026.zip: the month is not published in the open data yet
+2026-11-09 01:20:52 RUN_FAILURE | causa: mês ainda não publicado nos dados abertos; a agenda tenta de novo amanhã: 2026-11-09 01:20:52,863 [ERROR] mes ainda nao publicado mes=2026-11 err=S01112026.zip: the month is not published in the open data yet
+==> agenda: em 2026-12-15 06:00 (Brasília): RunRequest partição 2026-11-01
+==> agenda: em 2026-11-15 06:00 (Brasília): SkipReason: o mês anterior já foi carregado
+==> caso zip-invalido, run 955f86cf-aec4-4565-90c3-1db97541324b
+2026-11-09 01:20:53 STEP_START persist_zip_ruim
+2026-11-09 01:20:53 STEP_FAILURE persist_zip_ruim | causa: entrada do ZIP que não lê como matéria; o resto do ZIP foi gravado: 2026-11-09 01:20:53,130 [WARNING] falhou zip=/tmp/ruim.zip erro=materia-quebrada.xml: not a DOU article: unclosed token: line 1, column 5
+2026-11-09 01:20:53 RUN_FAILURE | causa: entrada do ZIP que não lê como matéria; o resto do ZIP foi gravado: 2026-11-09 01:20:53,130 [WARNING] falhou zip=/tmp/ruim.zip erro=materia-quebrada.xml: not a DOU article: unclosed token: line 1, column 5
+persist: gravadas=0 versoes-novas=0 inalteradas=0 orgao-desconhecido=0 repetidas=0 ignoradas=0 falhou=1
+==> caso lake, run 97840837-2ffe-42a3-b8f4-d3d2b0cdfaf4
+2026-11-09 01:20:55 STEP_START silver__atos
+2026-11-09 01:20:55 STEP_UP_FOR_RETRY silver__atos | causa: lake /data/silver/atos saiu com 1: 2026-11-09 01:20:55,427 [ERROR] Falha na sincronização do lake: [Errno -2] Name or service not known
+2026-11-09 01:21:26 STEP_RESTARTED silver__atos
+2026-11-09 01:21:26 STEP_UP_FOR_RETRY silver__atos | causa: lake /data/silver/atos saiu com 1: 2026-11-09 01:21:26,525 [ERROR] Falha na sincronização do lake: [Errno -2] Name or service not known
+2026-11-09 01:21:57 STEP_RESTARTED silver__atos
+2026-11-09 01:21:57 STEP_UP_FOR_RETRY silver__atos | causa: lake /data/silver/atos saiu com 1: 2026-11-09 01:21:57,640 [ERROR] Falha na sincronização do lake: [Errno -2] Name or service not known
+2026-11-09 01:22:28 STEP_RESTARTED silver__atos
+2026-11-09 01:22:28 STEP_FAILURE silver__atos | causa: lake /data/silver/atos saiu com 1: 2026-11-09 01:22:28,770 [ERROR] Falha na sincronização do lake: [Errno -2] Name or service not known
+2026-11-09 01:22:29 RUN_FAILURE | causa: lake /data/silver/atos saiu com 1: 2026-11-09 01:22:28,770 [ERROR] Falha na sincronização do lake: [Errno -2] Name or service not known
+==> caso dbt, run c76f3b9d-a45b-4e69-a45f-296f21c72d58
+2026-11-09 01:22:31 STEP_START gold
+2026-11-09 01:22:36 STEP_UP_FOR_RETRY gold | causa: dagster_dbt.errors.DagsterDbtCliRuntimeError: The dbt CLI process with command
+2026-11-09 01:23:07 STEP_RESTARTED gold
+2026-11-09 01:23:11 STEP_UP_FOR_RETRY gold | causa: dagster_dbt.errors.DagsterDbtCliRuntimeError: The dbt CLI process with command
+2026-11-09 01:23:42 STEP_RESTARTED gold
+2026-11-09 01:23:46 STEP_UP_FOR_RETRY gold | causa: dagster_dbt.errors.DagsterDbtCliRuntimeError: The dbt CLI process with command
+2026-11-09 01:24:17 STEP_RESTARTED gold
+2026-11-09 01:24:21 STEP_FAILURE gold | causa: dagster_dbt.errors.DagsterDbtCliRuntimeError: The dbt CLI process with command
+2026-11-09 01:24:21 RUN_FAILURE | causa: dagster_dbt.errors.DagsterDbtCliRuntimeError: The dbt CLI process with command
+dbt: IO Error: Unable to connect to Postgres at "host=db dbname=banco_que_nao_existe user=conselhos password=***": connection to server at "db" (172.19.0.4), port 5432 failed: FATAL:  database "banco_que_nao_existe" does not exist

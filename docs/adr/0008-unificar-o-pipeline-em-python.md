@@ -1,11 +1,12 @@
 # 0008 — Unificar o pipeline em Python e descontinuar o cliente do INLABS sem portar
 
-- **Status:** proposto
+- **Status:** aceito
+- **Decisão:** aceito pela squad em 08/11/2026, registrado por Gabriel Moura (@thegm445).
 - **Data:** 2026-11-08
-- **Decisores:** a confirmar no PR — Luis (@Luidooo), Bruno (@BrunoBReis), Moura (@thegm445), Iago (@iagorrr), Luiza (@LuizaMaluf)
+- **Decisores:** a squad — Luis (@Luidooo), Bruno (@BrunoBReis), Moura (@thegm445), Iago (@iagorrr), Luiza (@LuizaMaluf)
 - **Plano:** [migração do ingestor Go para Python](../planos/2026-10-13-migracao-ingestor-go-para-python.md), fatias F1 a F5 (#51 a #57)
 
-> **A decisão sobre o INLABS ainda não foi tomada pela squad.** A #56 pede essa decisão, e a opção escolhida aqui é a recomendada pelo plano. O PR que traz este ADR é o lugar de aprovar ou recusar. O ADR passa a "aceito" só depois disso.
+> **A decisão sobre o INLABS foi aceita pela squad.** A #56 pedia essa decisão, e a opção escolhida aqui é a recomendada pelo plano. O aceite foi registrado em 08/11/2026.
 
 ## Contexto
 
@@ -29,7 +30,7 @@ As fatias F1 a F3 (#53, #54, #55) já levaram para `src/dou/` tudo o que roda de
 
 ### Cliente do INLABS
 
-| | **a. Descontinuar sem portar (proposta)** | b. Portar com `urllib` + `cookiejar` | c. Manter só ele em Go |
+| | **a. Descontinuar sem portar (aceita)** | b. Portar com `urllib` + `cookiejar` | c. Manter só ele em Go |
 |---|---|---|---|
 | Código novo | nenhum | o cliente inteiro, sem poder exercitá-lo contra o INLABS | nenhum |
 | Toolchains | um | um, mais `tzdata` na imagem slim | dois, por um comando que não funciona |
@@ -57,8 +58,8 @@ Os números vêm das entradas da migração em [`AI-USAGE.md`](../../AI-USAGE.md
 ## Decisão
 
 1. **O pipeline fica em Python.** O ingestor é o `src/dou/`, e o código em Go sai do repositório.
-2. **O cliente do INLABS é descontinuado sem porte** (opção a, proposta). Portá-lo produziria código que ninguém consegue exercitar.
-3. **O contrato do bronze diário fica.** `data/bronze/inlabs/AAAA-MM-DD-DO1[E].zip` baixado à mão continua sendo lido por `make extract DATA=` e `make persist DATA=`. Os marcadores `.sem-edicao` e `.falhou` continuam respeitados, e um `.falhou` continua fazendo esses comandos saírem com erro. O `src/dou/bronze.py` mantém o código e os testes dos marcadores.
+2. **O cliente do INLABS é descontinuado sem porte** (opção a, aceita pela squad). Portá-lo produziria código que ninguém consegue exercitar.
+3. **O contrato do bronze diário fica.** `data/bronze/inlabs/AAAA-MM-DD-DO1[E].zip` baixado à mão continua sendo lido por `make extract DATA=` e `make persist DATA=`. Os marcadores `.sem-edicao` e `.falhou` continuam respeitados, e um `.falhou` continua fazendo esses comandos saírem com erro. O `src/dou/bronze.py` não escreve mais marcadores, só apaga o marcador ao salvar o ZIP.
 4. **`make vet-py` substitui `make vet-go` no CI:** `python -W error -m compileall -q src tests`, só com a biblioteca padrão.
 
 ## Consequências
@@ -80,3 +81,8 @@ Os números vêm das entradas da migração em [`AI-USAGE.md`](../../AI-USAGE.md
 
 - **O INLABS voltar a aceitar login por script:** reavaliar portar `internal/inlabs` com `urllib` e `cookiejar`, e trazer a janela de volta. A imagem slim precisaria de `tzdata`.
 - **O parser em Python ficar lento demais para o job mensal:** o limite ainda não foi definido e cabe à squad. A referência é 9,5 s em agosto de 2026.
+
+## Exceções aceitas aos critérios das issues
+
+- **#56:** as menções a `src/ingestor/` em `docs/planos/2026-10-13-migracao-ingestor-go-para-python.md` ficam, porque o plano é registro histórico.
+- **#57:** as fotos da F3 não são versionadas, porque nunca foram guardadas. As medições vêm do texto do `AI-USAGE.md`.

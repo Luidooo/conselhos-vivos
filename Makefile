@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg extract persist fetch-mensal persist-mensal ingest-mensal test test-py-dou test-db-py vet-py reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos gold orquestrador demo-retry demo-backfill
+.PHONY: help docs setup up down migrate carga siorg extract persist fetch-mensal persist-mensal ingest-mensal test test-py-dou test-db-py vet-py reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos gold orquestrador demo-retry demo-backfill demo-falhas test-orquestracao
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -92,13 +92,18 @@ ingest-mensal: .env ## baixa o mês MES dos dados abertos e grava as matérias d
 test-py-dou: ## testes do ingestor em Python que não usam banco, no serviço carga (sem rede)
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/dou
 
+test-orquestracao: ## testes do orquestrador (retry e falha de dado, regra do mês da agenda), no serviço orquestrador, sem rede nem banco
+	@# Importar orquestracao.comandos carrega o __init__ do pacote, que lê o manifesto do dbt: o dbt parse gera
+	@# o manifesto num clone limpo, sem conectar no banco.
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T --no-deps orquestrador sh -c 'dbt parse --project-dir /app/dbt --quiet && python -m unittest discover -s tests/orquestracao'
+
 test-db-py: .env ## testes do ingestor em Python que gravam no banco, em transação desfeita (banco no ar e migrado)
 	docker compose --progress quiet run --rm -T dou-db-test
 
 vet-py: ## compila src/ e tests/ com aviso virando erro, em container
 	docker compose --progress quiet run --rm -T -e PYTHONPYCACHEPREFIX=/tmp/pyc --entrypoint python carga -W error -m compileall -q src tests
 
-test: .env test-py-dou ## testes: ingestor em Python, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos, carga e persistência do DOU
+test: .env test-py-dou test-orquestracao ## testes: ingestor em Python, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos, carga e persistência do DOU
 	bash tests/infra/test_compose.sh
 	bash scripts/migrate.sh
 	bash tests/db/test_schema.sh
@@ -163,3 +168,6 @@ demo-retry: .env ## E3: derruba o banco no meio de um mês e mostra o retry do D
 
 demo-backfill: .env ## E3: reprocessa um intervalo de meses (DE=AAAA-MM ATE=AAAA-MM) pelo Dagster
 	bash scripts/demo_backfill.sh $(DE) $(ATE)
+
+demo-falhas: .env ## E3: mês não publicado, ZIP inválido, lake e dbt falhando; prova em docs/adr/medicoes/0009-gold (não baixa nem grava nada)
+	bash scripts/demo_falhas.sh
