@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg extract persist fetch-mensal persist-mensal ingest-mensal test test-py-dou test-db-py vet-py reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos gold orquestrador demo-retry demo-backfill demo-falhas test-orquestracao painel test-painel gold-docs
+.PHONY: help docs setup up down migrate carga siorg extract persist fetch-mensal persist-mensal ingest-mensal test test-py-dou test-db-py vet-py reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos gold orquestrador demo-retry demo-backfill demo-falhas test-orquestracao painel test-painel gold-docs mencoes test-mencoes
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -97,13 +97,16 @@ test-orquestracao: ## testes do orquestrador (retry e falha de dado, regra do m�
 	@# o manifesto num clone limpo, sem conectar no banco.
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T --no-deps orquestrador sh -c 'dbt parse --project-dir /app/dbt --quiet && python -m unittest discover -s tests/orquestracao'
 
+test-mencoes: ## testes das menções aos conselhos (extração e gravação na silver), no serviço orquestrador, sem rede nem banco
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T --no-deps orquestrador python -m unittest discover -s tests/mencoes
+
 test-db-py: .env ## testes do ingestor em Python que gravam no banco, em transação desfeita (banco no ar e migrado)
 	docker compose --progress quiet run --rm -T dou-db-test
 
 vet-py: ## compila src/ e tests/ com aviso virando erro, em container
 	docker compose --progress quiet run --rm -T -e PYTHONPYCACHEPREFIX=/tmp/pyc --entrypoint python carga -W error -m compileall -q src tests
 
-test: .env test-py-dou test-orquestracao test-painel ## testes: ingestor em Python, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos, carga e persistência do DOU
+test: .env test-py-dou test-orquestracao test-painel test-mencoes ## testes: ingestor em Python, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos, carga e persistência do DOU
 	bash tests/infra/test_compose.sh
 	bash scripts/migrate.sh
 	bash tests/db/test_schema.sh
@@ -141,6 +144,10 @@ logs: ## acompanha os logs do banco
 lake: .env ## extrai do OLTP e atualiza a tabela Delta Lake em data/silver/atos/
 	mkdir -p data/silver/atos
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T lake
+
+mencoes: .env ## grava em data/silver/mencoes/ as menções aos conselhos em atos de outros órgãos, de todos os ZIPs da Seção 1 já no bronze
+	mkdir -p data/silver data/bronze/dados-abertos
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador sh -c 'set -- /data/bronze/dados-abertos/S01*.zip; [ -e "$$1" ] || set --; python -m mencoes "$$@"'
 
 cdc: .env ## aplica no Delta as mudanças de classificacao pendentes no slot lógico (rode make lake antes)
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T cdc
