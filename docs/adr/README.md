@@ -27,5 +27,5 @@ Levantadas na fase de entendimento do domínio, ainda sem ADR escrito:
 | [0005](0005-ingerir-dou-no-oltp-e-propagar-ao-delta-via-cdc.md) | Ingerir atos de conselho do DOU no OLTP e propagar ao Delta Lake por CDC lógico | proposto |
 | [0006](0006-armazenar-a-camada-analitica-em-tabelas-delta.md) | Armazenar a camada analítica em tabelas Delta particionadas por ano e comprimidas com zstd | proposto |
 | [0007](0007-propagar-mudancas-por-slot-de-replicacao-logica.md) | Propagar mudanças do OLTP ao Delta por slot de replicação lógica, sem Kafka | proposto |
-| [0008](0008-unificar-o-pipeline-em-python.md) | Unificar o pipeline em Python e descontinuar o cliente do INLABS sem portar | proposto |
+| [0008](0008-unificar-o-pipeline-em-python.md) | Unificar o pipeline em Python e descontinuar o cliente do INLABS sem portar | aceito |
 | [0010](0010-tratar-como-conselho-todo-orgao-com-conselho-no-nome.md) | É conselho todo órgão que já teve um nome começando com "Conselho", menos uma lista curta de exclusões; a marca de participação social fica à parte | proposto |
