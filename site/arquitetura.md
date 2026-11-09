@@ -15,7 +15,7 @@ Este é o desenho que o projeto entrega ao fim da E4. Ele parte de uma regra: **
 
 1. **Entrada.** Uma vez por mês, o ingestor em Python baixa o ZIP da Imprensa Nacional e grava cada ato no Postgres, com o texto e o link da publicação.
 2. **Curadoria.** A tipologia e a identidade dos conselhos ficam no mesmo Postgres, sem nada ser sobrescrito ([ADR 0001](/docs/adr/0001-adotar-sistema-de-curadoria-insert-only-como-oltp)).
-3. **Análise.** As mudanças vão por CDC para a silver em Delta. O dbt, rodando no DuckDB, monta a gold: fatos, dimensões com histórico e as métricas de vitalidade.
+3. **Análise.** As mudanças vão por CDC para a silver em Delta. O dbt, rodando no DuckDB, monta a gold: fatos, dimensões com histórico e as métricas de vitalidade. As menções aos conselhos em atos de **outros** órgãos, lidas do mesmo ZIP do DOU, entram como um segundo sinal de vida ([ADR 0009](/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster)).
 4. **Volta para quem decide.** As métricas viram alertas, gravados de volta no Postgres. É o ETL reverso: a pesquisadora vê o alerta na aba Revisar e reclassifica se precisar.
 5. **Perguntas.** O texto dos atos é indexado pela busca textual do próprio Postgres, em português. A aba Perguntar acha os atos e pede a resposta à API do Claude, citando cada um.
 
@@ -31,13 +31,14 @@ O RAG lê só o Postgres. O lakehouse fica fora do caminho das perguntas, então
 | CDC | slot de replicação lógica do Postgres | ✅ já tem | [ADR 0007](/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica), sem Kafka |
 | Silver | Delta Lake, pela biblioteca `deltalake` | ✅ já tem | [ADR 0006](/docs/adr/0006-armazenar-a-camada-analitica-em-tabelas-delta) |
 | Motor analítico | DuckDB | ✅ já tem | lê o Delta direto, sem servidor |
-| Gold e testes de dados | dbt-core + dbt-duckdb | 🆕 E3 | modelos em SQL versionados, com testes de esquema, unicidade e integridade |
+| Gold e testes de dados | dbt-core + dbt-duckdb | ✅ E3 | modelos em SQL versionados, com testes de esquema, unicidade e integridade |
 | Camada semântica | métricas definidas no dbt | 🆕 E4 | uma definição só, usada pelo painel e pelos alertas |
-| Orquestração | Dagster, com a opção nula cron + `make` | 🆕 E3 | partições mensais dão o backfill e o retry por configuração |
+| Orquestração | Dagster, com a opção nula cron + `make` | ✅ E3 | partições mensais dão o backfill e o retry por configuração |
+| Enriquecimento | menções de outros órgãos no DOU (`src/mencoes`, `fct_mencao`) | ✅ E3 | automático no job mensal, sem download novo; SIORG completo, Seção 2 e Brasil Participativo ficam para depois |
 | ETL reverso | script Python, disparado pelo orquestrador | 🆕 E4 | lê a gold e grava os alertas no Postgres |
 | Busca do RAG | busca textual do Postgres (`tsvector`, em português) | 🆕 | já vem no banco: sem extensão, sem modelo de embedding, sem conta a mais |
 | Respostas do RAG | API do Claude, pelo SDK `anthropic` | 🆕 | escreve a resposta a partir dos trechos achados |
-| App da pesquisadora | Streamlit | 🆕 | um app Python, com as três abas |
+| App da pesquisadora | Streamlit | ✅ E3 (aba Painel) | um app Python, com as três abas |
 | Catálogo e linhagem | `dbt docs`, publicado no site | 🆕 E4 | o grafo vai da fonte até o painel e os alertas |
 | Controle de acesso | papéis e `GRANT` do Postgres, com RLS se precisar | 🆕 E4 | o app só lê e escreve o que precisa |
 | CI e documentação | GitHub Actions + VitePress | ✅ já tem | |

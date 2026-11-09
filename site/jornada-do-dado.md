@@ -76,7 +76,7 @@ flowchart TB
     ind["Índice de vitalidade<br/>quem parou de publicar e<br/>o que cada conselho decide"] --> pub["Painel para a pesquisadora<br/>e para o público"]
   end
 
-  extra[("Outras bases públicas<br/>cadastro de órgãos, marcos legais,<br/>reuniões · a decidir na E3")] -. "enriquecem" .-> ind
+  extra[("Menções de outros órgãos no DOU · E3<br/>cadastro completo, Seção 2,<br/>reuniões · depois")] -. "enriquecem" .-> ind
 
   subgraph final["Etapa final · perguntar em linguagem natural"]
     rag["<b>Assistente de perguntas (RAG)</b><br/>busca as decisões no banco,<br/>responde e mostra a fonte"]
@@ -139,17 +139,35 @@ Com só 6 exemplos de `GEST` e 7 de `IP`, a acurácia geral esconde os erros nas
 
 **Que IA.** Ainda é uma decisão em aberto: regras, classificador clássico ou modelo de linguagem rodando localmente. Ela vai virar um ADR, com as três alternativas medidas sobre os 215 atos ([decisões em aberto](/docs/adr/#decisoes-em-aberto)).
 
-## Enriquecer com outras bases (proposta para a E3)
+## Enriquecer com outras bases (o que entrou na E3)
 
-A tipologia enriquece cada ato. Para o indicador de vitalidade, o modelo analítico da E3 também precisa de **dimensões**: quem é o conselho, a que ministério responde, se ainda existe, o que aconteceu em volta dele. Essas informações não estão no DOU. A escolha das bases ainda é uma **decisão em aberto da squad** ([decisões em aberto](/docs/adr/#decisoes-em-aberto)); a proposta, por ordem de retorno:
+A tipologia enriquece cada ato. Para dizer se um conselho ainda funciona, o modelo da E3 precisava também de sinais de fora do que o próprio conselho publica. A escolha das bases era a decisão em aberto nº 6 da squad; ela foi tomada no [ADR 0009](/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster), a confirmar pela squad.
 
-| Base | O que traz | Por que | Custo e risco |
-|---|---|---|---|
-| **1. Cadastro de órgãos do governo (SIORG)** | Vinculação ministerial, natureza e situação de cada conselho | Já está em uso: o `make siorg` baixa o cadastro, e 68 dos 82 conselhos têm código ([ADR 0004](/docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada)). Dá o **denominador** do silêncio, os conselhos que existem e não publicam, e uma **dimensão de variação lenta**: o conselho que muda de ministério, como o CONAMA em 2023. | Baixo. O casamento de nomes não é completo: 28 das 125 grafias não casam com nenhuma unidade. |
-| **2. Marcos legais e de governo** | Mandatos presidenciais e os decretos que criam ou extinguem colegiados, como o Decreto nº 9.759/2019, que extinguiu colegiados federais em massa | Explica quedas na série: um conselho que para de publicar em 2019 pode ter sido extinto, e não ficado em silêncio. | Baixo: é uma tabela pequena, montada à mão e versionada no repositório. O trabalho é a curadoria de quais decretos entram. |
-| **3. Brasil Participativo** | Composição, agenda e reuniões de cada conselho | Um segundo sinal de vitalidade, independente do DOU: o conselho que se reúne e não publica, ou o contrário. | Alto: ninguém conferiu ainda se há API, nem a cobertura e o histórico. Vale um teste antes de entrar no modelo; o candidato natural é a E4. |
+### O que entrou: as menções de outros órgãos no próprio DOU
 
-O critério da escolha é o checklist da E3: o modelo precisa de fato e dimensão, com **pelo menos uma dimensão de variação lenta**. A base 1 cobre isso sozinha; a 2 é barata e ajuda a ler a série; a 3 é a de maior valor e a de maior incerteza.
+Muito do que mostra que um conselho funciona é publicado por **outro** órgão:
+- o ministério que homologa um parecer;
+- a portaria que regulamenta a renovação da composição;
+- a que aprova o regimento interno;
+- o decreto de estrutura regimental que lista o conselho.
+
+O `fct_mencao` guarda essas matérias, uma linha por matéria × conselho citado ([plano](/docs/planos/2026-11-09-mencoes-de-terceiros)).
+
+- **Automático e sem download novo:** o asset `silver/mencoes` roda no mesmo job mensal do Dagster e lê o ZIP da Seção 1 que já está no bronze.
+- **Conservador:** o nome do conselho é procurado só no título, na ementa e no começo do texto, para o conselho ser o assunto do ato. Nos quatro meses medidos, isso deu 136 matérias, contra 471 no texto inteiro, que sobrava de citações de passagem. A matéria publicada pelo próprio conselho, em qualquer nível da hierarquia, não conta.
+- **Ao lado, não no lugar:** a menção aparece no painel como segundo sinal, sem mudar a situação de cada conselho, cuja regra segue com a squad e a pesquisadora.
+
+**O que ela mostrou:** dos 33 conselhos sem ato próprio no período coberto, **10 aparecem citados por outros órgãos**. O Conselho Nacional de Educação, por exemplo, não publica em nome próprio, mas teve 28 menções, a maioria homologações de pareceres pelo MEC.
+
+### O que foi avaliado e ficou para depois
+
+| Base | O que traria | Por que ficou para depois |
+|---|---|---|
+| **Cadastro de órgãos (SIORG) completo** | Vinculação ministerial e natureza jurídica; a troca de ministério como variação lenta, como o CONAMA em 2023 | A API já é usada para o código (68 dos 82 órgãos), mas o recorte guardado não tem o órgão superior. A documentação pública deu 404, e conferir o campo pede baixar o cadastro completo. |
+| **DOU Seção 2** | Designação e dispensa de conselheiros, o sinal de vida mais direto | A fonte e o leitor são os mesmos; falta conferir o formato e baixar um ZIP a mais por mês. |
+| **Marcos legais e de governo** | Decretos que criam ou extinguem colegiados, como o nº 9.759/2019, e os mandatos | Separaria um conselho extinto de um calado. Nos quatro meses medidos, nenhum decreto de extinção apareceu; o sinal só vale com o histórico longo. |
+| **Brasil Participativo** | Composição, agenda e reuniões | A plataforma lista 111 instâncias com identificador estável, mas a composição, a agenda e os documentos dos conselhos conferidos estavam vazios em 09/11/2026. |
+| **IBGE (MUNIC e ESTADIC)** | Se os municípios e estados têm o conselho correspondente e se ele se reuniu no ano | É outra pergunta, sobre a capilaridade, com o município como unidade. |
 
 ## Depois das duas etapas
 
@@ -157,6 +175,7 @@ Com a planilha replicada e classificada para os 82 conselhos, o **indicador de v
 
 - **Silêncio:** há quanto tempo cada conselho não publica, contado contra um censo independente do DOU. Um conselho que não publica não aparece no DOU, e a ausência é justamente o que se quer medir.
 - **Tipologia ao longo do tempo:** um conselho que só produz `AUTO` está se administrando, não decidindo política pública.
+- **Citado por outros órgãos (E3):** a homologação, a composição ou o regimento publicados por outro órgão mostram que o conselho funciona mesmo quando ele não publica em nome próprio.
 
 ## Etapa final · um assistente de perguntas (RAG)
 
