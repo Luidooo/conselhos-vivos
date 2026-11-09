@@ -5,6 +5,8 @@ conselhos_vivos:
       type: duckdb
       path: /data/gold/conselhos.duckdb
       extensions: [delta, postgres]
+      # espera a trava que o painel (leitura) segura por instantes, em vez de falhar o build
+      retries: {connect_attempts: 3}
       attach:
         # A curadoria e os nomes dos órgãos vêm do OLTP, só para leitura.
         # shortcut: valores sem aspas na string libpq; senha com espaço ou ' quebra a conexão. Pôr entre aspas se a senha mudar.

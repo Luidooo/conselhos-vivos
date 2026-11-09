@@ -237,7 +237,7 @@ services:
       - ./tests/painel:/tests:ro
       - ./data/gold:/data/gold:ro
       - pipcache:/tmp/pipcache
-    entrypoint: ["sh", "-c", "pip install -q --disable-pip-version-check --root-user-action=ignore -r requirements.txt && exec streamlit run app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true"]
+    entrypoint: ["sh", "-c", "pip install -q --disable-pip-version-check --root-user-action=ignore -r requirements.txt && exec streamlit run app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true --browser.gatherUsageStats false"]
 
 # servers.json e pgpass gerados a partir do .env: o pgAdmin já abre conectado no banco.
 # O servers.json só é importado na 1ª subida do volume `pgadmin`; se mudar

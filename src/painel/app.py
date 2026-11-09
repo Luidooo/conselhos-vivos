@@ -9,11 +9,6 @@ st.title("Quais conselhos nacionais de participação social ainda estão funcio
 
 GOLD = os.environ.get("PAINEL_GOLD", "/data/gold/conselhos.duckdb")
 
-# A conexão abre e fecha a cada consulta, para não segurar a trava que o make gold precisa.
-def consulta(sql):
-    with duckdb.connect(GOLD, read_only=True) as con:
-        return con.sql(sql).df()
-
 def mes(d):
     return f"{d:%m/%Y}" if pd.notna(d) else ""
 
@@ -22,16 +17,19 @@ if not os.path.exists(GOLD):
     st.stop()
 
 erro = None
+# uma conexão por carga, fechada antes de desenhar: não segura a trava que o make gold precisa
 try:
-    periodo = consulta("select min(mes) as primeiro, max(mes) as ultimo from fct_conselho_mes").iloc[0]
-    v = consulta("select * from mart_vitalidade order by situacao, meses_sem_publicar desc nulls last, nome")
-    mensal = consulta("select mes, sum(atos) as atos from fct_conselho_mes group by mes order by mes")
-    # o freshness é uma linha só, com nulos quando o DOU está vazio
-    f = consulta("select * from freshness_vitalidade").iloc[0] if pd.notna(periodo["ultimo"]) else None
+    with duckdb.connect(GOLD, read_only=True) as con:
+        periodo = con.sql("select min(mes) as primeiro, max(mes) as ultimo from fct_conselho_mes").df().iloc[0]
+        v = con.sql("select * from mart_vitalidade order by situacao, meses_sem_publicar desc nulls last, nome").df()
+        mensal = con.sql("select mes, sum(atos) as atos from fct_conselho_mes group by mes order by mes").df()
+        # o freshness é uma linha só, com nulos quando o DOU está vazio
+        f = con.sql("select * from freshness_vitalidade").df().iloc[0] if pd.notna(periodo["ultimo"]) else None
+        tipologia = con.sql("select v.nome, f.origem, f.tipologia_sigla, count(*) as atos from mart_vitalidade v join fct_ato f on f.orgao_id = v.orgao_id group by all order by v.nome, atos desc").df()
 except duckdb.CatalogException:
     erro = "A gold não tem as tabelas do painel: rode make gold."
 except duckdb.IOException:
-    erro = "Não foi possível abrir a gold: rode make gold."
+    erro = "A gold está ocupada ou sendo gerada pelo make gold: tente de novo em alguns segundos."
 
 if erro:
     st.error(erro)
@@ -42,14 +40,14 @@ if v.empty:
     st.stop()
 
 if f is None:
-    st.info("DOU ainda não carregado: rode `make ingest-mensal`.")
+    st.info("DOU ainda não carregado: rode `make ingest-mensal MES=AAAA-MM`, depois `make lake` e `make gold`.")
 else:
     st.caption(f"DOU coberto de {mes(periodo['primeiro'])} a {mes(periodo['ultimo'])}.")
     st.caption(f"A situação abaixo vale para o último mês coberto ({mes(v['mes_referencia'].iloc[0])}), não para hoje.")
-    situacao_sla = "dentro do SLA" if f["dentro_do_sla"] else f"{f['atraso_meses']} mês(es) fora do SLA"
+    sla = "dentro do SLA" if f["dentro_do_sla"] else f"atraso {f['atraso_meses']} mês(es) fora do SLA"
     st.caption(
         f"SLA: último mês coberto {mes(f['ultimo_mes_coberto'])}, mês esperado {mes(f['mes_esperado'])}, "
-        f"atraso {f['atraso_meses']} mês(es): {situacao_sla}. O mês M entra até o dia 20 do mês M+1."
+        f"{sla}. O mês M entra até o dia 20 do mês M+1."
     )
 
 col1, col2, col3 = st.columns(3)
@@ -60,18 +58,16 @@ col3.metric("Sem ato no período coberto", int((v.situacao == "sem ato no perío
 st.warning("Sem ato no DOU não prova que o conselho parou: muito conselho funciona sem publicar no DOU. O limite de meses para 'em silêncio' é provisório e aguarda a definição da pesquisadora.")
 
 st.subheader("A situação de cada conselho")
-st.caption("Ativo: publicou nos últimos meses cobertos. Em silêncio: publicou antes e parou. Sem ato no período coberto: não publicou nenhum ato no período.")
+# shortcut: limite de 3 meses (meses_ativo do mart_vitalidade, provisório), atualizar quando a pesquisadora definir o limite
+st.caption("Ativo: publicou até 3 meses atrás. Em silêncio: publicou há mais de 3 meses, ou nunca publicou com mais de 3 meses de cobertura. Sem ato no período coberto: nunca publicou, com 3 meses ou menos de cobertura.")
 tabela = v[["nome", "sigla", "situacao", "ultimo_mes_com_ato", "meses_sem_publicar", "atos_no_periodo"]].copy()
 tabela["ultimo_mes_com_ato"] = tabela["ultimo_mes_com_ato"].map(mes)
-st.dataframe(tabela, hide_index=True)
+st.dataframe(tabela.rename(columns={"nome": "Conselho", "sigla": "Sigla", "situacao": "Situação", "ultimo_mes_com_ato": "Último mês com ato", "meses_sem_publicar": "Meses sem publicar", "atos_no_periodo": "Atos no período"}), hide_index=True)
 
 st.subheader("Atos de conselho por mês")
 mensal["mes"] = mensal["mes"].map(mes)
-st.bar_chart(mensal, x="mes", y="atos")
+st.bar_chart(mensal, x="mes", y="atos", sort=False)
 
 st.subheader("O que cada conselho decide")
-st.caption("Atos por tipologia da pesquisadora. SEM: ainda não classificado.")
-st.dataframe(
-    consulta("""select d.nome, f.tipologia_sigla, count(*) as atos from fct_ato f join dim_conselho d on d.orgao_id = f.orgao_id and d.atual group by all order by d.nome, atos desc"""),
-    hide_index=True,
-)
+st.caption("Atos por tipologia da pesquisadora. Origem PLANILHA: atos da planilha; DOU: atos do Diário Oficial. SEM: ainda não classificado.")
+st.dataframe(tipologia.rename(columns={"nome": "Conselho", "origem": "Origem", "tipologia_sigla": "Tipologia", "atos": "Atos"}), hide_index=True)
