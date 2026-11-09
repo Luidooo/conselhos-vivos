@@ -281,7 +281,7 @@ Pré-requisitos: Docker com Compose v2 e `make`. A ingestão mensal não precisa
 ## 5. Dado atrasado e reprocessamento de janela
 
 - **Janela de dias:** `make ingest` busca e grava de novo os últimos `JANELA` dias (padrão 7, provisório), do mais antigo para o mais novo; `make janela` lista os dias sem baixar nada. Os dois saíram depois da entrega, com o cliente do INLABS ([ADR 0008](/docs/adr/0008-unificar-o-pipeline-em-python)), e o código está na tag `e2`. Conferir: [Gravar as matérias no banco](/visao-geral#gravar-as-materias-no-banco), no parágrafo "Dado atrasado".
-- **O ato atrasado fica na data em que foi publicado**, não na data em que chegou. Testado por `TestPersistTakesAMateriaThatArrivedLate`; a conta da janela, por [`tests/ingest/test_janela.sh`](https://github.com/Luidooo/conselhos-vivos/blob/e2/tests/ingest/test_janela.sh).
+- **O ato atrasado fica na data em que foi publicado**, não na data em que chegou. Testado por `TestPersistTakesAMateriaThatArrivedLate`, em Go, na tag `e2`, e hoje por [`test_pega_uma_materia_que_chegou_atrasada`](https://github.com/Luidooo/conselhos-vivos/blob/main/tests/dou_db/test_persist.py), o mesmo caso em Python; a conta da janela, por [`tests/ingest/test_janela.sh`](https://github.com/Luidooo/conselhos-vivos/blob/e2/tests/ingest/test_janela.sh).
 - **O que chega depois da janela** não entra sozinho; está escrito o que fazer.
 - **Na fonte mensal não há janela:** o ZIP de um mês fechado já traz a edição extra (`DO1E`) de todos os dias, e uma retificação sai como matéria nova, na data em que foi publicada.
 

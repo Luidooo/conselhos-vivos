@@ -14,7 +14,7 @@ O pipeline nasceu com duas linguagens: Go no ingestor e Python em planilha, cons
 As fatias F1 a F3 (#53, #54, #55) já levaram para `src/dou/` tudo o que roda de verdade: `fetch-mensal`, `extract` e `persist`. O que restava em Go era:
 
 - **O cliente do INLABS:** `internal/inlabs`, `cmd/fetch` e `internal/config`. O login dele é recusado a scripts desde 12/10 (`502` em `logar.php`, inclusive com o script oficial; #42).
-- **Código já sem uso em produção:** `internal/store`, `internal/dadosabertos` e `cmd/fetch-mensal`, que nenhum serviço do compose executava mais, só a suíte de testes em Go.
+- **Código já sem uso em produção:** `internal/dadosabertos` e `cmd/fetch-mensal`, que nenhum serviço do compose executava mais, só a suíte de testes em Go. O `internal/store` não estava nessa conta: o `cmd/fetch` o importava, e era a gravação do cliente do INLABS.
 
 ## Alternativas
 
@@ -45,7 +45,7 @@ Os números vêm das entradas da migração em [`AI-USAGE.md`](../../AI-USAGE.md
 
 | Fatia | Prova | Resultado |
 |---|---|---|
-| F1 `fetch-mensal` | `cmp` do ZIP baixado por Go e por Python | idêntico, 52.565.336 bytes, ~11 s no Python |
+| F1 `fetch-mensal` | `cmp` do ZIP baixado por Go e por Python | idêntico, 52.565.336 bytes |
 | F2 `extract` | `diff` da saída normalizada com `jq -c -S` | vazio nas 8.590 matérias; 120 imagens e 0 falhas nos dois |
 | F2 tempo do parser | a mesma execução | Go 2,1 s; Python 9,5 s |
 | F3 prova cruzada | `persist` em Python sobre o banco gravado pelo Go | `gravadas=0 versoes-novas=0 inalteradas=96 orgao-desconhecido=8494`; foto de `ato` e `orgao_alias` idêntica antes e depois |
@@ -72,7 +72,7 @@ Os números vêm das entradas da migração em [`AI-USAGE.md`](../../AI-USAGE.md
 - **A janela de reprocessamento da E2 (#31).** Saem o `make janela` e o `tests/ingest/test_janela.sh`, porque a janela só existia para o `make ingest`. O código entregue na E2 continua na tag `e2`. A idempotência do `persist` e o `tests/lake/test_atrasado.sh` continuam valendo.
 - **A limpeza automática dos marcadores.** Um `.falhou` antigo não some quando o ZIP é baixado à mão, porque era o cliente que o apagava. É preciso apagá-lo à mão.
 - **Velocidade do parser:** de 2,1 s para 9,5 s por mês, aceitável para um job mensal.
-- **`go vet` e `-race`.** O `compileall` só pega erro de sintaxe e aviso de compilação, bem menos do que o `go vet` pegava. O teste de corrida do bronze usa threads de verdade.
+- **`go vet` e `gofmt`.** O `compileall` só pega erro de sintaxe e aviso de compilação, bem menos do que o `go vet` pegava, e nada checa o formato como o `gofmt` checava. O `test-go` rodava `go test -count=1 ./...`, sem `-race`, então não há detector de corrida a perder; o teste de corrida do bronze usa threads de verdade.
 
 **O que se torna irreversível:** nada. O Go fica no histórico do git e na tag `e2`.
 
