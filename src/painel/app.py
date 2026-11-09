@@ -5,6 +5,23 @@ import streamlit as st
 
 st.set_page_config(page_title="Conselhos Vivos", layout="wide")
 
+# O desenho do site (site/.vitepress/theme/custom.css): a fonte do sistema e os cartões com raio de 14 px e sombra
+# suave. As cores ficam no .streamlit/config.toml.
+st.markdown("""<style>
+html, body, [class*="css"], .stMarkdown, h1, h2, h3 {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+h1 { font-weight: 700; letter-spacing: -0.02em; }
+h2, h3 { font-weight: 600; letter-spacing: -0.01em; }
+[data-testid="stMetric"] {
+  background: #f5f5f7; border-radius: 14px; padding: 18px 22px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+[data-testid="stMetricValue"] { color: #1d1d1f; font-weight: 600; }
+[data-testid="stMetricLabel"] { color: #6e6e73; }
+[data-testid="stDataFrame"], [data-testid="stVegaLiteChart"] { border-radius: 14px; overflow: hidden; }
+</style>""", unsafe_allow_html=True)
+
 st.title("Quais conselhos nacionais de participação social ainda estão funcionando?")
 
 GOLD = os.environ.get("PAINEL_GOLD", "/data/gold/conselhos.duckdb")
