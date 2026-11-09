@@ -220,7 +220,7 @@ O dado sai da Imprensa Nacional e chega ao DuckDB por dois caminhos de natureza 
 | **Tabela Delta em formato aberto** (Parquet, `ano=`, zstd) | `make lake` · `data/silver/atos/` · `src/lake/` | 2ª execução: `inseridas=0`; DuckDB lê com `delta_scan` |
 | **CDC por slot lógico**, sem Kafka | `make cdc` · `src/lake/cdc.py` · `wal_level=logical` | `make cdc-demo`: reclassifica, chega ao Delta, restaura |
 | **Semântica de entrega demonstrada** | `make cdc-chaos` · `scripts/cdc_chaos_demo.sh` | queda forçada (código 42) → reexecução sem duplicar |
-| **Dado atrasado e janela** | `make ingest` (janela de 7 dias) · `tests/lake/test_atrasado.sh` | ato de 2024 chegado hoje cai em `ano=2024` |
+| **Dado atrasado e janela** | `make ingest` (janela de 7 dias, na tag `e2`; saiu com a #56) · `tests/lake/test_atrasado.sh` | ato de 2024 chegado hoje cai em `ano=2024` |
 | **ADRs da E2** | [0005](/docs/adr/0005-ingerir-dou-no-oltp-e-propagar-ao-delta-via-cdc) ingestão · [0006](/docs/adr/0006-armazenar-a-camada-analitica-em-tabelas-delta) Delta/zstd · [0007](/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica) CDC | medições em `docs/adr/medicoes/` |
 | **Diários** das semanas 7 a 10 | `docs/diario/` | [Processo](/docs/diario/2026-10-13) |
 | **Migração do ingestor Go → Python** (#51–#55) | `src/dou/`, provada byte a byte e linha a linha contra o Go | [plano](/docs/planos/2026-10-13-migracao-ingestor-go-para-python) · PRs #58, #60, #62, #63 |
@@ -233,7 +233,7 @@ Cada item do [checklist da E2](https://unb-bd2.github.io/PlanoEnsino/projeto/e2/
 ```bash
 git clone https://github.com/Luidooo/conselhos-vivos.git && cd conselhos-vivos
 make setup                        # cria o .env, sobe o Postgres, aplica as migrações e carrega a planilha
-make test                         # inclui a idempotência da gravação e a janela de reprocessamento
+make test                         # inclui a idempotência da gravação
 make ingest-mensal MES=2026-08    # baixa agosto de 2026 dos dados abertos e grava as matérias de conselho
 make ingest-mensal MES=2026-08    # de novo: 0 gravadas, nada muda no banco
 make lake                         # OLTP → tabela Delta em data/silver/atos/; de novo: 0 inseridas
@@ -280,8 +280,8 @@ Pré-requisitos: Docker com Compose v2 e `make`. A ingestão mensal não precisa
 
 ## 5. Dado atrasado e reprocessamento de janela
 
-- **Janela de dias:** `make ingest` busca e grava de novo os últimos `JANELA` dias (padrão 7, provisório), do mais antigo para o mais novo; `make janela` lista os dias sem baixar nada. Conferir: [Gravar as matérias no banco](/visao-geral#gravar-as-materias-no-banco), no parágrafo "Dado atrasado".
-- **O ato atrasado fica na data em que foi publicado**, não na data em que chegou. Testado por `TestPersistTakesAMateriaThatArrivedLate`; a conta da janela, por [`tests/ingest/test_janela.sh`](https://github.com/Luidooo/conselhos-vivos/blob/main/tests/ingest/test_janela.sh).
+- **Janela de dias:** `make ingest` busca e grava de novo os últimos `JANELA` dias (padrão 7, provisório), do mais antigo para o mais novo; `make janela` lista os dias sem baixar nada. Os dois saíram depois da entrega, com o cliente do INLABS ([ADR 0008](/docs/adr/0008-unificar-o-pipeline-em-python)), e o código está na tag `e2`. Conferir: [Gravar as matérias no banco](/visao-geral#gravar-as-materias-no-banco), no parágrafo "Dado atrasado".
+- **O ato atrasado fica na data em que foi publicado**, não na data em que chegou. Testado por `TestPersistTakesAMateriaThatArrivedLate`, em Go, na tag `e2`, e hoje por [`test_pega_uma_materia_que_chegou_atrasada`](https://github.com/Luidooo/conselhos-vivos/blob/main/tests/dou_db/test_persist.py), o mesmo caso em Python; a conta da janela, por [`tests/ingest/test_janela.sh`](https://github.com/Luidooo/conselhos-vivos/blob/e2/tests/ingest/test_janela.sh).
 - **O que chega depois da janela** não entra sozinho; está escrito o que fazer.
 - **Na fonte mensal não há janela:** o ZIP de um mês fechado já traz a edição extra (`DO1E`) de todos os dias, e uma retificação sai como matéria nova, na data em que foi publicada.
 
