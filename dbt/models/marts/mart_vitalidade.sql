@@ -24,7 +24,7 @@ select
     coalesce(p.atos_no_periodo, 0) as atos_no_periodo,
     date_diff('month', p.ultimo_mes_com_ato, c.ultimo) as meses_sem_publicar,
     case
-        when p.ultimo_mes_com_ato is null and c.meses <= {{ var('meses_ativo', 3) }} then 'sem ato no período coberto'
+        when p.ultimo_mes_com_ato is null and coalesce(c.meses, 0) <= {{ var('meses_ativo', 3) }} then 'sem ato no período coberto'
         when p.ultimo_mes_com_ato is null then 'em silêncio'
         when date_diff('month', p.ultimo_mes_com_ato, c.ultimo) <= {{ var('meses_ativo', 3) }} then 'ativo'
         else 'em silêncio'

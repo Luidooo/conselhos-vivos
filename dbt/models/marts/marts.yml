@@ -176,3 +176,37 @@ unit_tests:
       rows:
         - {orgao_id: 1, nome: "Um", atos_no_periodo: 0, meses_sem_publicar: null, situacao: "sem ato no período coberto"}
         - {orgao_id: 2, nome: "Dois", atos_no_periodo: 1, meses_sem_publicar: 0, situacao: "ativo"}
+
+  - name: mart_vitalidade_fronteira_de_cobertura
+    description: "Com um mês a mais que meses_ativo, o conselho sem ato já é 'em silêncio'."
+    model: mart_vitalidade
+    given:
+      - input: ref('fct_conselho_mes')
+        rows:
+          - {orgao_id: 1, mes: 2026-07-01, atos: 0}
+          - {orgao_id: 1, mes: 2026-08-01, atos: 0}
+          - {orgao_id: 1, mes: 2026-09-01, atos: 0}
+          - {orgao_id: 1, mes: 2026-10-01, atos: 0}
+          - {orgao_id: 2, mes: 2026-07-01, atos: 1}
+          - {orgao_id: 2, mes: 2026-10-01, atos: 0}
+      - input: ref('dim_conselho')
+        rows:
+          - {orgao_id: 1, nome: "Um", sigla: "U", valido_de: 2000-01-01}
+          - {orgao_id: 2, nome: "Dois", sigla: "D", valido_de: 2000-01-01}
+    expect:
+      rows:
+        - {orgao_id: 1, situacao: "em silêncio"}
+        - {orgao_id: 2, situacao: "ativo"}
+
+  - name: mart_vitalidade_dou_vazio
+    description: "Sem nenhum mês coberto pelo DOU, como num clone limpo, ninguém é 'em silêncio'."
+    model: mart_vitalidade
+    given:
+      - input: ref('fct_conselho_mes')
+        rows: []
+      - input: ref('dim_conselho')
+        rows:
+          - {orgao_id: 1, nome: "Um", sigla: "U", valido_de: 2000-01-01}
+    expect:
+      rows:
+        - {orgao_id: 1, situacao: "sem ato no período coberto"}
