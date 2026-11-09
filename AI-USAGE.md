@@ -559,7 +559,7 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 
 ### 2026-11-08 — Migração 4 e 5: Go fora do repositório e ADR 0008 (#56, #57)
 
-- **Ferramenta:** Claude Code (Claude Opus 5.5) e Antigravity (Gemini), com auditoria do diff em Claude Haiku
+- **Ferramenta:** Claude Code (Claude Opus 5.5) na remoção do Go, no `Makefile`, no `README.md` e no ADR 0008; Antigravity (Gemini) no índice de ADRs, na navegação do site, no diário e nesta entrada, com dois ajustes de texto do Claude Code no ADR e no diário; auditoria do diff em Claude Haiku
 - **Onde:** `src/ingestor/` e `tests/ingest/test_janela.sh` (removidos), `Makefile`, `docker-compose.yml`, `.env.example`, `.gitignore`, `.github/workflows/test.yml`, `README.md`, `site/entrega-e2.md`, `src/dou/__init__.py`, `docs/adr/0008-unificar-o-pipeline-em-python.md`, `docs/adr/README.md`, `site/.vitepress/config.mts`, `docs/diario/2026-11-10.md`
 - **O que foi pedido:** terminar a F4 e a F5 do plano de migração: tirar o Go, trocar `vet-go` por `vet-py` e escrever o ADR 0008.
 - **O que foi aproveitado:** tudo. **Decidido pela IA**, a revisar pela squad: a opção (a) do plano para o INLABS, descontinuar sem portar, como proposta; a remoção da janela, que só o `make ingest` usava; e o `vet-py` com `PYTHONPYCACHEPREFIX`, porque o serviço `carga` monta `src` e `tests` só para leitura.
