@@ -5,17 +5,22 @@ Go: o loopback existe mesmo com network_mode: none, então roda no serviço
 carga, sem rede externa.
 """
 
+import contextlib
 import http.server
 import io
+import logging
+import os
 import tempfile
 import threading
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 from dou.bronze import Bronze, NaoEZip
 from dou.dadosabertos import (Cliente, HostDiferente, LISTAGEM, Mes, NaoPublicado,
                               StatusInesperado, nome_do_zip)
+from dou.fetch_mensal import main as fetch_mensal
 
 AGOSTO = Mes(2026, 8)
 
@@ -170,6 +175,42 @@ class LinkParaOutroHost(CasoComServidor):
         self.assertIn("outro.exemplo", str(ctx.exception))
         self.assertEqual(self.contagem["n"], 1)
         self.assertEqual(self.entradas(), [])
+
+
+def _corta_no_meio(handler):
+    """Anuncia o ZIP inteiro e manda só o começo: a conexão cai no meio do corpo."""
+    handler.send_response(200)
+    handler.send_header("Content-Length", str(len(CORPO) + 1000))
+    handler.end_headers()
+    handler.wfile.write(CORPO[: len(CORPO) // 2])
+    handler.wfile.flush()
+    handler.close_connection = True
+
+
+class QuedaNoMeioDoCorpo(CasoComServidor):
+    zip_handler = staticmethod(_corta_no_meio)
+
+    def test_falha_e_nao_deixa_nada(self):
+        # Pode ser IncompleteRead ou a validação do ZIP: o tipo não importa aqui.
+        with self.assertRaises(Exception):
+            self.cliente.baixar_mes(AGOSTO, self.bronze)
+        self.assertEqual(self.entradas(), [], "nem o ZIP final nem .part-")
+
+    def test_main_sai_com_1_e_diz_a_causa(self):
+        err = io.StringIO()
+        raiz = logging.getLogger()
+        handlers, nivel = raiz.handlers[:], raiz.level
+        raiz.handlers = []  # basicConfig do main só age sem handlers
+        try:
+            with patch.dict(os.environ, {"DADOS_ABERTOS_OUTPUT_DIR": str(self.dir)}), \
+                    patch("dou.dadosabertos.Cliente", lambda: Cliente(base_url=self.cliente.base_url)), \
+                    contextlib.redirect_stderr(err):
+                codigo = fetch_mensal(["--month", "2026-08"])
+        finally:
+            raiz.handlers, raiz.level = handlers, nivel
+        self.assertEqual(codigo, 1, "falha de infraestrutura sai com 1, nem 3 nem 0")
+        self.assertEqual(self.entradas(), [], "nem o ZIP final nem .part-")
+        self.assertRegex(err.getvalue(), r"\[ERROR\] run aborted err=")
 
 
 if __name__ == "__main__":
