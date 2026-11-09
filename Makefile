@@ -163,6 +163,7 @@ cdc-drop: .env ## remove o slot de replicação (slot parado retém WAL)
 
 gold: .env ## E3: roda o dbt (modelos e testes) e grava a gold em data/gold/conselhos.duckdb (rode make lake antes)
 	@test -d data/silver/atos/_delta_log || { echo "falta a silver: rode make lake antes"; exit 1; }
+	@test -d data/silver/mencoes/_delta_log || { echo "falta a silver das menções: rode make mencoes antes"; exit 1; }
 	mkdir -p data/gold data/dagster
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt build --project-dir /app/dbt
 

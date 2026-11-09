@@ -62,7 +62,7 @@ models:
         data_tests: [not_null]
 
   - name: mart_vitalidade
-    description: "Consumo. Granularidade: uma linha por conselho. Responde quais conselhos ainda estão funcionando. meses_ativo (padrão 3) é o limite provisório entre ativo e em silêncio. mes_referencia é o último mês coberto pela ingestão, não a data de hoje."
+    description: "Consumo. Granularidade: uma linha por conselho. Responde quais conselhos ainda estão funcionando. meses_ativo (padrão 3) é o limite provisório entre ativo e em silêncio. mes_referencia é o último mês coberto pela ingestão, não a data de hoje. mencoes_no_periodo e ultimo_mes_citado contam as menções de outros órgãos (fct_mencao) na mesma janela do DOU: um segundo sinal, que não muda a situação."
     columns:
       - name: orgao_id
         data_tests: [unique, not_null]
@@ -71,6 +71,29 @@ models:
           - accepted_values:
               arguments:
                 values: ['ativo', 'em silêncio', 'sem ato no período coberto']
+
+  - name: fct_mencao
+    description: >
+      Fato. Granularidade: uma linha por matéria publicada por outro órgão × conselho citado nela, no escopo
+      da dim_conselho (ADR 0010). O nome é procurado só no título, na ementa e no começo do texto, para o
+      conselho ser o assunto do ato e não uma citação de passagem (plano 2026-11-09).
+    columns:
+      - name: mencao_id
+        data_tests: [unique, not_null]
+      - name: orgao_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_conselho')
+                field: orgao_id
+      - name: data_publicacao
+        data_tests: [not_null]
+      - name: assunto
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['extinção', 'criação', 'estrutura', 'regimento', 'homologação', 'composição', 'outro']
 
   - name: freshness_vitalidade
     description: >
@@ -160,6 +183,8 @@ unit_tests:
           - {orgao_id: 3, nome: "Tres", sigla: "T", valido_de: 2000-01-01}
           - {orgao_id: 4, nome: "Antigo", sigla: "A", valido_de: 2000-01-01}
           - {orgao_id: 4, nome: "Recente", sigla: "R", valido_de: 2010-01-01}
+      - input: ref('fct_mencao')
+        rows: []
     expect:
       rows:
         - {orgao_id: 1, nome: "Um", atos_no_periodo: 2, meses_sem_publicar: 3, situacao: "ativo"}
@@ -183,6 +208,8 @@ unit_tests:
         rows:
           - {orgao_id: 1, nome: "Um", sigla: "U", valido_de: 2000-01-01}
           - {orgao_id: 2, nome: "Dois", sigla: "D", valido_de: 2000-01-01}
+      - input: ref('fct_mencao')
+        rows: []
     expect:
       rows:
         - {orgao_id: 1, nome: "Um", atos_no_periodo: 0, meses_sem_publicar: null, situacao: "sem ato no período coberto"}
@@ -204,6 +231,8 @@ unit_tests:
         rows:
           - {orgao_id: 1, nome: "Um", sigla: "U", valido_de: 2000-01-01}
           - {orgao_id: 2, nome: "Dois", sigla: "D", valido_de: 2000-01-01}
+      - input: ref('fct_mencao')
+        rows: []
     expect:
       rows:
         - {orgao_id: 1, situacao: "em silêncio"}
@@ -218,6 +247,8 @@ unit_tests:
       - input: ref('dim_conselho')
         rows:
           - {orgao_id: 1, nome: "Um", sigla: "U", valido_de: 2000-01-01}
+      - input: ref('fct_mencao')
+        rows: []
     expect:
       rows:
         - {orgao_id: 1, situacao: "sem ato no período coberto"}
@@ -263,3 +294,42 @@ unit_tests:
     expect:
       rows:
         - {mes_esperado: 2026-10-01, dentro_do_sla: false}
+
+  - name: mart_vitalidade_mencoes_na_janela
+    description: "As menções contam só dentro da janela do DOU; fora dela, e sem menção, ficam zero e nulo."
+    model: mart_vitalidade
+    given:
+      - input: ref('fct_conselho_mes')
+        rows:
+          - {orgao_id: 1, mes: 2026-07-01, atos: 1}
+          - {orgao_id: 1, mes: 2026-09-01, atos: 0}
+          - {orgao_id: 2, mes: 2026-07-01, atos: 0}
+          - {orgao_id: 2, mes: 2026-09-01, atos: 0}
+      - input: ref('dim_conselho')
+        rows:
+          - {orgao_id: 1, nome: "Um", sigla: "U", valido_de: 2000-01-01}
+          - {orgao_id: 2, nome: "Dois", sigla: "D", valido_de: 2000-01-01}
+      - input: ref('fct_mencao')
+        rows:
+          - {orgao_id: 1, mes: 2026-08-01}
+          - {orgao_id: 1, mes: 2026-08-01}
+          - {orgao_id: 1, mes: 2026-10-01}
+    expect:
+      rows:
+        - {orgao_id: 1, mencoes_no_periodo: 2, ultimo_mes_citado: 2026-08-01}
+        - {orgao_id: 2, mencoes_no_periodo: 0, ultimo_mes_citado: null}
+
+  - name: fct_mencao_fica_no_escopo
+    description: "Menção a órgão fora da dim_conselho (fora do ADR 0010) não entra no fato."
+    model: fct_mencao
+    given:
+      - input: ref('stg_mencoes')
+        rows:
+          - {id_dou: "900", orgao_id: 1, mes: 2026-08-01, assunto: "homologação"}
+          - {id_dou: "900", orgao_id: 99, mes: 2026-08-01, assunto: "homologação"}
+      - input: ref('dim_conselho')
+        rows:
+          - {orgao_id: 1}
+    expect:
+      rows:
+        - {mencao_id: "900-1", orgao_id: 1}

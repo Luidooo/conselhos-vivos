@@ -8,6 +8,8 @@ sources:
     tables:
       - name: atos
         description: "Uma linha por versão de ato no OLTP, com o nome do órgão na época e a classificação vigente."
+      - name: mencoes
+        description: "Menções aos conselhos em matérias do DOU publicadas por outros órgãos (python -m mencoes, plano 2026-11-09)."
 
   - name: oltp
     description: "OLTP de curadoria (ADR 0001), anexado só para leitura."

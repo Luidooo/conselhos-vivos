@@ -32,6 +32,21 @@ models:
       - name: orgao_id
         data_tests: [unique, not_null]
 
+  - name: stg_mencoes
+    description: "Uma linha por matéria de outro órgão × órgão citado nela, como a silver grava."
+    columns:
+      - name: id_dou
+        data_tests: [not_null]
+      - name: orgao_id
+        data_tests: [not_null]
+      - name: data_publicacao
+        data_tests: [not_null]
+      - name: assunto
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['extinção', 'criação', 'estrutura', 'regimento', 'homologação', 'composição', 'outro']
+
 unit_tests:
   - name: stg_atos_fica_com_a_versao_mais_recente_de_cada_materia
     description: "Retificação do DOU vira uma linha só. Atos da planilha com o mesmo id_origem continuam separados."
