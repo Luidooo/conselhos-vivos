@@ -47,13 +47,14 @@ class TestApp(unittest.TestCase):
                 orgao_id INTEGER,
                 nome VARCHAR,
                 sigla VARCHAR,
-                atual BOOLEAN
+                atual BOOLEAN,
+                eh_participativo BOOLEAN
             );
             INSERT INTO dim_conselho VALUES
-                (1, 'Conselho Um', 'C1', true),
-                (2, 'Conselho Dois', 'C2', true),
-                (3, 'Conselho Três', 'C3', true),
-                (4, 'Conselho Quatro', 'C4', true);
+                (1, 'Conselho Um', 'C1', true, true),
+                (2, 'Conselho Dois', 'C2', true, NULL),
+                (3, 'Conselho Três', 'C3', true, false),
+                (4, 'Conselho Quatro', 'C4', true, NULL);
 
             CREATE TABLE fct_ato (
                 orgao_id INTEGER,
@@ -114,6 +115,24 @@ class TestApp(unittest.TestCase):
         legendas = [c.value for c in at.caption]
         self.assertTrue(any("DOU coberto de 07/2026 a 09/2026." in t for t in legendas), legendas)
         self.assertTrue(any("dentro do SLA" in t for t in legendas))
+
+    def test_participacao_social_sem_filtrar(self):
+        with duckdb.connect(self.gold_path) as con:
+            self._cria_tabelas_base(con)
+            self._cria_freshness(con)
+        os.environ["PAINEL_GOLD"] = self.gold_path
+        at = AppTest.from_file(APP).run(timeout=60)
+        self.assertEqual(len(at.exception), 0)
+        tabela = at.dataframe[0].value
+        # verdadeiro vira sim, falso vira não, nulo vira não avaliado; nenhuma linha some
+        self.assertEqual(len(tabela), 4)
+        participacao = dict(zip(tabela["Conselho"], tabela["Participação social (pesquisadora)"]))
+        self.assertEqual(participacao, {
+            "Conselho Um": "sim",
+            "Conselho Dois": "não avaliado",
+            "Conselho Três": "não",
+            "Conselho Quatro": "não avaliado",
+        })
 
     def test_sla_fora_aparece_na_pagina(self):
         with duckdb.connect(self.gold_path) as con:

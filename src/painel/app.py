@@ -12,6 +12,10 @@ GOLD = os.environ.get("PAINEL_GOLD", "/data/gold/conselhos.duckdb")
 def mes(d):
     return f"{d:%m/%Y}" if pd.notna(d) else ""
 
+def participacao(x):
+    # nulo é não avaliado, não falso: só o falso vira "não"
+    return "não avaliado" if pd.isna(x) else ("sim" if x else "não")
+
 if not os.path.exists(GOLD):
     st.error("Não há gold em data/gold/conselhos.duckdb: rode make gold.")
     st.stop()
@@ -21,7 +25,8 @@ erro = None
 try:
     with duckdb.connect(GOLD, read_only=True) as con:
         periodo = con.sql("select min(mes) as primeiro, max(mes) as ultimo from fct_conselho_mes").df().iloc[0]
-        v = con.sql("select * from mart_vitalidade order by situacao, meses_sem_publicar desc nulls last, nome").df()
+        # eh_participativo vem da dim_conselho: a marca da pesquisadora, sem filtrar nada aqui (ADR 0010, ponto 4)
+        v = con.sql("select m.*, d.eh_participativo from mart_vitalidade m left join (select distinct orgao_id, eh_participativo from dim_conselho) d on d.orgao_id = m.orgao_id order by m.situacao, m.meses_sem_publicar desc nulls last, m.nome").df()
         mensal = con.sql("select mes, sum(atos) as atos from fct_conselho_mes group by mes order by mes").df()
         # o freshness é uma linha só, com nulos quando o DOU está vazio
         f = con.sql("select * from freshness_vitalidade").df().iloc[0] if pd.notna(periodo["ultimo"]) else None
@@ -60,9 +65,10 @@ st.warning("Sem ato no DOU não prova que o conselho parou: muito conselho funci
 st.subheader("A situação de cada conselho")
 # shortcut: limite de 3 meses (meses_ativo do mart_vitalidade, provisório), atualizar quando a pesquisadora definir o limite
 st.caption("Ativo: publicou até 3 meses atrás. Em silêncio: publicou há mais de 3 meses, ou nunca publicou com mais de 3 meses de cobertura. Sem ato no período coberto: nunca publicou, com 3 meses ou menos de cobertura.")
-tabela = v[["nome", "sigla", "situacao", "ultimo_mes_com_ato", "meses_sem_publicar", "atos_no_periodo"]].copy()
+tabela = v[["nome", "sigla", "situacao", "ultimo_mes_com_ato", "meses_sem_publicar", "atos_no_periodo", "eh_participativo"]].copy()
 tabela["ultimo_mes_com_ato"] = tabela["ultimo_mes_com_ato"].map(mes)
-st.dataframe(tabela.rename(columns={"nome": "Conselho", "sigla": "Sigla", "situacao": "Situação", "ultimo_mes_com_ato": "Último mês com ato", "meses_sem_publicar": "Meses sem publicar", "atos_no_periodo": "Atos no período"}), hide_index=True)
+tabela["eh_participativo"] = tabela["eh_participativo"].map(participacao)
+st.dataframe(tabela.rename(columns={"nome": "Conselho", "sigla": "Sigla", "situacao": "Situação", "ultimo_mes_com_ato": "Último mês com ato", "meses_sem_publicar": "Meses sem publicar", "atos_no_periodo": "Atos no período", "eh_participativo": "Participação social (pesquisadora)"}), hide_index=True)
 
 st.subheader("Atos de conselho por mês")
 mensal["mes"] = mensal["mes"].map(mes)
