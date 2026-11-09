@@ -473,7 +473,7 @@ Esperado: `dim_conselho` criada e os dois testes singulares em `PASS`. Se `dim_v
 - [ ] **Passo 5: conferir a variação lenta com um caso real**
 
 ```bash
-docker compose --progress quiet run --rm -T --entrypoint python orquestrador -c "import duckdb; print(duckdb.connect('/data/gold/conselhos.duckdb', read_only=True).sql('select orgao_id, nome, valido_de, valido_ate, atual from dim_conselho where orgao_id in (select orgao_id from dim_conselho group by 1 having count(*) > 1) order by orgao_id, valido_de limit 12'))"
+DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T orquestrador python -c "import duckdb; print(duckdb.connect('/data/gold/conselhos.duckdb', read_only=True).sql('select orgao_id, nome, valido_de, valido_ate, atual from dim_conselho where orgao_id in (select orgao_id from dim_conselho group by 1 having count(*) > 1) order by orgao_id, valido_de limit 12'))"
 ```
 
 Esperado: conselhos com mais de um nome (CNDPI, CNDM e CNDH), cada nome numa linha, um só com `atual = true`. Esse print vai para o ADR 0009, em `docs/adr/medicoes/0009-gold/dim_conselho-renomeados.txt`.
@@ -1485,7 +1485,7 @@ git add src/painel docker-compose.yml Makefile && git diff --cached --stat
 O enunciado pede as duas granularidades medidas. Rode no DuckDB da gold:
 
 ```bash
-docker compose --progress quiet run --rm -T --entrypoint python orquestrador -c "
+DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T orquestrador python -c "
 import duckdb, time
 c = duckdb.connect('/data/gold/conselhos.duckdb', read_only=True)
 for nome, sql in [

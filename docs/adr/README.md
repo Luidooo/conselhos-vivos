@@ -28,4 +28,5 @@ Levantadas na fase de entendimento do domínio, ainda sem ADR escrito:
 | [0006](0006-armazenar-a-camada-analitica-em-tabelas-delta.md) | Armazenar a camada analítica em tabelas Delta particionadas por ano e comprimidas com zstd | proposto |
 | [0007](0007-propagar-mudancas-por-slot-de-replicacao-logica.md) | Propagar mudanças do OLTP ao Delta por slot de replicação lógica, sem Kafka | proposto |
 | [0008](0008-unificar-o-pipeline-em-python.md) | Unificar o pipeline em Python e descontinuar o cliente do INLABS sem portar | aceito |
+| [0009](0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster.md) | Modelar a gold em estrela com dbt sobre DuckDB e orquestrar com Dagster | proposto |
 | [0010](0010-tratar-como-conselho-todo-orgao-com-conselho-no-nome.md) | É conselho todo órgão que já teve um nome começando com "Conselho", menos uma lista curta de exclusões; a marca de participação social fica à parte | proposto |

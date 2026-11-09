@@ -1,0 +1,5 @@
+# Granularidades medidas na gold (#76), 2026-11-09, banco com DOU de jul a set/2026 e a planilha.
+# Comando no plano, Tarefa 9, Passo 1.
+linhas fct_ato (uma por matéria): 458 (0.5 ms)
+linhas fct_conselho_mes (conselho x mês): 177 (0.2 ms)
+linhas conselho x dia (hipotético): 5428 (3.7 ms)

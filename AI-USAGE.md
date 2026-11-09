@@ -652,3 +652,26 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - o `eventos_do_run.sh` tirando só um horário `HH:MM:SS` do começo da linha do dbt, porque na saída que o Dagster grava a linha começa com o número do teste, e pegando também a linha `[ERROR]: in test ...`.
 - **Como foi verificado:** `make demo-falhas` com os cinco casos em `falhas-20261109T024652Z.txt`; o caso novo traz `39 of 53 FAIL 1 distribuicao_mes_sem_nenhum_ato` e `[ERROR]: in test distribuicao_mes_sem_nenhum_ato (tests/distribuicao_mes_sem_nenhum_ato.sql)`; a gold voltou a 63 de 63 em `PASS` depois; nada baixado e nenhuma senha na prova. A primeira rodada mostrou a linha cortada ("of 53 FAIL 1"), por causa do `sed`; a prova dela foi apagada e refeita depois da correção.
 - **Quem revisou:** pendente — a Luiza revisa o diff antes do commit; revisão da squad no PR.
+
+### 2026-11-09 — ADR 0009, página da E3, catálogo e diário (#76)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster.md`, `docs/adr/README.md`, `docs/adr/medicoes/0009-gold/granularidade.txt`, `site/entrega-e3.md`, `site/.vitepress/config.mts`, `README.md`, `Makefile` (`gold-docs`), `docs/diario/2026-11-10.md`, `docs/planos/2026-11-03-e3-camada-analitica.md`, `src/painel/` (o desenho do site)
+- **O que foi pedido:** fechar a entrega pela Tarefa 9 do plano: ADR 0009, página da E3, catálogo e diário. Também comparar o que foi feito com o checklist da E3 no plano de ensino, e aplicar ao painel o desenho do site.
+- **O que foi aproveitado:**
+  - o ADR 0009, a página, o alvo `gold-docs`, a seção da E3 no README e o diário;
+  - o tema do painel, com as cores do VitePress no `.streamlit/config.toml` e a fonte e os cartões em CSS.
+
+  **Decidido pela IA**, a revisar:
+  - o texto do ADR 0009 e a forma como ele defende o resultado negativo do EXPLAIN;
+  - o comando do Passo 1 do plano, corrigido: o `--entrypoint python` pulava a instalação das dependências.
+- **Como foi verificado:**
+  - as granularidades medidas na gold;
+  - `make gold-docs`, que gerou `dbt/target/index.html` e `catalog.json`;
+  - o site compilou sem link quebrado (`build complete`; o `TypeError: _ctx.ref` já existia);
+  - `make test-painel` em OK, e o painel visto no navegador com o tema novo;
+  - os oito itens do checklist da E3 comparados um a um com o que está no `main`.
+
+  Falta a conferência num clone limpo, antes da tag.
+- **Quem revisou:** pendente — a Luiza autorizou os commits direto no `main`; a squad revisa o ADR 0009.
+

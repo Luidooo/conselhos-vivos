@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg extract persist fetch-mensal persist-mensal ingest-mensal test test-py-dou test-db-py vet-py reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos gold orquestrador demo-retry demo-backfill demo-falhas test-orquestracao painel test-painel
+.PHONY: help docs setup up down migrate carga siorg extract persist fetch-mensal persist-mensal ingest-mensal test test-py-dou test-db-py vet-py reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos gold orquestrador demo-retry demo-backfill demo-falhas test-orquestracao painel test-painel gold-docs
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -158,6 +158,9 @@ gold: .env ## E3: roda o dbt (modelos e testes) e grava a gold em data/gold/cons
 	@test -d data/silver/atos/_delta_log || { echo "falta a silver: rode make lake antes"; exit 1; }
 	mkdir -p data/gold data/dagster
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt build --project-dir /app/dbt
+
+gold-docs: .env ## E3: gera o catálogo e a linhagem do dbt em dbt/target/ (index.html, catalog.json)
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt docs generate --project-dir /app/dbt
 
 orquestrador: .env ## E3: sobe o Dagster em http://localhost:3000 (grafo, agenda, backfill pela interface)
 	mkdir -p data/gold data/dagster

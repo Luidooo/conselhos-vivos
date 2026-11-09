@@ -45,6 +45,7 @@ export default withMermaid(defineConfig({
   rewrites: {
     'site/index.md': 'index.md',
     'site/entrega-e1.md': 'entrega-e1.md',
+    'site/entrega-e3.md': 'entrega-e3.md',
     'site/entrega-e2.md': 'entrega-e2.md',
     'site/jornada-do-dado.md': 'jornada-do-dado.md',
     'site/arquitetura.md': 'arquitetura.md',
@@ -91,6 +92,7 @@ export default withMermaid(defineConfig({
   themeConfig: {
     siteTitle: 'Conselhos Vivos',
     nav: [
+      { text: 'Entrega E3', link: '/entrega-e3' },
       { text: 'Entrega E2', link: '/entrega-e2' },
       { text: 'Entrega E1', link: '/entrega-e1' },
       { text: 'Arquitetura', link: '/arquitetura' },
@@ -104,6 +106,7 @@ export default withMermaid(defineConfig({
       {
         text: 'Comece aqui',
         items: [
+          { text: 'Entrega E3', link: '/entrega-e3' },
           { text: 'Entrega E2', link: '/entrega-e2' },
           { text: 'Entrega E1', link: '/entrega-e1' },
           { text: 'Arquitetura final', link: '/arquitetura' },

@@ -237,6 +237,28 @@ Dia a dia: `make lake` uma vez, depois `make cdc` sempre que quiser aplicar as r
 >
 > **Curadoria insert-only mantida.** A reclassificação da demonstração permanece registrada no histórico do banco (ADR 0001), sob revisor dedicado. Os testes isolam os revisores e não exigem `make reset` após demonstrar.
 
+## Camada analítica e painel (E3)
+
+A gold é um DuckDB em `data/gold/conselhos.duckdb`, gerado pelo dbt a partir da silver e do OLTP ([ADR 0009](docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster.md)). Uma estrela: `dim_conselho` (variação lenta dos nomes), `fct_ato` (uma linha por matéria) e `fct_conselho_mes` (conselho × mês, com zeros), mais a `mart_vitalidade`, que responde à pergunta da E1, e a `freshness_vitalidade`, com o SLA.
+
+```bash
+make lake        # OLTP → silver (Delta)
+make gold        # silver + OLTP → gold, com todos os testes do dbt
+make gold-docs   # catálogo e linhagem do dbt em dbt/target/
+make painel      # o painel em http://127.0.0.1:8501
+```
+
+A orquestração é o Dagster, num job mensal com retry, backfill e agenda do dia 15 ao 28:
+
+```bash
+make orquestrador                           # a interface em http://127.0.0.1:3000
+make demo-backfill DE=2026-07 ATE=2026-09   # baixa só o que falta; a 2ª rodada não grava nada
+make demo-retry                             # para o Postgres por ~1 min e mostra o retry recuperando
+make demo-falhas                            # falha de dado sem retry, falha de rede com retry, teste do dbt com nome
+```
+
+As provas ficam em `docs/adr/medicoes/0009-gold/`. O SLA: o mês M está na gold até o dia 20 do mês M+1.
+
 ## Estrutura
 
 ```
