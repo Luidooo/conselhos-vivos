@@ -1,0 +1,41 @@
+# make demo-falhas, 2026-11-09 02:50:58 UTC, mês corrente 2026-11, gerado por scripts/demo_falhas.sh (horários em UTC)
+# A agenda olha as partições já materializadas no data/dagster desta máquina: noutra máquina, ou num clone limpo, o SkipReason pode virar RunRequest.
+==> caso nao-publicado, run 5591835e-fd6c-447d-ad0e-065a5a1ca613
+2026-11-09 02:47:12 STEP_START fetch_mes_corrente
+2026-11-09 02:47:13 STEP_FAILURE fetch_mes_corrente | causa: mês ainda não publicado nos dados abertos; a agenda tenta de novo amanhã: 2026-11-09 02:47:13,431 [ERROR] mes ainda nao publicado mes=2026-11 err=S01112026.zip: the month is not published in the open data yet
+2026-11-09 02:47:13 RUN_FAILURE | causa: mês ainda não publicado nos dados abertos; a agenda tenta de novo amanhã: 2026-11-09 02:47:13,431 [ERROR] mes ainda nao publicado mes=2026-11 err=S01112026.zip: the month is not published in the open data yet
+==> agenda: em 2026-12-15 06:00 (Brasília): RunRequest partição 2026-11-01
+==> agenda: em 2026-11-15 06:00 (Brasília): SkipReason: o mês anterior já foi carregado
+==> caso zip-invalido, run 7f538fce-444e-46c5-96d7-896e91e4dff1
+2026-11-09 02:47:13 STEP_START persist_zip_ruim
+2026-11-09 02:47:13 STEP_FAILURE persist_zip_ruim | causa: ZIP corrompido ou com entrada que não lê como matéria; o que leu foi gravado: 2026-11-09 02:47:13,705 [WARNING] falhou zip=/tmp/ruim.zip erro=materia-quebrada.xml: not a DOU article: unclosed token: line 1, column 5
+2026-11-09 02:47:13 RUN_FAILURE | causa: ZIP corrompido ou com entrada que não lê como matéria; o que leu foi gravado: 2026-11-09 02:47:13,705 [WARNING] falhou zip=/tmp/ruim.zip erro=materia-quebrada.xml: not a DOU article: unclosed token: line 1, column 5
+persist: gravadas=0 versoes-novas=0 inalteradas=0 orgao-desconhecido=0 repetidas=0 ignoradas=0 falhou=1
+==> caso dbt-teste, run bbdc2362-b3ac-452e-b070-f4536250635d
+2026-11-09 02:47:14 STEP_START gold_sem_o_mes_do_meio
+2026-11-09 02:47:20 STEP_FAILURE gold_sem_o_mes_do_meio | causa: dagster_dbt.errors.DagsterDbtCliRuntimeError: The dbt CLI process with command
+2026-11-09 02:47:20 RUN_FAILURE | causa: dagster_dbt.errors.DagsterDbtCliRuntimeError: The dbt CLI process with command
+dbt: 39 of 53 FAIL 1 distribuicao_mes_sem_nenhum_ato ................................ [FAIL 1 in 0.01s]
+dbt: [ERROR]: in test distribuicao_mes_sem_nenhum_ato (tests/distribuicao_mes_sem_nenhum_ato.sql)
+==> gold restaurada com um dbt build normal
+==> caso lake, run aa1f4a32-029b-4159-a2bc-25583b005d19
+2026-11-09 02:47:25 STEP_START silver__atos
+2026-11-09 02:47:26 STEP_UP_FOR_RETRY silver__atos | causa: lake /data/silver/atos saiu com 1: 2026-11-09 02:47:26,015 [ERROR] Falha na sincronização do lake: [Errno -2] Name or service not known
+2026-11-09 02:47:57 STEP_RESTARTED silver__atos
+2026-11-09 02:47:57 STEP_UP_FOR_RETRY silver__atos | causa: lake /data/silver/atos saiu com 1: 2026-11-09 02:47:57,776 [ERROR] Falha na sincronização do lake: [Errno -2] Name or service not known
+2026-11-09 02:48:28 STEP_RESTARTED silver__atos
+2026-11-09 02:48:29 STEP_UP_FOR_RETRY silver__atos | causa: lake /data/silver/atos saiu com 1: 2026-11-09 02:48:29,038 [ERROR] Falha na sincronização do lake: [Errno -2] Name or service not known
+2026-11-09 02:49:00 STEP_RESTARTED silver__atos
+2026-11-09 02:49:01 STEP_FAILURE silver__atos | causa: lake /data/silver/atos saiu com 1: 2026-11-09 02:49:00,981 [ERROR] Falha na sincronização do lake: [Errno -2] Name or service not known
+2026-11-09 02:49:01 RUN_FAILURE | causa: lake /data/silver/atos saiu com 1: 2026-11-09 02:49:00,981 [ERROR] Falha na sincronização do lake: [Errno -2] Name or service not known
+==> caso dbt, run 2967228b-aedf-48a4-b203-1d1726bf1f5a
+2026-11-09 02:49:05 STEP_START gold
+2026-11-09 02:49:10 STEP_UP_FOR_RETRY gold | causa: dagster_dbt.errors.DagsterDbtCliRuntimeError: The dbt CLI process with command
+2026-11-09 02:49:41 STEP_RESTARTED gold
+2026-11-09 02:49:45 STEP_UP_FOR_RETRY gold | causa: dagster_dbt.errors.DagsterDbtCliRuntimeError: The dbt CLI process with command
+2026-11-09 02:50:16 STEP_RESTARTED gold
+2026-11-09 02:50:21 STEP_UP_FOR_RETRY gold | causa: dagster_dbt.errors.DagsterDbtCliRuntimeError: The dbt CLI process with command
+2026-11-09 02:50:52 STEP_RESTARTED gold
+2026-11-09 02:50:56 STEP_FAILURE gold | causa: dagster_dbt.errors.DagsterDbtCliRuntimeError: The dbt CLI process with command
+2026-11-09 02:50:57 RUN_FAILURE | causa: dagster_dbt.errors.DagsterDbtCliRuntimeError: The dbt CLI process with command
+dbt: IO Error: Unable to connect to Postgres at "host=db dbname=banco_que_nao_existe user=conselhos password=***": connection to server at "db" (172.19.0.4), port 5432 failed: FATAL:  database "banco_que_nao_existe" does not exist
