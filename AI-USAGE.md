@@ -767,3 +767,35 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - **CI:** a checagem foi rodada localmente nos dois sentidos. Com um `ref()` do dbt entre chaves duplas posto de volta, ela falha; com o site limpo, passa.
   - **Clone limpo:** os cinco passos saíram com código 0, com 77 de 77 testes do dbt, 161, 96 e 132 atos de julho a setembro, e o retry recuperando com o banco parado. O log não tem "baixando", e a senha não aparece em forma de credencial.
 - **Quem revisou:** pendente — a Luiza autorizou os commits direto no `main`.
+
+### 2026-11-09 — Plano da E4 e as issues #94 a #102
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `docs/planos/2026-11-09-e4-plataforma-governada.md`, issues #94 a #102 e o rótulo `E4`
+- **O que foi pedido:** o plano da E4, no molde do plano da E3; as issues para dividir na squad; uma revisão do plano e as quatro correções que saíram dela.
+- **O que foi aproveitado:** o plano em 9 tarefas, com código, testes e comandos:
+  - a camada semântica no MetricFlow;
+  - a tabela de alertas e três papéis com privilégio mínimo, com o e-mail do revisor fora do alcance do app;
+  - o ETL reverso;
+  - os dois passos novos no Dagster;
+  - o painel na camada semântica e a página Revisar;
+  - a LGPD medida no banco;
+  - a linhagem até o alerta;
+  - o ADR 0011 e o portfólio;
+  - o fechamento.
+
+  As issues seguem o formato da E3 e levam a dependência real de cada uma.
+
+  **Decidido pela IA**, a confirmar pela squad: o MetricFlow, e não visões escritas à mão, com volta à opção nula se ele não instalar.
+- **Como foi verificado:**
+  - a compatibilidade do `dbt-metricflow` 0.15.0 com o dbt-core 1.12.6 e o DuckDB 1.5, no PyPI;
+  - a sintaxe da camada semântica e das consultas salvas, na documentação do dbt;
+  - uma revisão do plano achou quatro erros, corrigidos antes do commit:
+    - o teste de acesso dependia da carga e lia uma tabela que o `etl_reverso` não lê;
+    - o número esperado da métrica estava errado;
+    - o gráfico mensal mostraria outubro como silêncio falso;
+    - a contagem de nomeações da LGPD contava o texto inteiro;
+  - o site compilou com o plano, sem chaves duplas fora de bloco de código.
+
+  Nenhum código do plano foi rodado ainda.
+- **Quem revisou:** pendente — a Luiza autorizou o commit direto no `main`.
