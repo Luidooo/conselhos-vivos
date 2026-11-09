@@ -221,6 +221,24 @@ services:
     command: ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000", "-m", "orquestracao"]
     entrypoint: ["sh", "-c", "cp /app/dagster/dagster.yaml /data/dagster/dagster.yaml && pip install -q --disable-pip-version-check --root-user-action=ignore --no-warn-script-location --target /tmp/site -r /app/src/orquestracao/requirements.txt && export PATH=/tmp/site/bin:$$PATH && \"$$@\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data /app/dbt; exit $$rc", "sh"]
 
+  # E3: o painel lê a gold só para leitura; não fala com o Postgres.
+  painel:
+    image: python:3.12.14-slim
+    profiles: [e3]
+    working_dir: /app
+    environment:
+      PIP_CACHE_DIR: /tmp/pipcache
+      PAINEL_GOLD: /data/gold/conselhos.duckdb
+    ports:
+      # só 127.0.0.1: o painel não tem login
+      - "127.0.0.1:8501:8501"
+    volumes:
+      - ./src/painel:/app:ro
+      - ./tests/painel:/tests:ro
+      - ./data/gold:/data/gold:ro
+      - pipcache:/tmp/pipcache
+    entrypoint: ["sh", "-c", "pip install -q --disable-pip-version-check --root-user-action=ignore -r requirements.txt && exec streamlit run app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true"]
+
 # servers.json e pgpass gerados a partir do .env: o pgAdmin já abre conectado no banco.
 # O servers.json só é importado na 1ª subida do volume `pgadmin`; se mudar
 # POSTGRES_USER ou POSTGRES_DB, rode `make pgadmin-reset`. Senha sem `:` nem `\`
