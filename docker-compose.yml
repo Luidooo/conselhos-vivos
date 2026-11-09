@@ -80,45 +80,6 @@ services:
       - ./data/raw:/app/data/raw:ro
     entrypoint: [python, -m, conselhos, siorg]
 
-  # Baixa as edições do DOU do INLABS.
-  ingestor:
-    image: golang:1.26.8-alpine
-    profiles: [ingestor]
-    working_dir: /app
-    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
-    environment:
-      INLABS_EMAIL: ${INLABS_EMAIL}
-      INLABS_SENHA: ${INLABS_SENHA}
-      INLABS_OUTPUT_DIR: /data/bronze/inlabs
-      GOCACHE: /tmp/gocache
-      GOMODCACHE: /tmp/gomodcache
-      GOFLAGS: -mod=mod
-    volumes:
-      - ./src/ingestor:/app:ro
-      # Fora do /app de propósito: aninhado nele, o runc precisaria criar
-      # /app/data dentro de um bind :ro, e o container não sobe.
-      - ./data/bronze:/data/bronze
-    entrypoint: ["sh", "-c", "go build -o /tmp/fetch ./cmd/fetch && exec /tmp/fetch \"$$@\"", "--"]
-
-
-  # Testes do ingestor. Tudo :ro e sem credencial no ambiente. Mantém rede — ao
-  # contrário do carga — porque o GOMODCACHE nasce vazio e a primeira execução
-  # precisa baixar os módulos; o que é hermético é o código de teste, que só fala
-  # com httptest. Aqui os caches ficam em volume nomeado (nada é gravado no host,
-  # então o dono dos arquivos não importa) e as execuções seguintes não baixam nada.
-  ingestor-test:
-    image: golang:1.26.8-alpine
-    profiles: [ingestor]
-    working_dir: /app
-    environment:
-      GOCACHE: /gocache
-      GOMODCACHE: /gomodcache
-    volumes:
-      - ./src/ingestor:/app:ro
-      - gocache:/gocache
-      - gomodcache:/gomodcache
-    entrypoint: []
-
   # Camada analítica em Delta Lake (ADR 0006)
   lake:
     image: python:3.12.14-slim
@@ -143,13 +104,12 @@ services:
         condition: service_healthy
     entrypoint: ["sh", "-c", "pip install -q --root-user-action=ignore --no-warn-script-location -r /app/src/lake/requirements.txt && if [ \"$$1\" = \"python\" ]; then shift; exec python \"$$@\"; else python -m lake \"$${1:-/data/silver/atos}\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data/silver; exit $$rc; fi", "sh"]
 
-  # Ingestão do DOU em Python (#52): o par dos serviços ingestor/persist em Go,
-  # que vai substituí-los fatia por fatia. Mesmos moldes do lake: pip com cache
+  # Ingestão do DOU em Python (ADR 0008). Mesmos moldes do lake: pip com cache
   # em volume, PG* para o banco. O bronze é gravável porque o fetch-mensal (#53)
   # escreve nele; o persist (#55) só lê.
   dou:
     image: python:3.12.14-slim
-    profiles: [ingestor]
+    profiles: [dou]
     working_dir: /app
     environment:
       PYTHONPATH: /app/src
@@ -176,10 +136,10 @@ services:
 
   # Testes do dou (#52). Os sem banco rodam no serviço carga (sem rede, como os
   # da planilha); estes são os que gravam no banco, cada um numa transação
-  # desfeita no fim, como o internal/dbtest do Go fazia.
+  # desfeita no fim.
   dou-db-test:
     image: python:3.12.14-slim
-    profiles: [ingestor]
+    profiles: [dou]
     working_dir: /app
     environment:
       PYTHONPATH: /app/src:/app/tests/dou_db:/tmp/site
@@ -284,6 +244,4 @@ configs:
 volumes:
   pgdata:
   pgadmin:
-  gocache:
-  gomodcache:
   pipcache:
