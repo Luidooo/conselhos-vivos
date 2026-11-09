@@ -49,11 +49,20 @@ models:
           arguments:
             column_name: "orgao_id || '-' || mes"
     columns:
+      - name: orgao_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_conselho')
+                field: orgao_id
+      - name: mes
+        data_tests: [not_null]
       - name: atos
         data_tests: [not_null]
 
   - name: mart_vitalidade
-    description: "Consumo. Granularidade: uma linha por conselho. Responde quais conselhos ainda estão funcionando. meses_ativo (padrão 3) é o limite provisório entre ativo e em silêncio."
+    description: "Consumo. Granularidade: uma linha por conselho. Responde quais conselhos ainda estão funcionando. meses_ativo (padrão 3) é o limite provisório entre ativo e em silêncio. mes_referencia é o último mês coberto pela ingestão, não a data de hoje."
     columns:
       - name: orgao_id
         data_tests: [unique, not_null]
@@ -121,7 +130,7 @@ unit_tests:
         - {orgao_id: 2, mes: 2026-09-01, atos: 0}
 
   - name: mart_vitalidade_situacao
-    description: "O limite de 3 meses, o conselho sem ato e o extinto com o nome mais recente."
+    description: "O limite de 3 meses, o conselho sem ato com cobertura longa e o extinto com o nome mais recente."
     model: mart_vitalidade
     given:
       - input: ref('fct_conselho_mes')
@@ -144,5 +153,26 @@ unit_tests:
       rows:
         - {orgao_id: 1, nome: "Um", atos_no_periodo: 2, meses_sem_publicar: 3, situacao: "ativo"}
         - {orgao_id: 2, nome: "Dois", atos_no_periodo: 1, meses_sem_publicar: 4, situacao: "em silêncio"}
-        - {orgao_id: 3, nome: "Tres", atos_no_periodo: 0, meses_sem_publicar: null, situacao: "sem ato no período coberto"}
+        - {orgao_id: 3, nome: "Tres", atos_no_periodo: 0, meses_sem_publicar: null, situacao: "em silêncio"}
         - {orgao_id: 4, nome: "Recente", atos_no_periodo: 1, meses_sem_publicar: 0, situacao: "ativo"}
+
+  - name: mart_vitalidade_cobertura_curta
+    description: "Com cobertura de até meses_ativo meses, o conselho sem ato é 'sem ato no período coberto', não 'em silêncio'."
+    model: mart_vitalidade
+    given:
+      - input: ref('fct_conselho_mes')
+        rows:
+          - {orgao_id: 1, mes: 2026-07-01, atos: 0}
+          - {orgao_id: 1, mes: 2026-08-01, atos: 0}
+          - {orgao_id: 1, mes: 2026-09-01, atos: 0}
+          - {orgao_id: 2, mes: 2026-07-01, atos: 0}
+          - {orgao_id: 2, mes: 2026-08-01, atos: 0}
+          - {orgao_id: 2, mes: 2026-09-01, atos: 1}
+      - input: ref('dim_conselho')
+        rows:
+          - {orgao_id: 1, nome: "Um", sigla: "U", valido_de: 2000-01-01}
+          - {orgao_id: 2, nome: "Dois", sigla: "D", valido_de: 2000-01-01}
+    expect:
+      rows:
+        - {orgao_id: 1, nome: "Um", atos_no_periodo: 0, meses_sem_publicar: null, situacao: "sem ato no período coberto"}
+        - {orgao_id: 2, nome: "Dois", atos_no_periodo: 1, meses_sem_publicar: 0, situacao: "ativo"}

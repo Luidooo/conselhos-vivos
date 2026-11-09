@@ -1,5 +1,6 @@
 -- No gabarito da pesquisadora, 6 de 215 atos (3%) ficam fora da tipologia. Passar de 20% indica
 -- classificação quebrada, não conselhos diferentes.
+-- Limite: os atos do DOU entram como 'SEM' na tipologia, então hoje o denominador são só os atos da planilha; este teste ainda não vigia a classificação do DOU.
 select count(*) filter (where tipologia_sigla = '99') * 1.0 / count(*) as fracao_fora
 from {{ ref('fct_ato') }}
 where tipologia_sigla <> 'SEM'
