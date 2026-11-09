@@ -33,7 +33,7 @@ Pré-requisitos: Docker com Compose v2, `make` e `sqlite3`. O backfill baixa os 
 | **Enriquecimento:** menções de outros órgãos | `src/mencoes/` · `fct_mencao` · asset `silver/mencoes` | `make mencoes`; 10 dos 33 conselhos sem ato próprio são citados por outros órgãos |
 | **Freshness e SLA** | `freshness_vitalidade` · `dbt/tests/sla_vitalidade.sql` | o mês M até o dia 20 do mês M+1 |
 | **Plano de execução** | `docs/adr/medicoes/0009-gold/explain*` | `bash docs/adr/medicoes/0009-gold/explain.sh` |
-| **Catálogo** | `make gold-docs` | `dbt/target/index.html` (publicar é da E4) |
+| **Linhagem e catálogo** | [Linhagem dos dados](/linhagem) · `make gold-docs` | do ZIP do DOU ao painel; o diagrama do dbt é gerado do `manifest.json`, e o catálogo do dbt sai publicado no site |
 | **ADRs da E3** | [0009](/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster) modelagem e ferramentas · [0010](/docs/adr/0010-tratar-como-conselho-todo-orgao-com-conselho-no-nome) escopo · [0008](/docs/adr/0008-unificar-o-pipeline-em-python) pipeline em Python | medições em `docs/adr/medicoes/0009-gold/` |
 
 ## Checklist de aceite

@@ -112,6 +112,7 @@ test: .env test-py-dou test-orquestracao test-painel test-mencoes ## testes: ing
 	bash tests/db/test_schema.sh
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/planilha
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/conselhos
+	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/linhagem
 	bash tests/db/test_carga.sh
 	bash tests/lake/test_lake.sh
 	bash tests/lake/test_atrasado.sh
@@ -167,8 +168,11 @@ gold: .env ## E3: roda o dbt (modelos e testes) e grava a gold em data/gold/cons
 	mkdir -p data/gold data/dagster
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt build --project-dir /app/dbt
 
-gold-docs: .env ## E3: gera o catálogo e a linhagem do dbt em dbt/target/ (index.html, catalog.json)
-	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt docs generate --project-dir /app/dbt
+gold-docs: .env ## E3: gera o catálogo e a linhagem do dbt, publica o catálogo no site (public/linhagem/) e atualiza o diagrama de site/linhagem.md
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt docs generate --static --project-dir /app/dbt
+	mkdir -p public/linhagem
+	cp dbt/target/static_index.html public/linhagem/catalogo-dbt.html
+	PYTHONPATH=src python3 -m linhagem site/linhagem.md dbt/target/manifest.json   # só biblioteca padrão
 
 orquestrador: .env ## E3: sobe o Dagster em http://localhost:3000 (grafo, agenda, backfill pela interface)
 	mkdir -p data/gold data/dagster

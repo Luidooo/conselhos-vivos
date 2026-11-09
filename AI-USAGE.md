@@ -698,3 +698,21 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   As bases avaliadas foram conferidas por agentes de leitura da web, sem download: a documentação do SIORG deu 404, e os conselhos conferidos no Brasil Participativo estavam vazios.
 - **Quem revisou:** pendente — a Luiza autorizou os commits direto no `main`; a squad revisa o ADR 0009.
 
+### 2026-11-09 — Linhagem dos dados no site
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `site/linhagem.md`, `src/linhagem/`, `tests/linhagem/`, `public/linhagem/catalogo-dbt.html`, `Makefile` (`gold-docs`, `test`), `site/.vitepress/config.mts`, `site/entrega-e3.md`
+- **O que foi pedido:** ter a linhagem dos dados na E3.
+- **O que foi aproveitado:** a página com dois diagramas e o catálogo publicado:
+  - um diagrama Mermaid do ZIP do DOU ao painel, escrito à mão;
+  - o diagrama do dbt, gerado do `manifest.json` por `python -m linhagem` entre dois marcadores da página;
+  - o catálogo estático do dbt (`dbt docs generate --static`), copiado para `public/linhagem/` pelo `make gold-docs`.
+
+  **Decidido pela IA**, a revisar: publicar o catálogo já na E3, que o plano deixava para a E4; e versionar o HTML gerado (2,6 MB), porque o CI não tem os dados para gerá-lo.
+- **Como foi verificado:**
+  - 4 testes do gerador, em `tests/linhagem`, que entram no `make test`;
+  - `make gold-docs` gerou o catálogo e o diagrama, com as 6 fontes, a seed, 5 modelos de staging e 6 marts;
+  - nenhuma senha nem string de conexão no catálogo;
+  - o site compilou sem link quebrado, e a página foi vista no servidor local.
+- **Quem revisou:** pendente — a Luiza autorizou os commits direto no `main`.
+
