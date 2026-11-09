@@ -107,6 +107,7 @@ class TestApp(unittest.TestCase):
         self.assertEqual(at.title[0].value, "Quais conselhos nacionais de participação social ainda estão funcionando?")
         self.assertEqual(len(at.dataframe[0].value), 4)
         self.assertEqual(len(at.dataframe[1].value), 3)
+        self.assertIn("Origem", at.dataframe[1].value.columns)
         warnings = [w.value for w in at.warning]
         self.assertGreater(len(warnings), 0)
         self.assertIn("Sem ato no DOU não prova que o conselho parou", warnings[0])
@@ -210,6 +211,18 @@ class TestApp(unittest.TestCase):
         erros = [e.value for e in at.error]
         self.assertGreater(len(erros), 0)
         self.assertIn("make gold", erros[0])
+
+    def test_painel_solta_a_gold(self):
+        with duckdb.connect(self.gold_path) as con:
+            self._cria_tabelas_base(con)
+            self._cria_freshness(con)
+        os.environ["PAINEL_GOLD"] = self.gold_path
+        at = AppTest.from_file(APP).run(timeout=60)
+        self.assertEqual(len(at.exception), 0)
+        # mesmo processo: se o app deixasse a conexão read_only aberta, esta abertura para escrita falharia por configuração diferente
+        with duckdb.connect(self.gold_path) as con:
+            con.execute("CREATE TABLE sonda (x INTEGER)")
+            con.execute("DROP TABLE sonda")
 
 
 if __name__ == "__main__":
