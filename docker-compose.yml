@@ -209,6 +209,7 @@ services:
       - ./data/bronze:/data/bronze
       - ./data/dagster:/data/dagster
       - ./dagster:/app/dagster:ro
+      - ./tests:/app/tests:ro
       - ./data/silver:/data/silver
       - ./data/gold:/data/gold
       - pipcache:/tmp/pipcache
