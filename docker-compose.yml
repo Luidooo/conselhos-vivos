@@ -232,6 +232,8 @@ services:
     working_dir: /app
     environment:
       PYTHONPATH: /app/src:/tmp/site
+      DAGSTER_HOME: /data/dagster
+      DADOS_ABERTOS_OUTPUT_DIR: /data/bronze/dados-abertos
       PGHOST: db
       PGUSER: ${POSTGRES_USER}
       PGPASSWORD: ${POSTGRES_PASSWORD}
@@ -243,13 +245,20 @@ services:
     volumes:
       - ./src:/app/src:ro
       - ./dbt:/app/dbt
+      - ./docs:/app/docs
+      - ./data/bronze:/data/bronze
+      - ./data/dagster:/data/dagster
+      - ./dagster:/app/dagster:ro
       - ./data/silver:/data/silver
       - ./data/gold:/data/gold
       - pipcache:/tmp/pipcache
+    ports:
+      - "127.0.0.1:3000:3000"
     depends_on:
       db:
         condition: service_healthy
-    entrypoint: ["sh", "-c", "pip install -q --disable-pip-version-check --root-user-action=ignore --no-warn-script-location --target /tmp/site -r /app/src/orquestracao/requirements.txt && export PATH=/tmp/site/bin:$$PATH && \"$$@\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data /app/dbt; exit $$rc", "sh"]
+    command: ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000", "-m", "orquestracao"]
+    entrypoint: ["sh", "-c", "cp /app/dagster/dagster.yaml /data/dagster/dagster.yaml && pip install -q --disable-pip-version-check --root-user-action=ignore --no-warn-script-location --target /tmp/site -r /app/src/orquestracao/requirements.txt && export PATH=/tmp/site/bin:$$PATH && \"$$@\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data /app/dbt; exit $$rc", "sh"]
 
 # servers.json e pgpass gerados a partir do .env: o pgAdmin já abre conectado no banco.
 # O servers.json só é importado na 1ª subida do volume `pgadmin`; se mudar
