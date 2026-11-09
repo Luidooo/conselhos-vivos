@@ -18,9 +18,56 @@ models:
       - name: inicio_nao_verificado
         description: "Verdadeiro quando o OLTP não tem a data de início do nome (ADR 0004, ponto 4). Nesse caso valido_de é 0001-01-01, um limite aberto, não uma data real."
 
+  - name: fct_ato
+    description: >
+      Fato. Granularidade: uma linha por matéria publicada (a versão mais recente) de um conselho do
+      escopo da dim_conselho (ADR 0010), ligada ao nome que o conselho tinha na data da publicação.
+      nome_aproximado é verdadeiro quando a data cai fora da vigência do nome escolhido: antes do
+      primeiro nome (fica com o mais antigo) ou depois do fim do último (fica com o último).
+    columns:
+      - name: ato_id
+        data_tests: [unique, not_null]
+      - name: materia
+        data_tests: [unique, not_null]
+      - name: conselho_sk
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_conselho')
+                field: conselho_sk
+      - name: tipologia_sigla
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['99', 'AUTO', 'DEF', 'FISC', 'GEST', 'IP', 'SEM']
+
 seeds:
   - name: conselhos_excluidos
     description: "Órgãos com \"Conselho\" no nome que não são colegiados de participação social, fora da dimensão (ADR 0010, ponto 3). Chave: o nome."
     columns:
       - name: nome
         data_tests: [unique, not_null]
+
+unit_tests:
+  - name: fct_ato_casa_o_nome_da_data
+    description: "Dentro da vigência, antes do primeiro nome, depois da extinção e órgão fora do escopo."
+    model: fct_ato
+    given:
+      - input: ref('stg_atos')
+        rows:
+          - {ato_id: 1, materia: "DOU:a", origem: DOU, data_publicacao: 2005-06-01, mes: 2005-06-01, orgao_id: 1, tipologia_sigla: DEF, revisor_tipo: HUMANO}
+          - {ato_id: 2, materia: "DOU:b", origem: DOU, data_publicacao: 1999-01-01, mes: 1999-01-01, orgao_id: 1, tipologia_sigla: null, revisor_tipo: null}
+          - {ato_id: 3, materia: "DOU:c", origem: DOU, data_publicacao: 2012-03-01, mes: 2012-03-01, orgao_id: 1, tipologia_sigla: GEST, revisor_tipo: HUMANO}
+          - {ato_id: 4, materia: "DOU:d", origem: DOU, data_publicacao: 2016-01-01, mes: 2016-01-01, orgao_id: 1, tipologia_sigla: GEST, revisor_tipo: HUMANO}
+          - {ato_id: 5, materia: "DOU:e", origem: DOU, data_publicacao: 2016-01-01, mes: 2016-01-01, orgao_id: 2, tipologia_sigla: GEST, revisor_tipo: HUMANO}
+      - input: ref('dim_conselho')
+        rows:
+          - {conselho_sk: 10, orgao_id: 1, valido_de: 2000-01-01, valido_ate: 2009-12-31}
+          - {conselho_sk: 11, orgao_id: 1, valido_de: 2010-01-01, valido_ate: 2014-12-31}
+    expect:
+      rows:
+        - {ato_id: 1, conselho_sk: 10, nome_aproximado: false, tipologia_sigla: DEF}
+        - {ato_id: 2, conselho_sk: 10, nome_aproximado: true, tipologia_sigla: SEM}
+        - {ato_id: 3, conselho_sk: 11, nome_aproximado: false, tipologia_sigla: GEST}
+        - {ato_id: 4, conselho_sk: 11, nome_aproximado: true, tipologia_sigla: GEST}
