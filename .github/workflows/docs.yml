@@ -31,7 +31,16 @@ jobs:
           cache-dependency-path: site/package-lock.json
       - run: npm ci
         working-directory: site
-      - run: npm run build
+      # O VitePress termina com sucesso mesmo quando uma página quebra na renderização
+      # (ex.: {{ }} em código inline vira interpolação do Vue): o erro só aparece no log.
+      - run: |
+          set -o pipefail
+          npm run build 2>&1 | tee build.log
+          if grep -E '^[A-Za-z]*Error:' build.log; then
+            echo "::error::uma página quebrou na renderização (veja o erro acima)"
+            exit 1
+          fi
+        shell: bash
         working-directory: site
       - if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
