@@ -818,7 +818,7 @@ git add dbt && git diff --cached --stat
 ### Tarefa 6: orquestração com Dagster, retry e backfill
 
 **Arquivos:**
-- Criar: `src/orquestracao/__init__.py`, `scripts/demo_retry.sh`, `scripts/demo_backfill.sh`, `scripts/eventos_do_run.sh`
+- Criar: `src/orquestracao/__init__.py`, `dagster/dagster.yaml`, `scripts/demo_retry.sh`, `scripts/demo_backfill.sh`, `scripts/eventos_do_run.sh`
 - Modificar: `Makefile` (alvos `orquestrador`, `demo-retry`, `demo-backfill`), `docker-compose.yml` (o Dagster no serviço `orquestrador`)
 
 **Interfaces:**
@@ -839,7 +839,21 @@ No serviço `orquestrador` do `docker-compose.yml`, acrescente estas linhas às 
       - ./docs:/app/docs
       - ./data/bronze:/data/bronze
       - ./data/dagster:/data/dagster
+      - ./dagster:/app/dagster:ro
     command: ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000", "-m", "orquestracao"]
+```
+
+O `data/dagster` não é versionado, então a configuração da instância fica em `dagster/dagster.yaml`. A pasta é montada em `/app/dagster`, e o entrypoint do serviço copia o arquivo para o `DAGSTER_HOME` antes de tudo: troque o início do `entrypoint` por `"sh", "-c", "cp /app/dagster/dagster.yaml /data/dagster/dagster.yaml && pip install ...`. Montar o arquivo direto em `/data/dagster/dagster.yaml` falha no Docker do Mac quando o arquivo ainda não existe no host, porque fica dentro de outro bind mount. Ela limita a um run por vez, porque a silver (Delta) e a gold (DuckDB, um escritor só) não aguentam runs em paralelo:
+
+```yaml
+# Instância do Dagster da E3. O serviço orquestrador copia este arquivo para /data/dagster (o DAGSTER_HOME) ao iniciar.
+# Um run por vez: a silver (Delta) e a gold (DuckDB, um escritor só) não aguentam runs em paralelo,
+# e um backfill pela interface dispara as partições ao mesmo tempo. A fila precisa do daemon, que o dagster dev sobe.
+run_coordinator:
+  module: dagster.core.run_coordinator
+  class: QueuedRunCoordinator
+  config:
+    max_concurrent_runs: 1
 ```
 
 No alvo `gold` do `Makefile`, troque `mkdir -p data/gold` por `mkdir -p data/gold data/dagster`, porque o volume agora existe nesse serviço.
@@ -893,7 +907,7 @@ def silver_atos(context: dg.AssetExecutionContext) -> None:
     _roda(context, "python", "-m", "lake", "/data/silver/atos")
 
 
-@dbt_assets(manifest=DBT.manifest_path, partitions_def=MENSAL)
+@dbt_assets(manifest=DBT.manifest_path, partitions_def=MENSAL, retry_policy=RETRY)
 def gold(context: dg.AssetExecutionContext, dbt: DbtCliResource):
     yield from dbt.cli(["build"], context=context).stream()
 
@@ -992,7 +1006,8 @@ while [[ "$mes" < "$ate" || "$mes" == "$ate" ]]; do
   log=$(DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T orquestrador \
     dagster asset materialize -m orquestracao --select '*' --partition "$mes-01" 2>&1) || { tail -30 <<<"$log"; exit 1; }
   # O run id está em toda linha de evento da saída: "... - __ASSET_JOB - <run id> - ...".
-  run=$(grep -m1 -oE '__ASSET_JOB - [0-9a-f-]{36}' <<<"$log" | cut -d' ' -f3)
+  run=$(grep -m1 -oE '__ASSET_JOB - [0-9a-f-]{36}' <<<"$log" | cut -d' ' -f3) \
+    || { echo "FALHOU: sem run id na saída da partição $mes-01"; tail -30 <<<"$log"; exit 1; }
   echo "==> partição $mes-01, run $run" | tee -a "$saida"
   bash scripts/eventos_do_run.sh "$run" | tee -a "$saida"
   mes=$(date -j -v+1m -f "%Y-%m-%d" "$mes-01" +%Y-%m 2>/dev/null || date -d "$mes-01 +1 month" +%Y-%m)
@@ -1007,7 +1022,7 @@ Rode com três meses. O bronze já tem agosto e setembro, então só julho é ba
 make demo-backfill DE=2026-07 ATE=2026-09
 ```
 
-Rode pelo script, não pela interface: um backfill pela interface dispara as partições em paralelo, e a silver (Delta) e a gold (DuckDB, um escritor só) não aguentam isso. Os eventos de cada passo não aparecem na saída do `dagster asset materialize`: cada passo roda noutro processo. Os scripts leem o log de eventos do run (`data/dagster/history/runs/<run>.db`, com `sqlite3`) e o resumo do `persist` nos compute logs. Nesse log, o fim do run se chama `PIPELINE_SUCCESS`; os scripts mostram como `RUN_SUCCESS`.
+Rode pelo script, não pela interface: um backfill pela interface dispara as partições em paralelo, e a silver (Delta) e a gold (DuckDB, um escritor só) não aguentam isso. O `dagster/dagster.yaml` do Passo 0 põe esses runs numa fila, um por vez, mas a demonstração continua pelo script, que grava a prova. Os eventos de cada passo não aparecem na saída do `dagster asset materialize`: cada passo roda noutro processo. Os scripts leem o log de eventos do run (`data/dagster/history/runs/<run>.db`, com `sqlite3`) e o resumo do `persist` nos compute logs. Nesse log, o fim do run se chama `PIPELINE_SUCCESS`; os scripts mostram como `RUN_SUCCESS`.
 
 Esperado: `RUN_SUCCESS` nas três partições, e julho, agosto e setembro na contagem final. Rodar de novo não duplica nada: o persist grava `inalteradas`. Essa segunda rodada também vai para o ADR. Cada execução grava um arquivo novo, com data e hora no nome, então nenhuma prova versionada é sobrescrita.
 
@@ -1031,7 +1046,7 @@ saida=docs/adr/medicoes/0009-gold/retry-$MES-$(date -u +%Y%m%dT%H%M%SZ).txt
 test -f dbt/target/manifest.json || { echo "falta o manifesto do dbt: rode make gold antes"; exit 1; }
 command -v sqlite3 >/dev/null || { echo "falta o sqlite3, que lê o log de eventos do Dagster"; exit 1; }
 marca=$(mktemp)
-trap 'docker compose start db >/dev/null; rm -f "$marca"' EXIT   # o banco volta mesmo se o script cair
+trap 'docker compose start db >/dev/null; rm -f "$marca" "$saida.tmp"' EXIT   # o banco volta mesmo se o script cair
 docker compose stop db
 DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T --no-deps orquestrador \
   dagster asset materialize -m orquestracao --select atos_do_mes --partition "$MES-01" > "$saida.log" 2>&1 &
@@ -1043,7 +1058,7 @@ pid=$!
 run=""
 for _ in $(seq 180); do
   if [[ -z "$run" ]]; then
-    db=$(find data/dagster/history/runs -name '*.db' -newer "$marca" | head -1)
+    db=$(find data/dagster/history/runs -name '*.db' ! -name index.db -newer "$marca" | head -1)
     [[ -n "$db" ]] && run=$(basename "$db" .db)
   fi
   [[ -n "$run" ]] && bash scripts/eventos_do_run.sh "$run" 2>/dev/null | grep -q STEP_UP_FOR_RETRY && break
@@ -1052,8 +1067,10 @@ done
 docker compose start db
 rc=0; wait "$pid" || rc=$?   # sem o || o set -e encerraria o script antes da conferência
 [[ -n "$run" ]] || { echo "FALHOU: o run não começou"; tail -20 "$saida.log"; exit 1; }
+# Grava num temporário e só move no fim: uma falha no meio não deixa prova parcial em docs/adr/medicoes/.
 { echo "# make demo-retry, mês $MES, run $run, banco parado antes da primeira tentativa (horários em UTC)"
-  bash scripts/eventos_do_run.sh "$run"; } > "$saida"
+  bash scripts/eventos_do_run.sh "$run"; } > "$saida.tmp"
+mv "$saida.tmp" "$saida"
 rm -f "$saida.log"
 cat "$saida"
 grep -q STEP_UP_FOR_RETRY "$saida" || { echo "FALHOU: não houve retry"; exit 1; }
@@ -1067,12 +1084,12 @@ make demo-retry
 
 Esperado: `STEP_UP_FOR_RETRY`, depois `STEP_SUCCESS` e `RUN_SUCCESS`. O script confere que o retry aconteceu e que recuperou.
 
-Resultado em 08/11/2026: `STEP_START`, `STEP_UP_FOR_RETRY`, `STEP_RESTARTED`, `STEP_SUCCESS` e `RUN_SUCCESS`, em 57 s. A primeira tentativa caiu no `persist`, com `Name or service not known` para o host `db`.
+Resultado em 08/11/2026: `STEP_START`, `STEP_UP_FOR_RETRY`, `STEP_RESTARTED`, `STEP_SUCCESS` e `RUN_SUCCESS`. O run levou 36 s, do `STEP_START` ao `RUN_SUCCESS` (23:14:01 a 23:14:37 UTC, em `retry-2026-08-20261108T231400Z.txt`); o `make demo-retry` inteiro levou 57 s, porque inclui o `pip install` do container. A primeira tentativa caiu no `persist`, com `Name or service not known` para o host `db`.
 
 - [ ] **Passo 6: stage**
 
 ```bash
-git add src/orquestracao scripts/demo_retry.sh scripts/demo_backfill.sh Makefile docker-compose.yml docs/adr/medicoes && git diff --cached --stat
+git add src/orquestracao dagster/dagster.yaml scripts/demo_retry.sh scripts/demo_backfill.sh Makefile docker-compose.yml docs/adr/medicoes && git diff --cached --stat
 ```
 
 ---

@@ -42,7 +42,7 @@ def silver_atos(context: dg.AssetExecutionContext) -> None:
     _roda(context, "python", "-m", "lake", "/data/silver/atos")
 
 
-@dbt_assets(manifest=DBT.manifest_path, partitions_def=MENSAL)
+@dbt_assets(manifest=DBT.manifest_path, partitions_def=MENSAL, retry_policy=RETRY)
 def gold(context: dg.AssetExecutionContext, dbt: DbtCliResource):
     yield from dbt.cli(["build"], context=context).stream()
 

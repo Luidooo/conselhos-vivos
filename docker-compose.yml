@@ -248,6 +248,7 @@ services:
       - ./docs:/app/docs
       - ./data/bronze:/data/bronze
       - ./data/dagster:/data/dagster
+      - ./dagster:/app/dagster:ro
       - ./data/silver:/data/silver
       - ./data/gold:/data/gold
       - pipcache:/tmp/pipcache
@@ -257,7 +258,7 @@ services:
       db:
         condition: service_healthy
     command: ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000", "-m", "orquestracao"]
-    entrypoint: ["sh", "-c", "pip install -q --disable-pip-version-check --root-user-action=ignore --no-warn-script-location --target /tmp/site -r /app/src/orquestracao/requirements.txt && export PATH=/tmp/site/bin:$$PATH && \"$$@\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data /app/dbt; exit $$rc", "sh"]
+    entrypoint: ["sh", "-c", "cp /app/dagster/dagster.yaml /data/dagster/dagster.yaml && pip install -q --disable-pip-version-check --root-user-action=ignore --no-warn-script-location --target /tmp/site -r /app/src/orquestracao/requirements.txt && export PATH=/tmp/site/bin:$$PATH && \"$$@\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data /app/dbt; exit $$rc", "sh"]
 
 # servers.json e pgpass gerados a partir do .env: o pgAdmin já abre conectado no banco.
 # O servers.json só é importado na 1ª subida do volume `pgadmin`; se mudar

@@ -11,7 +11,7 @@ saida=docs/adr/medicoes/0009-gold/retry-$MES-$(date -u +%Y%m%dT%H%M%SZ).txt
 test -f dbt/target/manifest.json || { echo "falta o manifesto do dbt: rode make gold antes"; exit 1; }
 command -v sqlite3 >/dev/null || { echo "falta o sqlite3, que lê o log de eventos do Dagster"; exit 1; }
 marca=$(mktemp)
-trap 'docker compose start db >/dev/null; rm -f "$marca"' EXIT   # o banco volta mesmo se o script cair
+trap 'docker compose start db >/dev/null; rm -f "$marca" "$saida.tmp"' EXIT   # o banco volta mesmo se o script cair
 docker compose stop db
 DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T --no-deps orquestrador \
   dagster asset materialize -m orquestracao --select atos_do_mes --partition "$MES-01" > "$saida.log" 2>&1 &
@@ -23,7 +23,7 @@ pid=$!
 run=""
 for _ in $(seq 180); do
   if [[ -z "$run" ]]; then
-    db=$(find data/dagster/history/runs -name '*.db' -newer "$marca" | head -1)
+    db=$(find data/dagster/history/runs -name '*.db' ! -name index.db -newer "$marca" | head -1)
     [[ -n "$db" ]] && run=$(basename "$db" .db)
   fi
   [[ -n "$run" ]] && bash scripts/eventos_do_run.sh "$run" 2>/dev/null | grep -q STEP_UP_FOR_RETRY && break
@@ -32,8 +32,10 @@ done
 docker compose start db
 rc=0; wait "$pid" || rc=$?   # sem o || o set -e encerraria o script antes da conferência
 [[ -n "$run" ]] || { echo "FALHOU: o run não começou"; tail -20 "$saida.log"; exit 1; }
+# Grava num temporário e só move no fim: uma falha no meio não deixa prova parcial em docs/adr/medicoes/.
 { echo "# make demo-retry, mês $MES, run $run, banco parado antes da primeira tentativa (horários em UTC)"
-  bash scripts/eventos_do_run.sh "$run"; } > "$saida"
+  bash scripts/eventos_do_run.sh "$run"; } > "$saida.tmp"
+mv "$saida.tmp" "$saida"
 rm -f "$saida.log"
 cat "$saida"
 grep -q STEP_UP_FOR_RETRY "$saida" || { echo "FALHOU: não houve retry"; exit 1; }

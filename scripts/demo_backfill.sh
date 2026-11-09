@@ -16,7 +16,8 @@ while [[ "$mes" < "$ate" || "$mes" == "$ate" ]]; do
   log=$(DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T orquestrador \
     dagster asset materialize -m orquestracao --select '*' --partition "$mes-01" 2>&1) || { tail -30 <<<"$log"; exit 1; }
   # O run id está em toda linha de evento da saída: "... - __ASSET_JOB - <run id> - ...".
-  run=$(grep -m1 -oE '__ASSET_JOB - [0-9a-f-]{36}' <<<"$log" | cut -d' ' -f3)
+  run=$(grep -m1 -oE '__ASSET_JOB - [0-9a-f-]{36}' <<<"$log" | cut -d' ' -f3) \
+    || { echo "FALHOU: sem run id na saída da partição $mes-01"; tail -30 <<<"$log"; exit 1; }
   echo "==> partição $mes-01, run $run" | tee -a "$saida"
   bash scripts/eventos_do_run.sh "$run" | tee -a "$saida"
   mes=$(date -j -v+1m -f "%Y-%m-%d" "$mes-01" +%Y-%m 2>/dev/null || date -d "$mes-01 +1 month" +%Y-%m)
