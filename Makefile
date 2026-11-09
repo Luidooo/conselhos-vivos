@@ -121,7 +121,9 @@ test-py-dou: ## testes do ingestor em Python que não usam banco, no serviço ca
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/dou
 
 test-orquestracao: ## testes do orquestrador (retry e falha de dado, regra do mês da agenda), no serviço orquestrador, sem rede nem banco
-	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T --no-deps orquestrador python -m unittest discover -s tests/orquestracao
+	@# Importar orquestracao.comandos carrega o __init__ do pacote, que lê o manifesto do dbt: o dbt parse gera
+	@# o manifesto num clone limpo, sem conectar no banco.
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T --no-deps orquestrador sh -c 'dbt parse --project-dir /app/dbt --quiet && python -m unittest discover -s tests/orquestracao'
 
 test-db-py: .env ## testes do ingestor em Python que gravam no banco, em transação desfeita (banco no ar e migrado)
 	docker compose --progress quiet run --rm -T dou-db-test

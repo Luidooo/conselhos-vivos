@@ -2,7 +2,8 @@
 
 Falha de dado (código 3 com `de_dado`) não usa o retry; o resto usa. A causa de toda falha leva a última
 linha do stderr do comando. Os comandos aqui são `sh -c` de mentira: sem rede, sem banco, sem dbt.
-Roda no serviço orquestrador, que tem o Dagster: make test-orquestracao
+Roda no serviço orquestrador, que tem o Dagster, depois de um dbt parse que gera o manifesto que o pacote
+lê ao ser importado: make test-orquestracao
 """
 
 import unittest

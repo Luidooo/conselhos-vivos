@@ -1,5 +1,6 @@
-"""O que os assets rodam e a regra de qual mês a agenda carrega. Fica fora do __init__ para os testes
-importarem sem o manifesto do dbt."""
+"""O que os assets rodam e a regra de qual mês a agenda carrega, separados das definições do Dagster para
+serem testados sozinhos. Importar este módulo ainda carrega o __init__ do pacote, que lê o manifesto do dbt:
+por isso o make test-orquestracao roda um dbt parse antes."""
 
 import subprocess
 import sys
