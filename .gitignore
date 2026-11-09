@@ -1,4 +1,4 @@
-# segredos — NUNCA comitar credenciais do INLABS
+# segredos — NUNCA comitar credenciais
 .env
 *.env
 !.env.example
