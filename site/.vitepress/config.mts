@@ -122,6 +122,7 @@ export default withMermaid(defineConfig({
           { text: '0005 · Ingestão no OLTP e CDC vs opção nula', link: '/docs/adr/0005-ingerir-dou-no-oltp-e-propagar-ao-delta-via-cdc' },
           { text: '0006 · Camada analítica em Delta', link: '/docs/adr/0006-armazenar-a-camada-analitica-em-tabelas-delta' },
           { text: '0007 · CDC por slot lógico', link: '/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica' },
+          { text: '0008 · Pipeline em Python, sem INLABS', link: '/docs/adr/0008-unificar-o-pipeline-em-python' },
         ],
       },
       {
@@ -139,6 +140,7 @@ export default withMermaid(defineConfig({
           { text: 'Diário · semana 8 (29/09)', link: '/docs/diario/2026-09-29' },
           { text: 'Diário · semana 9 (06/10)', link: '/docs/diario/2026-10-06' },
           { text: 'Diário · semana 10 (13/10)', link: '/docs/diario/2026-10-13' },
+          { text: 'Diário · semana 14 (10/11)', link: '/docs/diario/2026-11-10' },
           { text: 'Uso de IA', link: '/AI-USAGE' },
         ],
       },

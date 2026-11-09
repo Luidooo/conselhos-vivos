@@ -9,7 +9,7 @@
 
 ## Contexto
 
-O pipeline nasceu com duas linguagens: Go no ingestor (`src/ingestor/`) e Python em planilha, conselhos e lake. A E3 traz dbt e orquestração, também em Python. A chave do órgão ([ADR 0004](0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md)) existia nas duas linguagens, com um teste de paridade entre elas.
+O pipeline nasceu com duas linguagens: Go no ingestor e Python em planilha, conselhos e lake. A E3 traz dbt e orquestração, também em Python. A chave do órgão ([ADR 0004](0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md)) existia nas duas linguagens, com um teste de paridade entre elas.
 
 As fatias F1 a F3 (#53, #54, #55) já levaram para `src/dou/` tudo o que roda de verdade: `fetch-mensal`, `extract` e `persist`. O que restava em Go era:
 
@@ -56,7 +56,7 @@ Os números vêm das entradas da migração em [`AI-USAGE.md`](../../AI-USAGE.md
 
 ## Decisão
 
-1. **O pipeline fica em Python.** O ingestor é o `src/dou/`, e o `src/ingestor/` sai do repositório.
+1. **O pipeline fica em Python.** O ingestor é o `src/dou/`, e o código em Go sai do repositório.
 2. **O cliente do INLABS é descontinuado sem porte** (opção a, proposta). Portá-lo produziria código que ninguém consegue exercitar.
 3. **O contrato do bronze diário fica.** `data/bronze/inlabs/AAAA-MM-DD-DO1[E].zip` baixado à mão continua sendo lido por `make extract DATA=` e `make persist DATA=`. Os marcadores `.sem-edicao` e `.falhou` continuam respeitados, e um `.falhou` continua fazendo esses comandos saírem com erro. O `src/dou/bronze.py` mantém o código e os testes dos marcadores.
 4. **`make vet-py` substitui `make vet-go` no CI:** `python -W error -m compileall -q src tests`, só com a biblioteca padrão.
