@@ -35,7 +35,8 @@ As restrições vêm das entregas anteriores. Tudo roda em containers na máquin
 2. **Escopo da dimensão é o ADR 0010:** órgão com nome começando com "Conselho", menos a seed de exclusões. Atos de órgãos fora do escopo ficam fora do fato, contados em `fct_ato-fora-do-escopo.txt`.
 3. **dbt em camadas** (staging em view, marts em tabela, `freshness_vitalidade` em view para o `current_date` valer na leitura), com testes de schema, relacionamento, volume, distribuição, singulares e unitários; `make gold` roda tudo.
 4. **Dagster com um run por vez** (`dagster/dagster.yaml`, fila com `max_concurrent_runs: 1`), porque a silver (Delta) e a gold (DuckDB, um escritor) não aguentam runs paralelos.
-5. **SLA declarado:** o mês M está na gold até o dia 20 do mês M+1. A agenda tenta do dia 15 ao 28; `sla_vitalidade` avisa sem travar o build.
+5. **Enriquecimento pelas menções de outros órgãos** ([plano](../planos/2026-11-09-mencoes-de-terceiros.md)). Um terceiro fato, `fct_mencao`, guarda as matérias da Seção 1 publicadas por **outro** órgão que têm o conselho como assunto: uma homologação, a renovação da composição, o regimento. O nome é procurado só no título, na ementa e no começo do texto. A ingestão é automática, no asset `silver/mencoes` do mesmo job mensal, e lê o ZIP que já está no bronze. A `mart_vitalidade` mostra as menções ao lado da situação, como segundo sinal, **sem mudar a regra**, que segue para a squad decidir.
+6. **SLA declarado:** o mês M está na gold até o dia 20 do mês M+1. A agenda tenta do dia 15 ao 28; `sla_vitalidade` avisa sem travar o build.
 
 ## Medição e verificação
 
@@ -48,8 +49,20 @@ Tudo em `docs/adr/medicoes/0009-gold/`, gerado por script ou pelos alvos do Make
 - **Orquestração:** grafo da ingestão à gold (`grafo-dagster.jpg`), agenda ligada às 6h de Brasília (`agenda-dagster.jpg`), retry com causa (`retry-2026-08-20261108T231400Z.txt`: primeira tentativa cai com o banco parado, `STEP_UP_FOR_RETRY`, recupera em 36 s), backfill de três meses idempotente (`backfill-*.txt`: segunda rodada com `gravadas=0`; os dois arquivos de 08/11 foram reconstruídos dos logs dos runs, com cabeçalho dizendo isso, e o de 09/11 saiu inteiro do script), e as falhas separadas por tipo (`falhas-*.txt`: mês não publicado e ZIP inválido sem retry; lake e dbt com retry e a causa real; teste do dbt com o nome na prova).
 - **SLA (`sla-vitalidade-avisa.txt`):** com setembro tirado, `sla_vitalidade` dá `WARN 1` e o build termina com `ERROR=0`.
 - **Plano de execução (`explain-antes.txt`, `resultado.md`, #74):** a extração do lake mede 22,8 ms e 1.429 buffers; o nó mais caro é o `Seq Scan` em `classificacao` (933 buffers, 65%). O índice candidato não teve ganho neste volume e **não entrou**; remedir com o backfill histórico.
+- **Menções de outros órgãos (`mencoes-janela.txt`, `mencoes-carga.txt`):**
+  - nos quatro ZIPs do bronze, a janela curta acha 136 matérias, contra 471 no texto inteiro, que sobra de citações de passagem;
+  - a silver grava 139 menções, e a segunda carga não grava nada;
+  - **10 dos 33 conselhos sem ato próprio no período aparecem citados por outros órgãos.** O Conselho Nacional de Educação, por exemplo, tem 28 menções, a maioria homologações do MEC.
 - **Painel (`painel.png`):** título com a pergunta da E1, período coberto, SLA, situação por conselho com a marca da pesquisadora, atos por mês e tipologias; `make gold` passa com o painel aberto.
 - **Catálogo:** `make gold-docs` gera `dbt/target/index.html` e `catalog.json`; publicar é da E4.
+
+### Bases avaliadas para o enriquecimento e deixadas para depois
+
+- **SIORG completo:** a vinculação ministerial e a natureza jurídica, que dariam uma segunda variação lenta (a troca de ministério). A API pública já é usada para o código (68 dos 82 órgãos), mas o recorte guardado não tem o órgão superior, e conferir o campo pede baixar o cadastro completo.
+- **DOU Seção 2:** as designações e dispensas de conselheiros, o sinal de vida mais direto. A fonte e o leitor são os mesmos; falta conferir o formato e baixar um ZIP a mais por mês.
+- **Brasil Participativo:** a plataforma lista 111 instâncias com identificador estável, mas a composição, a agenda e os documentos dos conselhos conferidos estavam vazios em 09/11/2026.
+- **IBGE (MUNIC e ESTADIC):** medem os conselhos municipais e estaduais, se existem e se se reuniram no ano. É uma pergunta de capilaridade, com o município como unidade, não a pergunta da E1.
+- **LexML:** a norma de criação e as alterações de cada conselho, para os anos sem DOU; a API não foi conferida.
 
 ## Consequências
 
@@ -67,4 +80,5 @@ Tudo em `docs/adr/medicoes/0009-gold/`, gerado por script ou pelos alvos do Make
 - **Uma segunda fonte** (por exemplo, o Brasil Participativo) reabre a discussão do Data Vault e do incremental (SQLMesh).
 - **`dbt build` acima de cinco minutos**, por exemplo com o backfill de 2003 a 2020, pede partição de verdade na silver e na gold e o fim do recálculo completo.
 - **A pesquisadora definir o limite de meses** troca o `meses_ativo` e o texto do painel.
+- **A plataforma Brasil Participativo publicar a agenda e a composição** dos conselhos, ou a Seção 2 entrar no bronze: um terceiro sinal de vida, independente do DOU de cada conselho.
 - **A squad aceitar o ADR 0010** (ou mudá-lo) muda o denominador de tudo que conta conselhos.

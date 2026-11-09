@@ -675,3 +675,26 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   Falta a conferência num clone limpo, antes da tag.
 - **Quem revisou:** pendente — a Luiza autorizou os commits direto no `main`; a squad revisa o ADR 0009.
 
+### 2026-11-09 — Enriquecimento: menções aos conselhos em atos de outros órgãos
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `src/mencoes/`, `tests/mencoes/`, `src/orquestracao/__init__.py` (asset `silver/mencoes`), `dbt/models/` (`stg_mencoes`, `fct_mencao`, colunas novas na `mart_vitalidade`), `src/painel/app.py`, `tests/painel/test_app.py`, `Makefile` (`mencoes`, `test-mencoes`), `docs/planos/2026-11-09-mencoes-de-terceiros.md`, `docs/adr/medicoes/0009-gold/mencoes-*.txt`, ADR 0009, página da E3, README
+- **O que foi pedido:** um enriquecimento cruzando com outras bases, na E3 e com ingestão automática; depois, planejar e implementar em tarefas pequenas. A Luiza pediu também as regras de negócio por extenso no painel.
+- **O que foi aproveitado:** tudo, em sete commits, um por tarefa do plano.
+
+  **Decidido pela IA**, a revisar:
+  - entre as bases levantadas (SIORG completo, Seção 2, Brasil Participativo, IBGE, LexML, marcos legais), a escolha das menções no próprio DOU, por serem automáticas e sem download novo;
+  - a janela curta (título, ementa e começo do texto), escolhida pela medição;
+  - o descarte da matéria do próprio conselho em qualquer nível da hierarquia, achado na medição;
+  - as menções como segundo sinal, que não muda a situação;
+  - o texto das regras no painel.
+- **Como foi verificado:**
+  - testes da extração e da gravação (16, no `make test-mencoes`) e um teste novo no painel (12 no total);
+  - a segunda carga na silver não grava nada (139 menções);
+  - `make gold` com 77 de 77; o teste da janela da mart falha sem o filtro de datas;
+  - `dagster definitions validate`, com `silver/mencoes` no grafo;
+  - o painel visto no navegador, com a coluna e o bloco de regras.
+
+  As bases avaliadas foram conferidas por agentes de leitura da web, sem download: a documentação do SIORG deu 404, e os conselhos conferidos no Brasil Participativo estavam vazios.
+- **Quem revisou:** pendente — a Luiza autorizou os commits direto no `main`; a squad revisa o ADR 0009.
+

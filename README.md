@@ -243,6 +243,7 @@ A gold é um DuckDB em `data/gold/conselhos.duckdb`, gerado pelo dbt a partir da
 
 ```bash
 make lake        # OLTP → silver (Delta)
+make mencoes     # menções aos conselhos em atos de outros órgãos, dos ZIPs já no bronze → silver
 make gold        # silver + OLTP → gold, com todos os testes do dbt
 make gold-docs   # catálogo e linhagem do dbt em dbt/target/
 make painel      # o painel em http://127.0.0.1:8501

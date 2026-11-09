@@ -30,6 +30,7 @@ Pré-requisitos: Docker com Compose v2, `make` e `sqlite3`. O backfill baixa os 
 | **Resposta à pergunta** | `mart_vitalidade` · `make painel` | 26 ativos, 33 sem ato no período coberto, 59 conselhos |
 | **Testes de dados** | `dbt/models/*/*.yml` · `dbt/tests/` | `make gold`: 63 de 63 em `PASS` |
 | **Orquestração** com retry, backfill e agenda | `src/orquestracao/` · `dagster/dagster.yaml` | `make orquestrador`, `make demo-retry`, `make demo-backfill`, `make demo-falhas` |
+| **Enriquecimento:** menções de outros órgãos | `src/mencoes/` · `fct_mencao` · asset `silver/mencoes` | `make mencoes`; 10 dos 33 conselhos sem ato próprio são citados por outros órgãos |
 | **Freshness e SLA** | `freshness_vitalidade` · `dbt/tests/sla_vitalidade.sql` | o mês M até o dia 20 do mês M+1 |
 | **Plano de execução** | `docs/adr/medicoes/0009-gold/explain*` | `bash docs/adr/medicoes/0009-gold/explain.sh` |
 | **Catálogo** | `make gold-docs` | `dbt/target/index.html` (publicar é da E4) |
@@ -56,6 +57,8 @@ Cada item do [checklist da E3](https://unb-bd2.github.io/PlanoEnsino/projeto/e3/
 - **`fct_ato`:** uma linha por matéria publicada, na versão mais recente, ligada ao nome que o conselho tinha na data, pelo `asof join`. Um ato anterior ao primeiro nome fica com o mais antigo, marcado como aproximado.
 - **`fct_conselho_mes`:** conselho × mês, **com zeros**. É o mês sem ato que responde à pergunta.
 - **Granularidade medida:** 458 linhas na grão por matéria, 177 na mensal e 5.428 na diária hipotética, 30 vezes a mensal sem pergunta que a use.
+
+**Enriquecimento: menções de outros órgãos.** Um terceiro fato, `fct_mencao`, guarda as matérias publicadas por **outro** órgão que têm o conselho como assunto: a homologação de um parecer, a renovação da composição, o regimento. A ingestão é automática, no mesmo job mensal. Ela é um segundo sinal de vida, mostrado ao lado da situação: dos 33 conselhos sem ato próprio no período, 10 são citados por outros órgãos ([mencoes-carga.txt](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0009-gold/mencoes-carga.txt)). O SIORG completo, a Seção 2 do DOU, o Brasil Participativo e o IBGE foram avaliados e ficaram para depois; o ADR 0009 diz por quê.
 
 ## 2. Transformações em dbt, em camadas
 
@@ -104,7 +107,8 @@ O [ADR 0009](/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-d
 
 `make painel` abre em `127.0.0.1:8501`, só na máquina local. O título é a pergunta, e a primeira linha é a resposta: quantos conselhos estão ativos, em silêncio ou sem ato no período coberto. Abaixo vêm:
 
-- a situação de cada conselho, com a marca de participação social da pesquisadora;
+- a situação de cada conselho, com a marca de participação social da pesquisadora e as menções de outros órgãos;
+- as regras de negócio por extenso, num bloco "Como ler este painel";
 - os atos por mês;
 - o que cada conselho decide, por tipologia.
 
