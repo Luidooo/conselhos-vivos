@@ -746,3 +746,24 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - as páginas foram vistas no servidor local: a linhagem com os rótulos legíveis, o diagrama ER renderizado e a barra lateral com as entradas novas;
   - cada número e cada prova citados em "Gold e menções" foram conferidos contra os arquivos de `docs/adr/medicoes/0009-gold/`; duas afirmações que não batiam foram corrigidas antes do commit.
 - **Quem revisou:** pendente — a Luiza autorizou os commits direto no `main`.
+
+### 2026-11-09 — ADRs aceitos, CI do site e conferência num clone limpo
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:**
+  - `docs/adr/0001` a `0007`, `0009` e `0010`, e o `docs/adr/README.md`;
+  - `.github/workflows/docs.yml`;
+  - `docs/adr/medicoes/0009-gold/clone-limpo-20261109.txt` e as provas do backfill e do retry do clone;
+  - `site/entrega-e3.md`, `docs/diario/2026-11-10.md`.
+- **O que foi pedido:**
+  - aceitar os ADRs;
+  - fazer o CI falhar com `TypeError`;
+  - rodar a conferência num clone limpo com os ZIPs do bronze.
+- **O que foi aproveitado:**
+  - **ADRs:** o status "aceito" e a linha de decisão de 09/11 em cada ADR, com o "proposto" tirado das páginas.
+  - **CI:** o build do site falha quando o log tem uma linha que começa com um erro de JavaScript. O VitePress terminava com sucesso mesmo com uma página quebrada.
+  - **Clone limpo:** `make setup`, `make test`, `make demo-backfill DE=2026-07 ATE=2026-09`, `make gold` e `make demo-retry` rodaram num clone do `main` com um projeto compose próprio, sem download.
+- **Como foi verificado:**
+  - **CI:** a checagem foi rodada localmente nos dois sentidos. Com um `ref()` do dbt entre chaves duplas posto de volta, ela falha; com o site limpo, passa.
+  - **Clone limpo:** os cinco passos saíram com código 0, com 77 de 77 testes do dbt, 161, 96 e 132 atos de julho a setembro, e o retry recuperando com o banco parado. O log não tem "baixando", e a senha não aparece em forma de credencial.
+- **Quem revisou:** pendente — a Luiza autorizou os commits direto no `main`.

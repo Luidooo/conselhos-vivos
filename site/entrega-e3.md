@@ -20,6 +20,8 @@ make demo-retry                             # para o Postgres por ~1 min e mostr
 make painel                                 # a resposta em http://127.0.0.1:8501
 ```
 Pré-requisitos: Docker com Compose v2, `make` e `sqlite3`. O backfill baixa os ZIPs dos dados abertos (o de julho tem 555 MB).
+
+**Conferido em 09/11/2026** num clone limpo do `main`, com os ZIPs já baixados copiados para o bronze: os cinco passos passaram em 8 minutos, com 77 de 77 testes do dbt e o retry recuperando ([clone-limpo-20261109.txt](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0009-gold/clone-limpo-20261109.txt)).
 :::
 
 ## Entregáveis

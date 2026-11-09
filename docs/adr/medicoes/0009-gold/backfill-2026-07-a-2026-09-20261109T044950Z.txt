@@ -1,0 +1,38 @@
+# make demo-backfill DE=2026-07 ATE=2026-09, 2026-11-09 04:49:50 UTC, gerado por scripts/demo_backfill.sh
+==> partição 2026-07-01, run d9dc3614-d5e2-4516-ac73-20644ffa5197
+2026-11-09 04:50:13 STEP_START atos_do_mes
+2026-11-09 04:50:17 STEP_SUCCESS atos_do_mes
+2026-11-09 04:50:18 STEP_START silver__atos
+2026-11-09 04:50:18 STEP_START silver__mencoes
+2026-11-09 04:50:18 STEP_SUCCESS silver__atos
+2026-11-09 04:50:23 STEP_SUCCESS silver__mencoes
+2026-11-09 04:50:24 STEP_START gold
+2026-11-09 04:50:30 STEP_SUCCESS gold
+2026-11-09 04:50:31 RUN_SUCCESS
+persist: gravadas=161 versoes-novas=0 inalteradas=0 orgao-desconhecido=9278 repetidas=15 ignoradas=2244 falhou=0
+==> partição 2026-08-01, run ffb4df30-f453-4134-b74b-8446af6071d1
+2026-11-09 04:50:53 STEP_START atos_do_mes
+2026-11-09 04:50:58 STEP_SUCCESS atos_do_mes
+2026-11-09 04:50:59 STEP_START silver__atos
+2026-11-09 04:50:59 STEP_START silver__mencoes
+2026-11-09 04:50:59 STEP_SUCCESS silver__atos
+2026-11-09 04:51:04 STEP_SUCCESS silver__mencoes
+2026-11-09 04:51:05 STEP_START gold
+2026-11-09 04:51:12 STEP_SUCCESS gold
+2026-11-09 04:51:13 RUN_SUCCESS
+persist: gravadas=96 versoes-novas=0 inalteradas=0 orgao-desconhecido=8494 repetidas=0 ignoradas=120 falhou=0
+==> partição 2026-09-01, run e84980c3-627b-4a3d-92ac-f8f55787d706
+2026-11-09 04:51:35 STEP_START atos_do_mes
+2026-11-09 04:51:41 STEP_SUCCESS atos_do_mes
+2026-11-09 04:51:42 STEP_START silver__atos
+2026-11-09 04:51:42 STEP_START silver__mencoes
+2026-11-09 04:51:43 STEP_SUCCESS silver__atos
+2026-11-09 04:51:48 STEP_SUCCESS silver__mencoes
+2026-11-09 04:51:49 STEP_START gold
+2026-11-09 04:51:55 STEP_SUCCESS gold
+2026-11-09 04:51:56 RUN_SUCCESS
+persist: gravadas=132 versoes-novas=0 inalteradas=0 orgao-desconhecido=8794 repetidas=1 ignoradas=2019 falhou=0
+==> atos do DOU por mês depois do backfill
+2026-07-01|161
+2026-08-01|96
+2026-09-01|132

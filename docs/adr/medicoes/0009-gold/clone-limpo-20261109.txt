@@ -1,0 +1,63 @@
+# Conferência da E3 num clone limpo do main (#76), 2026-11-09, horários locais (UTC-3) nos marcadores ########.
+# Clone: git clone https://github.com/Luidooo/conselhos-vivos em ~/Developer/unb/conselhos-vivos-limpo, projeto compose próprio (volume de banco novo).
+# Sem download: os ZIPs de julho a setembro de 2026 foram copiados do bronze de trabalho para o bronze do clone antes do make setup.
+# Resumo extraído do log completo; as saídas integrais do backfill e do retry estão nos arquivos 20261109T044950Z e 20261109T045221Z desta pasta.
+
+######## parar o ambiente de trabalho (stop, sem apagar dados) · 01:45:53
+######## clone · 01:45:55
+######## bronze: ZIPs de julho a setembro copiados do ambiente de trabalho · 01:45:56
+######## make setup · 01:45:56
+######## make setup OK em 10s
+######## make test · 01:46:06
+Ran 46 tests in 4.078s
+OK
+Ran 9 tests in 0.335s
+OK
+Ran 12 tests in 0.846s
+OK
+Ran 16 tests in 0.054s
+OK
+OK
+OK
+Ran 21 tests in 0.500s
+OK
+Ran 28 tests in 0.358s
+OK
+Ran 4 tests in 0.009s
+OK
+OK
+==> [test_lake] OK: Camada analítica Delta Lake validada com sucesso (215 atos)!
+==> [test_atrasado] OK: ato de 2024 chegado hoje está no OLTP e em ano=2024 no Delta; reexecução não duplica
+==> [test_cdc] OK: reclassificação, simulação de queda com reprocessamento e restauração passaram com sucesso
+Ran 23 tests in 0.145s
+OK
+######## make test OK em 224s
+######## make demo-backfill DE=2026-07 ATE=2026-09 · 01:49:50
+==> partição 2026-07-01, run d9dc3614-d5e2-4516-ac73-20644ffa5197
+2026-11-09 04:50:31 RUN_SUCCESS
+persist: gravadas=161 versoes-novas=0 inalteradas=0 orgao-desconhecido=9278 repetidas=15 ignoradas=2244 falhou=0
+==> partição 2026-08-01, run ffb4df30-f453-4134-b74b-8446af6071d1
+2026-11-09 04:51:13 RUN_SUCCESS
+persist: gravadas=96 versoes-novas=0 inalteradas=0 orgao-desconhecido=8494 repetidas=0 ignoradas=120 falhou=0
+==> partição 2026-09-01, run e84980c3-627b-4a3d-92ac-f8f55787d706
+2026-11-09 04:51:56 RUN_SUCCESS
+persist: gravadas=132 versoes-novas=0 inalteradas=0 orgao-desconhecido=8794 repetidas=1 ignoradas=2019 falhou=0
+2026-07-01|161
+2026-08-01|96
+2026-09-01|132
+######## make demo-backfill DE=2026-07 ATE=2026-09 OK em 127s
+######## make gold · 01:51:57
+04:52:19  Done. PASS=77 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=77
+######## make gold OK em 24s
+######## make demo-retry · 01:52:21
+2026-11-09 04:52:41 STEP_UP_FOR_RETRY atos_do_mes | causa: dou persist saiu com 1: 2026-11-09 04:52:41,860 [ERROR] run aborted err=[Errno -2] Name or service not known
+2026-11-09 04:53:12 STEP_RESTARTED atos_do_mes
+2026-11-09 04:53:18 RUN_SUCCESS
+persist: gravadas=0 versoes-novas=0 inalteradas=96 orgao-desconhecido=8494 repetidas=0 ignoradas=120 falhou=0
+OK: a primeira tentativa caiu com o banco fora e o retry recuperou (rc=0)
+######## make demo-retry OK em 58s
+######## FIM: tudo passou · 01:53:19
+
+Commit conferido: db5cc36 docs(site): linhagem interativa, a estrela na Arquitetura e as abas atualizadas para a E3
+Downloads no log (baixando/download): 0
+# Os commits depois do db5cc36 (8a75780, b8e1f89, 65ad2a1) só mexem em documentação e no workflow do site: nenhum arquivo de código, dbt, Makefile ou compose.

@@ -1,0 +1,9 @@
+# make demo-retry, mês 2026-08, run 10799b6c-7abc-4ef0-a918-e443852d4301, banco parado antes da primeira tentativa (horários em UTC)
+2026-11-09 04:52:41 STEP_START atos_do_mes
+2026-11-09 04:52:41 STEP_UP_FOR_RETRY atos_do_mes | causa: dou persist saiu com 1: 2026-11-09 04:52:41,860 [ERROR] run aborted err=[Errno -2] Name or service not known
+2026-11-09 04:53:12 STEP_RESTARTED atos_do_mes
+2026-11-09 04:53:18 STEP_SUCCESS atos_do_mes
+2026-11-09 04:53:18 RUN_SUCCESS
+persist: gravadas=0 versoes-novas=0 inalteradas=96 orgao-desconhecido=8494 repetidas=0 ignoradas=120 falhou=0
+persist falhou: err=[Errno -2] Name or service not known
+persist falhou: err=[Errno -2] Name or service not known
