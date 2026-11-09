@@ -621,3 +621,15 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** o modelo, o teste e o SLA do plano ("o mês M está na gold até o dia 20 do mês M+1"). **Decidido pela IA**, a revisar: o DOU vazio conta como fora do SLA, porque um nulo faria o teste passar calado; e a var `hoje`, só para os testes unitários fixarem a data e cobrirem a fronteira do dia 20.
 - **Como foi verificado:** `make gold` com 63 de 63 em `PASS`; sem o modelo, o `make gold` falha; os testes unitários cobrem o dia 20, o dia 21 e o DOU vazio, e o do DOU vazio falha (`FAIL 1`) sem o `coalesce`; a conta do mês esperado foi conferida no DuckDB para 09/11, 20/11, 21/11, 05/01 e 25/01; com setembro tirado pelo `excluir_mes`, o `sla_vitalidade` dá `WARN 1` e o build termina com `ERROR=0`.
 - **Quem revisou:** pendente — a Luiza revisa o diff antes do commit; revisão da squad no PR.
+
+### 2026-11-09 — Nome do teste do dbt que falhou na prova das falhas (#85)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `scripts/demo_falhas.sh`, `scripts/eventos_do_run.sh`, `docs/adr/medicoes/0009-gold/falhas-20261109T024652Z.txt`, `docs/planos/2026-11-03-e3-camada-analitica.md`
+- **O que foi pedido:** fechar o critério da #85 que o PR #86 deixou parcial: uma falha forçada no `dbt build` aparece na prova com o nome do modelo ou do teste que falhou.
+- **O que foi aproveitado:** tudo. **Decidido pela IA**, a revisar:
+  - um quinto caso no `demo_falhas.sh`, com um `@dbt_assets` que existe só na demonstração e roda o `dbt build` com o `excluir_mes` do #87, sem dar parâmetro novo ao `gold` de produção;
+  - um `dbt build` normal logo depois, que restaura a gold e faz a demonstração falhar se não passar;
+  - o `eventos_do_run.sh` tirando só um horário `HH:MM:SS` do começo da linha do dbt, porque na saída que o Dagster grava a linha começa com o número do teste, e pegando também a linha `[ERROR]: in test ...`.
+- **Como foi verificado:** `make demo-falhas` com os cinco casos em `falhas-20261109T024652Z.txt`; o caso novo traz `39 of 53 FAIL 1 distribuicao_mes_sem_nenhum_ato` e `[ERROR]: in test distribuicao_mes_sem_nenhum_ato (tests/distribuicao_mes_sem_nenhum_ato.sql)`; a gold voltou a 63 de 63 em `PASS` depois; nada baixado e nenhuma senha na prova. A primeira rodada mostrou a linha cortada ("of 53 FAIL 1"), por causa do `sed`; a prova dela foi apagada e refeita depois da correção.
+- **Quem revisou:** pendente — a Luiza revisa o diff antes do commit; revisão da squad no PR.
