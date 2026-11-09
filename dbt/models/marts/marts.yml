@@ -23,7 +23,7 @@ models:
       Fato. Granularidade: uma linha por matéria publicada (a versão mais recente) de um conselho do
       escopo da dim_conselho (ADR 0010), ligada ao nome que o conselho tinha na data da publicação.
       nome_aproximado é verdadeiro quando a data cai fora da vigência do nome escolhido: antes do
-      primeiro nome (fica com o mais antigo) ou depois do fim do último (fica com o último).
+      primeiro nome (fica com o mais antigo), num buraco entre dois nomes (fica com o anterior) ou depois do fim do último (fica com o último).
     columns:
       - name: ato_id
         data_tests: [unique, not_null]
@@ -42,6 +42,27 @@ models:
               arguments:
                 values: ['99', 'AUTO', 'DEF', 'FISC', 'GEST', 'IP', 'SEM']
 
+  - name: fct_conselho_mes
+    description: "Fato agregado. Granularidade: uma linha por conselho por mês do período coberto pelo DOU, inclusive meses sem ato."
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "orgao_id || '-' || mes"
+    columns:
+      - name: atos
+        data_tests: [not_null]
+
+  - name: mart_vitalidade
+    description: "Consumo. Granularidade: uma linha por conselho. Responde quais conselhos ainda estão funcionando. meses_ativo (padrão 3) é o limite provisório entre ativo e em silêncio."
+    columns:
+      - name: orgao_id
+        data_tests: [unique, not_null]
+      - name: situacao
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['ativo', 'em silêncio', 'sem ato no período coberto']
+
 seeds:
   - name: conselhos_excluidos
     description: "Órgãos com \"Conselho\" no nome que não são colegiados de participação social, fora da dimensão (ADR 0010, ponto 3). Chave: o nome."
@@ -51,7 +72,7 @@ seeds:
 
 unit_tests:
   - name: fct_ato_casa_o_nome_da_data
-    description: "Dentro da vigência, antes do primeiro nome, depois da extinção e órgão fora do escopo."
+    description: "Dentro da vigência, antes do primeiro nome, buraco entre dois nomes, depois da extinção e órgão fora do escopo."
     model: fct_ato
     given:
       - input: ref('stg_atos')
@@ -61,13 +82,67 @@ unit_tests:
           - {ato_id: 3, materia: "DOU:c", origem: DOU, data_publicacao: 2012-03-01, mes: 2012-03-01, orgao_id: 1, tipologia_sigla: GEST, revisor_tipo: HUMANO}
           - {ato_id: 4, materia: "DOU:d", origem: DOU, data_publicacao: 2016-01-01, mes: 2016-01-01, orgao_id: 1, tipologia_sigla: GEST, revisor_tipo: HUMANO}
           - {ato_id: 5, materia: "DOU:e", origem: DOU, data_publicacao: 2016-01-01, mes: 2016-01-01, orgao_id: 2, tipologia_sigla: GEST, revisor_tipo: HUMANO}
+          - {ato_id: 6, materia: "DOU:f", origem: DOU, data_publicacao: 2007-01-01, mes: 2007-01-01, orgao_id: 3, tipologia_sigla: GEST, revisor_tipo: HUMANO}
       - input: ref('dim_conselho')
         rows:
           - {conselho_sk: 10, orgao_id: 1, valido_de: 2000-01-01, valido_ate: 2009-12-31}
           - {conselho_sk: 11, orgao_id: 1, valido_de: 2010-01-01, valido_ate: 2014-12-31}
+          - {conselho_sk: 20, orgao_id: 3, valido_de: 2000-01-01, valido_ate: 2004-12-31}
+          - {conselho_sk: 21, orgao_id: 3, valido_de: 2010-01-01, valido_ate: 2014-12-31}
     expect:
       rows:
         - {ato_id: 1, conselho_sk: 10, nome_aproximado: false, tipologia_sigla: DEF}
         - {ato_id: 2, conselho_sk: 10, nome_aproximado: true, tipologia_sigla: SEM}
         - {ato_id: 3, conselho_sk: 11, nome_aproximado: false, tipologia_sigla: GEST}
         - {ato_id: 4, conselho_sk: 11, nome_aproximado: true, tipologia_sigla: GEST}
+        - {ato_id: 6, conselho_sk: 20, nome_aproximado: true, tipologia_sigla: GEST}
+
+  - name: fct_conselho_mes_mes_sem_ato_vira_zero
+    description: "Mês sem ato é linha com zero, e ato da planilha não conta como mês coberto."
+    model: fct_conselho_mes
+    given:
+      - input: ref('fct_ato')
+        rows:
+          - {ato_id: 1, origem: DOU, mes: 2026-07-01, orgao_id: 1}
+          - {ato_id: 2, origem: DOU, mes: 2026-09-01, orgao_id: 1}
+          - {ato_id: 3, origem: PLANILHA, mes: 2026-08-01, orgao_id: 2}
+          - {ato_id: 4, origem: PLANILHA, mes: 2020-01-01, orgao_id: 2}
+      - input: ref('dim_conselho')
+        rows:
+          - {orgao_id: 1}
+          - {orgao_id: 2}
+    expect:
+      rows:
+        - {orgao_id: 1, mes: 2026-07-01, atos: 1}
+        - {orgao_id: 1, mes: 2026-08-01, atos: 0}
+        - {orgao_id: 1, mes: 2026-09-01, atos: 1}
+        - {orgao_id: 2, mes: 2026-07-01, atos: 0}
+        - {orgao_id: 2, mes: 2026-08-01, atos: 0}
+        - {orgao_id: 2, mes: 2026-09-01, atos: 0}
+
+  - name: mart_vitalidade_situacao
+    description: "O limite de 3 meses, o conselho sem ato e o extinto com o nome mais recente."
+    model: mart_vitalidade
+    given:
+      - input: ref('fct_conselho_mes')
+        rows:
+          - {orgao_id: 1, mes: 2026-08-01, atos: 0}
+          - {orgao_id: 1, mes: 2026-09-01, atos: 2}
+          - {orgao_id: 1, mes: 2026-12-01, atos: 0}
+          - {orgao_id: 2, mes: 2026-08-01, atos: 1}
+          - {orgao_id: 2, mes: 2026-12-01, atos: 0}
+          - {orgao_id: 3, mes: 2026-12-01, atos: 0}
+          - {orgao_id: 4, mes: 2026-12-01, atos: 1}
+      - input: ref('dim_conselho')
+        rows:
+          - {orgao_id: 1, nome: "Um", sigla: "U", valido_de: 2000-01-01}
+          - {orgao_id: 2, nome: "Dois", sigla: "D", valido_de: 2000-01-01}
+          - {orgao_id: 3, nome: "Tres", sigla: "T", valido_de: 2000-01-01}
+          - {orgao_id: 4, nome: "Antigo", sigla: "A", valido_de: 2000-01-01}
+          - {orgao_id: 4, nome: "Recente", sigla: "R", valido_de: 2010-01-01}
+    expect:
+      rows:
+        - {orgao_id: 1, nome: "Um", atos_no_periodo: 2, meses_sem_publicar: 3, situacao: "ativo"}
+        - {orgao_id: 2, nome: "Dois", atos_no_periodo: 1, meses_sem_publicar: 4, situacao: "em silêncio"}
+        - {orgao_id: 3, nome: "Tres", atos_no_periodo: 0, meses_sem_publicar: null, situacao: "sem ato no período coberto"}
+        - {orgao_id: 4, nome: "Recente", atos_no_periodo: 1, meses_sem_publicar: 0, situacao: "ativo"}

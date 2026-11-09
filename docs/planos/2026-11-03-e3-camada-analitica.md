@@ -663,8 +663,8 @@ git add dbt docs/adr/medicoes/0009-gold && git diff --cached --stat
 O mês sem ato é o dado que a pergunta da E1 mede. Por isso o fato mensal tem linha com `atos = 0`. E por isso o teste de distribuição separa dois casos: o mês em que um conselho não publicou e o mês que não foi ingerido.
 
 **Arquivos:**
-- Criar: `dbt/models/marts/fct_conselho_mes.sql`, `dbt/models/marts/mart_vitalidade.sql`, `dbt/tests/distribuicao_mes_sem_nenhum_ato.sql`, `dbt/tests/distribuicao_fora_da_tipologia.sql`
-- Modificar: `dbt/models/marts/marts.yml`
+- Criar: `dbt/models/marts/fct_conselho_mes.sql`, `dbt/models/marts/mart_vitalidade.sql`, `dbt/tests/distribuicao_mes_sem_nenhum_ato.sql`, `dbt/tests/distribuicao_fora_da_tipologia.sql`, `dbt/tests/mart_uma_linha_por_conselho.sql`
+- Modificar: `dbt/models/marts/marts.yml`, `dbt/models/staging/stg_atos.sql`
 
 **Interfaces:**
 - Consome: `ref('fct_ato')`, `ref('dim_conselho')`.
@@ -724,7 +724,7 @@ group by c.orgao_id, m.mes
 `dbt/models/marts/mart_vitalidade.sql`:
 
 ```sql
--- Granularidade: uma linha por conselho, com o nome vigente e a situação no último mês coberto.
+-- Granularidade: uma linha por conselho, com o nome mais recente e a situação no último mês coberto.
 -- É a resposta à pergunta da E1.
 with cobertura as (select max(mes) as ultimo from {{ ref('fct_conselho_mes') }}),
 por_conselho as (
@@ -733,6 +733,12 @@ por_conselho as (
            sum(atos) as atos_no_periodo
     from {{ ref('fct_conselho_mes') }}
     group by orgao_id
+),
+-- o nome mais recente, não d.atual: o conselho extinto não tem nome atual e não pode sumir daqui
+nome_recente as (
+    select orgao_id, nome, sigla
+    from {{ ref('dim_conselho') }}
+    qualify row_number() over (partition by orgao_id order by valido_de desc) = 1
 )
 select
     d.orgao_id,
@@ -746,10 +752,9 @@ select
         when date_diff('month', p.ultimo_mes_com_ato, c.ultimo) <= {{ var('meses_ativo', 3) }} then 'ativo'
         else 'em silêncio'
     end as situacao
-from {{ ref('dim_conselho') }} d
+from nome_recente d
 cross join cobertura c
 left join por_conselho p on p.orgao_id = d.orgao_id
-where d.atual
 ```
 
 Em `marts.yml`:
@@ -757,22 +762,24 @@ Em `marts.yml`:
 ```yaml
   - name: fct_conselho_mes
     description: "Fato agregado. Granularidade: uma linha por conselho por mês do período coberto pelo DOU, inclusive meses sem ato."
-    tests:
+    data_tests:
       - unique:
-          column_name: "orgao_id || '-' || mes"
+          arguments:
+            column_name: "orgao_id || '-' || mes"
     columns:
       - name: atos
-        tests: [not_null]
+        data_tests: [not_null]
 
   - name: mart_vitalidade
-    description: "Consumo. Granularidade: uma linha por conselho. Responde quais conselhos ainda estão funcionando."
+    description: "Consumo. Granularidade: uma linha por conselho. Responde quais conselhos ainda estão funcionando. meses_ativo (padrão 3) é o limite provisório entre ativo e em silêncio."
     columns:
       - name: orgao_id
-        tests: [unique, not_null]
+        data_tests: [unique, not_null]
       - name: situacao
-        tests:
+        data_tests:
           - accepted_values:
-              values: ['ativo', 'em silêncio', 'sem ato no período coberto']
+              arguments:
+                values: ['ativo', 'em silêncio', 'sem ato no período coberto']
 ```
 
 - [ ] **Passo 3: rodar e ver passar**
@@ -781,7 +788,7 @@ Em `marts.yml`:
 make gold
 ```
 
-Esperado: os quatro marts e todos os testes em `PASS`. O número de linhas de `mart_vitalidade` é o de conselhos, 82.
+Esperado: os quatro marts e todos os testes em `PASS`. O número de linhas de `mart_vitalidade` é o de conselhos, 59 ([ADR 0010](../adr/0010-tratar-como-conselho-todo-orgao-com-conselho-no-nome.md)).
 
 - [ ] **Passo 4: provar que o teste de distribuição pega o erro**
 
@@ -1241,7 +1248,7 @@ painel: .env ## E3: sobe o painel em http://localhost:8501 (rode make gold antes
 make gold && make painel
 ```
 
-Abra http://localhost:8501. Esperado: o título é a pergunta da E1, há três números e a tabela tem 82 conselhos. Nenhum erro na página. Em outro terminal, rode `make gold` com o painel aberto: ele precisa passar, o que prova que o painel não segura a trava da gold.
+Abra http://localhost:8501. Esperado: o título é a pergunta da E1, há três números e a tabela tem 59 conselhos. Nenhum erro na página. Em outro terminal, rode `make gold` com o painel aberto: ele precisa passar, o que prova que o painel não segura a trava da gold.
 
 - [ ] **Passo 5: stage**
 

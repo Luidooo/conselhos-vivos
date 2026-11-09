@@ -1,0 +1,10 @@
+PROVA 1: limite baixado temporariamente de 0.2 para 0, só para provar que o teste falha. Fração real de atos '99' fora de SEM: 0.028… sobre 215 atos fora de SEM (saída do dbt show).
+01:24:36  1 of 1 START test distribuicao_fora_da_tipologia ............................... [RUN]
+01:24:36  1 of 1 FAIL 1 distribuicao_fora_da_tipologia ................................... [FAIL 1 in 0.05s]
+01:24:36    Got 1 result, configured to fail if != 0
+01:24:36  Done. PASS=0 WARN=0 ERROR=1 SKIP=0 NO-OP=0 REUSED=0 TOTAL=1
+
+PROVA 2: texto original restaurado (limite 0.2): o teste passa.
+01:25:22  1 of 1 START test distribuicao_fora_da_tipologia ............................... [RUN]
+01:25:22  1 of 1 PASS distribuicao_fora_da_tipologia ..................................... [PASS in 0.05s]
+01:25:22  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=1

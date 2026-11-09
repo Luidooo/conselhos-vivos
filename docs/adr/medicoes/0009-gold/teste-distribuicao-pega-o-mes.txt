@@ -1,0 +1,109 @@
+01:21:46  Running with dbt=1.12.6
+01:21:46  Registered adapter: duckdb=1.11.1
+01:21:47  Found 8 models, 37 data tests, 1 seed, 4 sources, 511 macros, 4 unit tests
+01:21:47  
+01:21:47  Concurrency: 1 threads (target='dev')
+01:21:47  
+01:21:49  1 of 46 START sql view model main.stg_atos ..................................... [RUN]
+01:21:49  1 of 46 OK created sql view model main.stg_atos ................................ [OK in 0.13s]
+01:21:49  2 of 46 START sql view model main.stg_conselho ................................. [RUN]
+01:21:49  2 of 46 OK created sql view model main.stg_conselho ............................ [OK in 0.05s]
+01:21:49  3 of 46 START sql view model main.stg_orgao .................................... [RUN]
+01:21:49  3 of 46 OK created sql view model main.stg_orgao ............................... [OK in 0.04s]
+01:21:49  4 of 46 START sql view model main.stg_orgao_nome ............................... [RUN]
+01:21:49  4 of 46 OK created sql view model main.stg_orgao_nome .......................... [OK in 0.04s]
+01:21:49  5 of 46 START seed file main.conselhos_excluidos ............................... [RUN]
+01:21:49  5 of 46 OK loaded seed file main.conselhos_excluidos ........................... [INSERT 3 in 0.07s]
+01:21:49  6 of 46 START test accepted_values_stg_atos_origem__DOU__PLANILHA .............. [RUN]
+01:21:50  6 of 46 PASS accepted_values_stg_atos_origem__DOU__PLANILHA .................... [PASS in 0.08s]
+01:21:50  7 of 46 START test not_null_stg_atos_ato_id .................................... [RUN]
+01:21:50  7 of 46 PASS not_null_stg_atos_ato_id .......................................... [PASS in 0.05s]
+01:21:50  8 of 46 START test not_null_stg_atos_data_publicacao ........................... [RUN]
+01:21:50  8 of 46 PASS not_null_stg_atos_data_publicacao ................................. [PASS in 0.05s]
+01:21:50  9 of 46 START test not_null_stg_atos_materia ................................... [RUN]
+01:21:50  9 of 46 PASS not_null_stg_atos_materia ......................................... [PASS in 0.04s]
+01:21:50  10 of 46 START test unique_stg_atos_ato_id ..................................... [RUN]
+01:21:50  10 of 46 PASS unique_stg_atos_ato_id ........................................... [PASS in 0.05s]
+01:21:50  11 of 46 START test unique_stg_atos_materia .................................... [RUN]
+01:21:50  11 of 46 PASS unique_stg_atos_materia .......................................... [PASS in 0.05s]
+01:21:50  12 of 46 START test not_null_stg_conselho_orgao_id ............................. [RUN]
+01:21:50  12 of 46 PASS not_null_stg_conselho_orgao_id ................................... [PASS in 0.03s]
+01:21:50  13 of 46 START test unique_stg_conselho_orgao_id ............................... [RUN]
+01:21:50  13 of 46 PASS unique_stg_conselho_orgao_id ..................................... [PASS in 0.03s]
+01:21:50  14 of 46 START test not_null_stg_orgao_orgao_id ................................ [RUN]
+01:21:50  14 of 46 PASS not_null_stg_orgao_orgao_id ...................................... [PASS in 0.03s]
+01:21:50  15 of 46 START test unique_stg_orgao_orgao_id .................................. [RUN]
+01:21:50  15 of 46 PASS unique_stg_orgao_orgao_id ........................................ [PASS in 0.03s]
+01:21:50  16 of 46 START test not_null_stg_orgao_nome_orgao_nome_id ...................... [RUN]
+01:21:50  16 of 46 PASS not_null_stg_orgao_nome_orgao_nome_id ............................ [PASS in 0.03s]
+01:21:50  17 of 46 START test unique_stg_orgao_nome_orgao_nome_id ........................ [RUN]
+01:21:50  17 of 46 PASS unique_stg_orgao_nome_orgao_nome_id .............................. [PASS in 0.02s]
+01:21:50  18 of 46 START test not_null_conselhos_excluidos_nome .......................... [RUN]
+01:21:50  18 of 46 PASS not_null_conselhos_excluidos_nome ................................ [PASS in 0.02s]
+01:21:50  19 of 46 START test unique_conselhos_excluidos_nome ............................ [RUN]
+01:21:50  19 of 46 PASS unique_conselhos_excluidos_nome .................................. [PASS in 0.02s]
+01:21:50  20 of 46 START sql table model main.dim_conselho ............................... [RUN]
+01:21:50  20 of 46 OK created sql table model main.dim_conselho .......................... [OK in 0.11s]
+01:21:50  21 of 46 START test dim_inicio_aberto_so_no_nome_mais_antigo ................... [RUN]
+01:21:50  21 of 46 PASS dim_inicio_aberto_so_no_nome_mais_antigo ......................... [PASS in 0.02s]
+01:21:50  22 of 46 START test dim_no_maximo_uma_linha_atual_por_conselho ................. [RUN]
+01:21:50  22 of 46 PASS dim_no_maximo_uma_linha_atual_por_conselho ....................... [PASS in 0.01s]
+01:21:50  23 of 46 START test dim_vigencias_nao_se_sobrepoem ............................. [RUN]
+01:21:50  23 of 46 PASS dim_vigencias_nao_se_sobrepoem ................................... [PASS in 0.02s]
+01:21:50  24 of 46 START test not_null_dim_conselho_conselho_sk .......................... [RUN]
+01:21:50  24 of 46 PASS not_null_dim_conselho_conselho_sk ................................ [PASS in 0.02s]
+01:21:50  25 of 46 START test not_null_dim_conselho_orgao_id ............................. [RUN]
+01:21:50  25 of 46 PASS not_null_dim_conselho_orgao_id ................................... [PASS in 0.02s]
+01:21:50  26 of 46 START test unique_dim_conselho_conselho_sk ............................ [RUN]
+01:21:50  26 of 46 PASS unique_dim_conselho_conselho_sk .................................. [PASS in 0.02s]
+01:21:50  27 of 46 START sql table model main.fct_ato .................................... [RUN]
+01:21:50  27 of 46 OK created sql table model main.fct_ato ............................... [OK in 0.08s]
+01:21:50  28 of 46 START test accepted_values_fct_ato_tipologia_sigla__99__AUTO__DEF__FISC__GEST__IP__SEM  [RUN]
+01:21:50  28 of 46 PASS accepted_values_fct_ato_tipologia_sigla__99__AUTO__DEF__FISC__GEST__IP__SEM  [PASS in 0.06s]
+01:21:50  29 of 46 START test distribuicao_fora_da_tipologia ............................. [RUN]
+01:21:50  29 of 46 PASS distribuicao_fora_da_tipologia ................................... [PASS in 0.02s]
+01:21:50  30 of 46 START test fct_sem_data_no_futuro ..................................... [RUN]
+01:21:50  30 of 46 PASS fct_sem_data_no_futuro ........................................... [PASS in 0.01s]
+01:21:50  31 of 46 START test fct_volume_igual_ao_staging ................................ [RUN]
+01:21:51  31 of 46 PASS fct_volume_igual_ao_staging ...................................... [PASS in 0.04s]
+01:21:51  32 of 46 START test not_null_fct_ato_ato_id .................................... [RUN]
+01:21:51  32 of 46 PASS not_null_fct_ato_ato_id .......................................... [PASS in 0.02s]
+01:21:51  33 of 46 START test not_null_fct_ato_conselho_sk ............................... [RUN]
+01:21:51  33 of 46 PASS not_null_fct_ato_conselho_sk ..................................... [PASS in 0.02s]
+01:21:51  34 of 46 START test not_null_fct_ato_materia ................................... [RUN]
+01:21:51  34 of 46 PASS not_null_fct_ato_materia ......................................... [PASS in 0.02s]
+01:21:51  35 of 46 START test relationships_fct_ato_conselho_sk__conselho_sk__ref_dim_conselho_  [RUN]
+01:21:51  35 of 46 PASS relationships_fct_ato_conselho_sk__conselho_sk__ref_dim_conselho_  [PASS in 0.03s]
+01:21:51  36 of 46 START test unique_fct_ato_ato_id ...................................... [RUN]
+01:21:51  36 of 46 PASS unique_fct_ato_ato_id ............................................ [PASS in 0.02s]
+01:21:51  37 of 46 START test unique_fct_ato_materia ..................................... [RUN]
+01:21:51  37 of 46 PASS unique_fct_ato_materia ........................................... [PASS in 0.02s]
+01:21:51  38 of 46 START sql table model main.fct_conselho_mes ........................... [RUN]
+01:21:51  38 of 46 OK created sql table model main.fct_conselho_mes ...................... [OK in 0.05s]
+01:21:51  39 of 46 START test distribuicao_mes_sem_nenhum_ato ............................ [RUN]
+01:21:51  39 of 46 FAIL 1 distribuicao_mes_sem_nenhum_ato ................................ [FAIL 1 in 0.01s]
+01:21:51  40 of 46 START test not_null_fct_conselho_mes_atos ............................. [RUN]
+01:21:51  40 of 46 PASS not_null_fct_conselho_mes_atos ................................... [PASS in 0.02s]
+01:21:51  41 of 46 START test unique_fct_conselho_mes_orgao_id_mes ....................... [RUN]
+01:21:51  41 of 46 PASS unique_fct_conselho_mes_orgao_id_mes ............................. [PASS in 0.02s]
+01:21:51  42 of 46 SKIP relation main.mart_vitalidade .................................... [SKIP]
+01:21:51  43 of 46 SKIP test accepted_values_mart_vitalidade_situacao__ativo__em_sil_ncio__sem_ato_no_per_odo_coberto  [SKIP]
+01:21:51  44 of 46 SKIP test mart_uma_linha_por_conselho ................................. [SKIP]
+01:21:51  45 of 46 SKIP test not_null_mart_vitalidade_orgao_id ........................... [SKIP]
+01:21:51  46 of 46 SKIP test unique_mart_vitalidade_orgao_id ............................. [SKIP]
+01:21:51  
+01:21:51  Finished running 1 seed, 4 table models, 37 data tests, 4 view models in 0 hours 0 minutes and 3.65 seconds (3.65s).
+01:21:51  
+01:21:51  Completed with 1 error, 0 partial successes, and 0 warnings:
+01:21:51  
+01:21:51  [ERROR]: in test distribuicao_mes_sem_nenhum_ato (tests/distribuicao_mes_sem_nenhum_ato.sql)
+01:21:51    Got 1 result, configured to fail if != 0
+01:21:51  
+01:21:51    compiled code at target/compiled/conselhos_vivos/tests/distribuicao_mes_sem_nenhum_ato.sql
+01:21:51  
+01:21:51  Done. PASS=40 WARN=0 ERROR=1 SKIP=5 NO-OP=0 REUSED=0 TOTAL=46
+
+
+Conferido: com excluir_mes=2026-08-01, 'dbt show --select distribuicao_mes_sem_nenhum_ato' devolve a linha (mes 2026-08-01, atos 0): o mês apontado é o que foi tirado.
+Comando: dbt build --project-dir /app/dbt --exclude-resource-type unit_test --vars '{excluir_mes: "2026-08-01"}'
+O --exclude-resource-type unit_test é necessário: o teste unitário do stg_atos usa atos de 2026-08 como fixture, então tirar agosto o quebraria e pularia o resto (FAIL 1 em stg_atos, SKIP=30) antes de chegar ao teste de distribuição.
