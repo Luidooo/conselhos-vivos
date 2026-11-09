@@ -2,7 +2,7 @@
 abertos (o par do cmd/fetch-mensal do Go). Só orquestra: argumentos,
 configuração, log, código de saída; o download é do dadosabertos.
 
-Saída 2: erro de uso. Saída 1: mês ainda não publicado, ou qualquer falha.
+Saída 2: erro de uso. Saída 3 (SAIDA_DE_DADO): mês ainda não publicado. Saída 1: qualquer outra falha.
 DADOS_ABERTOS_OUTPUT_DIR diz onde gravar (padrão: o diretório corrente).
 """
 
@@ -11,7 +11,7 @@ import logging
 import os
 import sys
 
-from . import dadosabertos
+from . import SAIDA_DE_DADO, dadosabertos
 from .bronze import Bronze
 
 logger = logging.getLogger("dou.fetch-mensal")
@@ -21,7 +21,7 @@ def main(argv):
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", stream=sys.stderr)
     parser = argparse.ArgumentParser(prog="python -m dou fetch-mensal", description=__doc__.split("\n\n")[0],
                                      epilog="A month already on disk is not asked for again. A month is published "
-                                            "about two weeks after it ends; one that is not out yet exits with 1 "
+                                            "about two weeks after it ends; one that is not out yet exits with 3 "
                                             "and writes nothing.")
     parser.add_argument("--month", required=True, metavar="YYYY-MM", help="month to download; required")
     args = parser.parse_args(argv)  # sai com 2 em erro de uso, como o flag do Go
@@ -37,7 +37,7 @@ def main(argv):
         dadosabertos.Cliente().baixar_mes(mes, bronze)
     except dadosabertos.NaoPublicado as e:
         logger.error("mes ainda nao publicado mes=%s err=%s", mes, e)
-        return 1
+        return SAIDA_DE_DADO
     except Exception as e:
         logger.error("run aborted err=%s", e)
         return 1

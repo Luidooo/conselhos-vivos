@@ -194,7 +194,7 @@ O `make persist` sozinho grava os ZIPs que já estão em `data/bronze/inlabs/`, 
 make persist DATA=2026-10-01   # o resumo vai para o stderr
 ```
 
-O comando Go lê **um ZIP por execução**, como o `extract`, e grava tudo numa transação: a edição entra inteira ou não entra. Uma entrada que não lê como matéria é logada e o resto do ZIP é gravado; nesse caso o código de saída é `1` **mesmo com a edição gravada**, como no `extract`.
+O comando Go lê **um ZIP por execução**, como o `extract`, e grava tudo numa transação: a edição entra inteira ou não entra. Uma entrada que não lê como matéria é logada e o resto do ZIP é gravado; nesse caso o código de saída é `3` **mesmo com a edição gravada**: é problema do dado, e repetir não resolve, por isso a orquestração não tenta de novo (#84). O código `1` fica para falha de infraestrutura, como um ZIP que não abre ou o banco fora do ar.
 
 **Pode rodar de novo.** Cada matéria é comparada com **todas** as versões dela no banco, no que o DOU publicou (data, ementa e conteúdo). O órgão não entra: ele vem da identidade dos conselhos ([ADR 0004](docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md)), e resolver um nome não é republicação. Comparar só com a última versão faria o mesmo `id` vindo com dois textos (no DO1 e no DO1E, ou em dois dias da janela de reprocessamento) gerar duas versões a cada execução:
 
@@ -240,7 +240,7 @@ make persist-mensal MES=2026-08  # só grava o ZIP já baixado, sem acessar a Im
 - **O ZIP fica com o nome que a Imprensa Nacional dá** (`S01MMAAAA.zip`): a Seção 1 de agosto de 2026 é `S01082026.zip`, com cerca de 50 MB e 8.600 matérias; a de setembro tem 286 MB e 8.900.
 - **O `fetch-mensal` é Python** (`python -m dou fetch-mensal`, em `src/dou/`), a primeira fatia da migração do ingestor (#51): o download é byte a byte o mesmo que o comando em Go fazia.
 - **Mês já em disco não é baixado de novo.** O arquivo de um mês fechado não muda, e o nome só existe depois que o ZIP chegou inteiro. Rodar o `make ingest-mensal` de novo não baixa nem duplica nada; o `persist` compara cada matéria com todas as versões, como no `make ingest`.
-- **Mês ainda não publicado é erro**, e nada é gravado. O mês sai cerca de duas semanas depois de acabar: setembro de 2026 apareceu em 13/10. Para o dia de hoje, a fonte continua sendo o `make ingest`, do INLABS.
+- **Mês ainda não publicado é erro**, com código de saída `3`, e nada é gravado. A agenda do Dagster tenta de novo no dia seguinte, até o dia 28 (#83). O mês sai cerca de duas semanas depois de acabar: setembro de 2026 apareceu em 13/10. Para o dia de hoje, a fonte continua sendo o `make ingest`, do INLABS.
 - **Como o link é encontrado.** O endereço de cada ZIP leva um UUID que não dá para montar; o `fetch-mensal` lê a página da base de dados com `ano` e `mes` e pega o link do `S01MMAAAA.zip`. Só aceita link para o próprio `www.in.gov.br`. O pedido vai com `Accept: */*`: sem esse cabeçalho, o site responde `403`.
 
 Para vários meses, um laço no shell:

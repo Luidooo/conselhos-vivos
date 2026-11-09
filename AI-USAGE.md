@@ -575,3 +575,18 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** o modelo, os testes e o teste unitário, como na Tarefa 3 reescrita. **Decidido pela IA**, a revisar: os 146 atos do DOU de 9 órgãos fora da `dim_conselho` saem do fato (ADR 0010), e por isso o teste de volume compara com o staging dentro do escopo, não com a silver inteira, como o critério da #70 diz; o nome da época sai de um `asof join` (o último nome que começou até a data), porque o plano anterior daria o primeiro nome a um ato publicado depois da extinção.
 - **Como foi verificado:** `make gold` com 38 de 38 em `PASS`; sem o modelo, o `make gold` falha; o teste unitário cobre dentro da vigência, antes do primeiro nome, depois da extinção e órgão fora do escopo, e falha (`FAIL 1`) quando o `asof` volta a ser o join do plano anterior; a mesma lógica conferida à parte no DuckDB do container. O fato tem 243 atos do DOU e 215 da planilha, nenhum com nome aproximado no banco atual.
 - **Quem revisou:** pendente — a Luiza revisa o diff antes do commit; revisão da squad no PR.
+
+### 2026-11-09 — Falha de dado sem retry, agenda que tenta de novo e causa das falhas (#83, #84, #85)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `src/dou/__init__.py`, `src/dou/fetch_mensal.py`, `src/dou/persist.py`, `src/orquestracao/__init__.py`, `src/orquestracao/comandos.py`, `scripts/eventos_do_run.sh`, `scripts/demo_falhas.sh`, `tests/dou/test_saida.py`, `tests/orquestracao/test_comandos.py`, `Makefile`, `docker-compose.yml`, `README.md`, `docs/planos/2026-11-03-e3-camada-analitica.md`, `docs/adr/medicoes/0009-gold/falhas-*.txt`
+- **O que foi pedido:** executar as três issues abertas a partir da revisão do Moura no PR #80.
+- **O que foi aproveitado:** tudo. **Decidido pela IA**, a revisar:
+  - o código de saída `3` (`SAIDA_DE_DADO`) para mês não publicado e entrada que não lê como matéria, com `1` para infraestrutura;
+  - o `roda`, que vira o `3` num `Failure(allow_retries=False)` e leva para a causa a última linha `[ERROR]`, senão `[WARNING]`, senão a última do stderr;
+  - a agenda todo dia do 15 ao 28, pulando o mês já carregado;
+  - a máscara de `password=` no `eventos_do_run.sh`, porque o erro de conexão do dbt imprime a string do attach com a senha;
+  - o `test-orquestracao` dentro do `make test`.
+- **Como foi verificado:** `tests/dou` com 48 testes e `tests/orquestracao` com 8, todos em OK; os testes novos falham quando o código volta ao comportamento antigo; `make gold` com 38 de 38; `dagster definitions validate` em `Validation successful`; `make demo-falhas` com os quatro casos em `falhas-20261109T012032Z.txt`.
+- **Erro da IA nesta tarefa:** a primeira versão da demonstração usou outubro de 2026 como "mês ainda não publicado", e ele já tinha saído. O `S01102026.zip` (51 MB) foi baixado sem autorização da Luiza, e 130 atos de outubro entraram no banco de trabalho dela. Ela decidiu mantê-los. A demonstração passou a usar o mês corrente, que nunca está publicado.
+- **Quem revisou:** pendente — a Luiza revisa o diff antes do commit; revisão da squad no PR.
