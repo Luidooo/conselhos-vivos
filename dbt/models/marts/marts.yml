@@ -72,6 +72,17 @@ models:
               arguments:
                 values: ['ativo', 'em silêncio', 'sem ato no período coberto']
 
+  - name: freshness_vitalidade
+    description: >
+      Freshness de mart_vitalidade. SLA: o mês M está na gold até o dia 20 do mês M+1. Uma linha:
+      o primeiro e o último mês do DOU carregados, o mês que o SLA espera hoje, o atraso em meses e se
+      está dentro do SLA. Sem nenhum mês carregado, está fora. O teste sla_vitalidade avisa, sem travar o build.
+    columns:
+      - name: mes_esperado
+        data_tests: [not_null]
+      - name: dentro_do_sla
+        data_tests: [not_null]
+
 seeds:
   - name: conselhos_excluidos
     description: "Órgãos com \"Conselho\" no nome que não são colegiados de participação social, fora da dimensão (ADR 0010, ponto 3). Chave: o nome."
@@ -210,3 +221,45 @@ unit_tests:
     expect:
       rows:
         - {orgao_id: 1, situacao: "sem ato no período coberto"}
+
+  - name: freshness_no_dia_20_ainda_espera_o_mes_anterior
+    description: "Até o dia 20 de novembro, o SLA espera setembro: outubro ainda está no prazo."
+    model: freshness_vitalidade
+    overrides:
+      vars:
+        hoje: "2026-11-20"
+    given:
+      - input: ref('fct_conselho_mes')
+        rows:
+          - {orgao_id: 1, mes: 2026-08-01, atos: 0}
+          - {orgao_id: 1, mes: 2026-09-01, atos: 1}
+    expect:
+      rows:
+        - {primeiro_mes_coberto: 2026-08-01, ultimo_mes_coberto: 2026-09-01, mes_esperado: 2026-09-01, atraso_meses: 0, dentro_do_sla: true}
+
+  - name: freshness_no_dia_21_cobra_o_mes_que_venceu
+    description: "No dia 21 de novembro, outubro venceu: com a gold em setembro, está um mês atrasada."
+    model: freshness_vitalidade
+    overrides:
+      vars:
+        hoje: "2026-11-21"
+    given:
+      - input: ref('fct_conselho_mes')
+        rows:
+          - {orgao_id: 1, mes: 2026-09-01, atos: 1}
+    expect:
+      rows:
+        - {mes_esperado: 2026-10-01, atraso_meses: 1, dentro_do_sla: false}
+
+  - name: freshness_sem_dou_esta_fora_do_sla
+    description: "Sem nenhum mês do DOU carregado, como num clone limpo, a gold está fora do SLA, não dentro."
+    model: freshness_vitalidade
+    overrides:
+      vars:
+        hoje: "2026-11-21"
+    given:
+      - input: ref('fct_conselho_mes')
+        rows: []
+    expect:
+      rows:
+        - {mes_esperado: 2026-10-01, dentro_do_sla: false}

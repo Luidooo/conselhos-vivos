@@ -820,34 +820,22 @@ git add dbt docs/adr/medicoes && git diff --cached --stat
 
 ### Tarefa 5: freshness e SLA
 
-**SLA declarado:** *o mês M está em `mart_vitalidade` até o dia 20 do mês M+1.* A Imprensa Nacional publica o ZIP do mês cerca de duas semanas depois que ele acaba: setembro de 2026 saiu em 13/10. A agenda da Tarefa 6 roda no dia 15.
+**SLA declarado:** *o mês M está em `mart_vitalidade` até o dia 20 do mês M+1.* A Imprensa Nacional publica o ZIP do mês cerca de duas semanas depois que ele acaba: setembro de 2026 saiu em 13/10, e outubro já estava publicado em 09/11. A agenda da Tarefa 6 tenta do dia 15 ao 28.
 
 **Arquivos:**
-- Criar: `dbt/models/marts/freshness_vitalidade.sql`, `dbt/tests/sla_vitalidade.sql`
+- Criar: `dbt/models/marts/freshness_vitalidade.sql`, `dbt/tests/sla_vitalidade.sql`, `docs/adr/medicoes/0009-gold/sla-vitalidade-avisa.txt`
 - Modificar: `dbt/models/marts/marts.yml`
 
 **Interfaces:**
+- Consome: `ref('fct_conselho_mes')`, cujo intervalo de meses é o dos meses do DOU carregados; é o mesmo que a `mart_vitalidade` usa.
 - Produz: `ref('freshness_vitalidade')`, com uma linha e as colunas `primeiro_mes_coberto, ultimo_mes_coberto, mes_esperado, atraso_meses, dentro_do_sla`.
 
-- [ ] **Passo 1: o modelo**
+**O que a revisão mudou (09/11/2026):**
+- **DOU vazio.** Com o DOU vazio (clone limpo, antes do backfill), `dentro_do_sla` seria nulo, o `where not dentro_do_sla` do teste descartaria a linha e o aviso sumiria. O vazio conta como fora do SLA.
+- **Data fixável.** `current_date` deixa o modelo sem teste. A var `hoje`, que só os testes usam, fixa a data, e os testes unitários cobrem a fronteira do dia 20.
+- **O mês mais recente.** Como a cobertura sai dos meses do DOU, um mês mais recente que não carregou aparece aqui como atraso. É o buraco que o `distribuicao_mes_sem_nenhum_ato` não pega.
 
-`dbt/models/marts/freshness_vitalidade.sql`:
-
-```sql
--- Métrica de freshness da tabela de consumo. SLA: o mês M está na gold até o dia 20 do mês M+1.
--- Logo, hoje se espera o mês de (hoje - 20 dias) menos um.
-with cobertura as (select min(mes) as primeiro, max(mes) as ultimo from {{ ref('fct_conselho_mes') }}),
-esperado as (
-    select (date_trunc('month', current_date - interval 20 day) - interval 1 month)::date as mes
-)
-select
-    c.primeiro as primeiro_mes_coberto,
-    c.ultimo as ultimo_mes_coberto,
-    e.mes as mes_esperado,
-    date_diff('month', c.ultimo, e.mes) as atraso_meses,
-    date_diff('month', c.ultimo, e.mes) <= 0 as dentro_do_sla
-from cobertura c, esperado e
-```
+- [ ] **Passo 1: os testes**
 
 `dbt/tests/sla_vitalidade.sql`:
 
@@ -857,25 +845,120 @@ from cobertura c, esperado e
 select * from {{ ref('freshness_vitalidade') }} where not dentro_do_sla
 ```
 
-Em `marts.yml`:
+Em `marts.yml`, dentro de `models:`:
 
 ```yaml
   - name: freshness_vitalidade
-    description: "Freshness de mart_vitalidade contra o SLA: o mês M está na gold até o dia 20 do mês M+1."
+    description: >
+      Freshness de mart_vitalidade. SLA: o mês M está na gold até o dia 20 do mês M+1. Uma linha:
+      o primeiro e o último mês do DOU carregados, o mês que o SLA espera hoje, o atraso em meses e se
+      está dentro do SLA. Sem nenhum mês carregado, está fora. O teste sla_vitalidade avisa, sem travar o build.
+    columns:
+      - name: mes_esperado
+        data_tests: [not_null]
+      - name: dentro_do_sla
+        data_tests: [not_null]
 ```
 
-- [ ] **Passo 2: rodar**
+Em `marts.yml`, em `unit_tests:`:
+
+```yaml
+  - name: freshness_no_dia_20_ainda_espera_o_mes_anterior
+    description: "Até o dia 20 de novembro, o SLA espera setembro: outubro ainda está no prazo."
+    model: freshness_vitalidade
+    overrides:
+      vars:
+        hoje: "2026-11-20"
+    given:
+      - input: ref('fct_conselho_mes')
+        rows:
+          - {orgao_id: 1, mes: 2026-08-01, atos: 0}
+          - {orgao_id: 1, mes: 2026-09-01, atos: 1}
+    expect:
+      rows:
+        - {primeiro_mes_coberto: 2026-08-01, ultimo_mes_coberto: 2026-09-01, mes_esperado: 2026-09-01, atraso_meses: 0, dentro_do_sla: true}
+
+  - name: freshness_no_dia_21_cobra_o_mes_que_venceu
+    description: "No dia 21 de novembro, outubro venceu: com a gold em setembro, está um mês atrasada."
+    model: freshness_vitalidade
+    overrides:
+      vars:
+        hoje: "2026-11-21"
+    given:
+      - input: ref('fct_conselho_mes')
+        rows:
+          - {orgao_id: 1, mes: 2026-09-01, atos: 1}
+    expect:
+      rows:
+        - {mes_esperado: 2026-10-01, atraso_meses: 1, dentro_do_sla: false}
+
+  - name: freshness_sem_dou_esta_fora_do_sla
+    description: "Sem nenhum mês do DOU carregado, como num clone limpo, a gold está fora do SLA, não dentro."
+    model: freshness_vitalidade
+    overrides:
+      vars:
+        hoje: "2026-11-21"
+    given:
+      - input: ref('fct_conselho_mes')
+        rows: []
+    expect:
+      rows:
+        - {mes_esperado: 2026-10-01, dentro_do_sla: false}
+```
+
+- [ ] **Passo 2: rodar e ver falhar**
 
 ```bash
 make gold
 ```
 
-Esperado: hoje, 03/11/2026, `mes_esperado = 2026-09-01`. Com setembro no banco, `sla_vitalidade` passa. Sem setembro, ele dá `WARN 1` e o build continua.
+Esperado: erro, porque `freshness_vitalidade` não existe.
 
-- [ ] **Passo 3: stage**
+- [ ] **Passo 3: o modelo**
+
+`dbt/models/marts/freshness_vitalidade.sql`:
+
+```sql
+-- Freshness de mart_vitalidade. SLA: o mês M está na gold até o dia 20 do mês M+1.
+-- Hoje se espera, então, o mês de (hoje - 20 dias) menos um. A var hoje só existe para os testes fixarem a data.
+with cobertura as (select min(mes) as primeiro, max(mes) as ultimo from {{ ref('fct_conselho_mes') }}),
+hoje as (
+    select {% if var('hoje', none) %}date '{{ var("hoje") }}'{% else %}current_date{% endif %} as dia
+),
+esperado as (select (date_trunc('month', dia - interval 20 day) - interval 1 month)::date as mes from hoje)
+select
+    c.primeiro as primeiro_mes_coberto,
+    c.ultimo as ultimo_mes_coberto,
+    e.mes as mes_esperado,
+    date_diff('month', c.ultimo, e.mes) as atraso_meses,
+    -- DOU vazio está fora do SLA: um nulo aqui faria o teste sla_vitalidade passar calado
+    coalesce(date_diff('month', c.ultimo, e.mes) <= 0, false) as dentro_do_sla
+from cobertura c, esperado e
+```
+
+- [ ] **Passo 4: rodar e ver passar**
 
 ```bash
-git add dbt && git diff --cached --stat
+make gold
+```
+
+Esperado: os três testes unitários e o `sla_vitalidade` em `PASS`. Em 09/11/2026 o `mes_esperado` é 2026-09-01, e o banco cobre até setembro.
+
+- [ ] **Passo 5: provar que o aviso não trava o build**
+
+Tire o último mês com o `excluir_mes` da Tarefa 4: a gold fica em agosto, um mês atrasada.
+
+```bash
+DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt build --project-dir /app/dbt --vars '{excluir_mes: "2026-09-01"}' --exclude-resource-type unit_test 2>&1 | tee docs/adr/medicoes/0009-gold/sla-vitalidade-avisa.txt
+make gold
+```
+
+Esperado: `sla_vitalidade` em `WARN 1`, os outros testes em `PASS` e o `Done.` com `ERROR=0`. Depois, o `make gold` normal volta a passar. O teste unitário fica de fora porque a fixture do `stg_atos` usa agosto, como na prova da Tarefa 4.
+
+- [ ] **Passo 6: stage**
+
+```bash
+git add dbt docs/adr/medicoes/0009-gold && git diff --cached --stat
 ```
 
 ---
