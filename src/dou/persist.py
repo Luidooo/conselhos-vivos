@@ -5,8 +5,8 @@ do materia, a escrita é do oltp.
 Um ZIP por execução, como no extract, e uma transação por ZIP: a edição entra
 inteira ou não entra. Pode rodar de novo: o que já está lá fica como está, e
 um id que vem duas vezes no ZIP conta uma. XML que não é matéria é falha, e a
-saída é 3 (SAIDA_DE_DADO) mesmo com o resto do ZIP gravado e confirmado; 1 é falha de
-infraestrutura (ZIP que não abre, banco que recusa).
+saída é 3 (SAIDA_DE_DADO) mesmo com o resto do ZIP gravado e confirmado. Um ZIP corrompido também sai
+com 3: repetir não o conserta. 1 é falha de infraestrutura (arquivo que não abre, banco que recusa).
 """
 
 import argparse
@@ -84,7 +84,10 @@ def main(argv):
     try:
         with db.conectar() as conn:  # o `with` confirma ao sair sem exceção, desfaz com exceção
             resumo = persistir(conn, args.zip)
-    except (zipfile.BadZipFile, OSError) as e:
+    except zipfile.BadZipFile as e:
+        logger.error("run aborted err=opening %s: %s", args.zip, e)
+        return SAIDA_DE_DADO  # o arquivo está lá, mas não é um ZIP inteiro: repetir não resolve
+    except OSError as e:
         logger.error("run aborted err=opening %s: %s", args.zip, e)
         return 1
     except Exception as e:

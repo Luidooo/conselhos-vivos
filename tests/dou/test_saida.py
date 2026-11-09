@@ -10,6 +10,7 @@ import io
 import os
 import tempfile
 import unittest
+import zipfile
 from unittest import mock
 
 from dou import SAIDA_DE_DADO, dadosabertos, fetch_mensal, persist
@@ -50,6 +51,12 @@ class Persist(unittest.TestCase):
 
     def test_entrada_que_nao_le_sai_com_o_codigo_de_dado(self):
         self.assertEqual(self.com_resultado(lambda conn, caminho: persist.Resumo(gravadas=2, falhou=1)), SAIDA_DE_DADO)
+
+    def test_zip_corrompido_sai_com_o_codigo_de_dado(self):
+        self.assertEqual(self.com_resultado(zipfile.BadZipFile("File is not a zip file")), SAIDA_DE_DADO)
+
+    def test_arquivo_que_nao_abre_sai_com_1(self):
+        self.assertEqual(self.com_resultado(FileNotFoundError("edicao.zip")), 1)
 
     def test_banco_que_recusa_sai_com_1(self):
         self.assertEqual(self.com_resultado(RuntimeError("conexão recusada")), 1)

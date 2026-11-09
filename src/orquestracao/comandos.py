@@ -15,11 +15,16 @@ def roda(context: dg.AssetExecutionContext, *cmd: str, de_dado: str | None = Non
     """Roda o comando e falha com o erro dele, tirado do stderr (#85). Se o comando sair com SAIDA_DE_DADO
     e `de_dado` disser o que isso significa, falha sem retry: repetir não resolve (#83, #84)."""
     context.log.info(" ".join(cmd))
-    p = subprocess.run(cmd, stderr=subprocess.PIPE, text=True)
-    sys.stderr.write(p.stderr)  # continua nos compute logs, de onde o eventos_do_run.sh lê o resumo do persist
+    linhas = []
+    # Linha a linha para os compute logs, de onde o eventos_do_run.sh lê o resumo do persist: um run cancelado
+    # no meio de um download longo não perde o log do comando.
+    with subprocess.Popen(cmd, stderr=subprocess.PIPE, text=True) as p:
+        for linha in p.stderr:
+            sys.stderr.write(linha)
+            linhas.append(linha)
     if p.returncode == 0:
         return
-    erro = _erro(p.stderr)
+    erro = _erro("".join(linhas))
     if de_dado and p.returncode == SAIDA_DE_DADO:
         raise dg.Failure(description=f"{de_dado}: {erro}", allow_retries=False)
     raise dg.Failure(description=f"{' '.join(cmd[2:4])} saiu com {p.returncode}: {erro}")

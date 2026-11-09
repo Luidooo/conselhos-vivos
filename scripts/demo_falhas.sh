@@ -15,7 +15,7 @@ mkdir -p data/dagster docs/adr/medicoes/0009-gold
 corrente=$(TZ=America/Sao_Paulo date +%Y-%m)
 saida=docs/adr/medicoes/0009-gold/falhas-$(date -u +%Y%m%dT%H%M%SZ).txt
 log=$(mktemp)
-trap 'rm -f "$log"' EXIT
+trap 'rm -f "$log" "$saida.tmp"' EXIT   # uma prova pela metade não fica na pasta versionada
 
 # Um container só: o pip install é pago uma vez. Cada caso imprime "CASO <nome> <run id>".
 DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T -e CORRENTE="$corrente" orquestrador sh -c '
@@ -64,6 +64,7 @@ echo "CASO dbt $(run_id env PGDATABASE=banco_que_nao_existe dagster asset materi
 
 {
   echo "# make demo-falhas, $(date -u '+%Y-%m-%d %H:%M:%S') UTC, mês corrente $corrente, gerado por scripts/demo_falhas.sh (horários em UTC)"
+  echo "# A agenda olha as partições já materializadas no data/dagster desta máquina: noutra máquina, ou num clone limpo, o SkipReason pode virar RunRequest."
   while read -r tipo nome run; do
     if [[ "$tipo" == AGENDA ]]; then echo "==> agenda: $nome $run"; continue; fi
     echo "==> caso $nome, run $run"
