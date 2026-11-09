@@ -109,7 +109,7 @@ services:
   # escreve nele; o persist (#55) só lê.
   dou:
     image: python:3.12.14-slim
-    profiles: [ingestor]
+    profiles: [dou]
     working_dir: /app
     environment:
       PYTHONPATH: /app/src
@@ -139,7 +139,7 @@ services:
   # desfeita no fim.
   dou-db-test:
     image: python:3.12.14-slim
-    profiles: [ingestor]
+    profiles: [dou]
     working_dir: /app
     environment:
       PYTHONPATH: /app/src:/app/tests/dou_db:/tmp/site

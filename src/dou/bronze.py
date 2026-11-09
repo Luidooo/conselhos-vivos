@@ -1,10 +1,10 @@
 """O bronze: as edições do DOU em disco, de modo que um arquivo sob o nome
-final seja sempre um ZIP inteiro e legível (o par do internal/store do Go).
+final seja sempre um ZIP inteiro e legível.
 
-O diretório também é o registro do que foi pedido: para uma edição há o ZIP,
-um marcador dizendo que ela não existiu (`.sem-edicao`), um marcador dizendo
-que a busca falhou (`.falhou`), ou nada — que é "ninguém buscou". Nunca dois
-deles juntos, e o ZIP em disco vence os marcadores.
+Os marcadores `.sem-edicao` e `.falhou` (ADR 0008) vêm do cliente do INLABS, que
+saiu: ninguém mais os escreve, e o `TEM_EDICAO` do Makefile ainda lê os que
+estão em disco. Aqui só se grava o ZIP, e gravá-lo apaga os marcadores da sua
+edição.
 """
 
 import os
@@ -28,16 +28,6 @@ class Recibo:
 
     caminho: Path
     tamanho: int
-
-
-def nome_sem_edicao(nome):
-    """`2026-10-04-DO1.zip` -> `2026-10-04-DO1.sem-edicao`."""
-    return _sem_zip(nome) + SEM_EDICAO
-
-
-def nome_falhou(nome):
-    """`2026-10-04-DO1.zip` -> `2026-10-04-DO1.falhou`."""
-    return _sem_zip(nome) + FALHOU
 
 
 def _sem_zip(nome):
@@ -92,26 +82,6 @@ class Bronze:
         self._desmarcar(nome, SEM_EDICAO, FALHOU)
         _fsync_dir(self.dir)
         return Recibo(caminho=final, tamanho=tamanho)
-
-    def marcar_sem_edicao(self, nome):
-        """O INLABS disse que a edição não existe. Sem o marcador, um dia sem
-        edição e um dia que ninguém buscou ficariam iguais no disco."""
-        self._marcar(nome, SEM_EDICAO, FALHOU)
-
-    def marcar_falhou(self, nome):
-        """A edição foi pedida e não chegou: é a que se busca de novo."""
-        self._marcar(nome, FALHOU, SEM_EDICAO)
-
-    def _marcar(self, nome, sufixo, outro):
-        # O ZIP em disco vence: uma edição baixada existiu, e nem um "não
-        # encontrada" nem uma falha posterior a desfazem.
-        if self.tem(nome):
-            return
-        # O marcador antigo sai primeiro: uma queda no meio deixa nenhum
-        # (um dia a buscar de novo), nunca dois que se contradizem.
-        self._desmarcar(nome, outro)
-        (self.dir / (_sem_zip(nome) + sufixo)).write_bytes(b"")
-        _fsync_dir(self.dir)
 
     def _desmarcar(self, nome, *sufixos):
         for sufixo in sufixos:

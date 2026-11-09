@@ -1,5 +1,5 @@
 """python -m dou fetch-mensal --month AAAA-MM: um mês da Seção 1 pelos dados
-abertos (o par do cmd/fetch-mensal do Go). Só orquestra: argumentos,
+abertos. Só orquestra: argumentos,
 configuração, log, código de saída; o download é do dadosabertos.
 
 Saída 2: erro de uso. Saída 1: mês ainda não publicado, ou qualquer falha.

@@ -117,57 +117,26 @@ class Abrir(unittest.TestCase):
 
 
 class Marcadores(CasoComDiretorio):
-    def test_sem_edicao_deixa_um_marcador_vazio(self):
-        self.bronze.marcar_sem_edicao("2026-10-04-DO1E.zip")
-        self.assertEqual(self.entradas(), ["2026-10-04-DO1E.sem-edicao"])
-        self.assertEqual((self.dir / "2026-10-04-DO1E.sem-edicao").stat().st_size, 0)
-
-    def test_sem_edicao_duas_vezes_e_igual_a_uma(self):
-        self.bronze.marcar_sem_edicao("2026-10-04-DO1.zip")
-        self.bronze.marcar_sem_edicao("2026-10-04-DO1.zip")
-        self.assertEqual(self.entradas(), ["2026-10-04-DO1.sem-edicao"])
-
-    def test_sem_edicao_deixa_em_paz_um_zip_que_ja_esta_la(self):
-        # Uma edição baixada uma vez existiu: um "não encontrada" posterior
-        # não a despublica.
-        self.bronze.salvar("2026-10-02-DO1.zip", io.BytesIO(zip_com("DO1.xml", "<article/>")))
-        self.bronze.marcar_sem_edicao("2026-10-02-DO1.zip")
-        self.assertEqual(self.entradas(), ["2026-10-02-DO1.zip"], "nenhum marcador ao lado do zip")
+    # Ninguém mais escreve os marcadores (ADR 0008): os testes os criam à mão,
+    # como os que já estão em disco.
+    def marcador(self, nome):
+        (self.dir / nome).write_bytes(b"")
 
     def test_salvar_remove_o_marcador_da_sua_edicao(self):
-        # A edição extra sai à tarde: a busca da manhã a marca como ausente, a
-        # da noite a encontra.
-        self.bronze.marcar_sem_edicao("2026-10-02-DO1E.zip")
-        self.bronze.marcar_sem_edicao("2026-10-02-DO1.zip")
+        # Uma busca de outro dia deixou o marcador; o ZIP baixado depois vence.
+        self.marcador("2026-10-02-DO1E.sem-edicao")
+        self.marcador("2026-10-02-DO1.sem-edicao")
         self.bronze.salvar("2026-10-02-DO1E.zip", io.BytesIO(zip_com("DO1E.xml", "<article/>")))
         self.assertEqual(self.entradas(), ["2026-10-02-DO1.sem-edicao", "2026-10-02-DO1E.zip"], "só o próprio marcador sai")
 
-    def test_falhou_deixa_um_marcador_vazio(self):
-        self.bronze.marcar_falhou("2026-10-02-DO1.zip")
-        self.assertEqual(self.entradas(), ["2026-10-02-DO1.falhou"])
-        self.assertEqual((self.dir / "2026-10-02-DO1.falhou").stat().st_size, 0)
-
-    def test_o_ultimo_marcador_e_o_que_fica(self):
-        # O registro é o que a última busca encontrou: um marcador por edição, nunca os dois.
-        self.bronze.marcar_sem_edicao("2026-10-02-DO1E.zip")
-        self.bronze.marcar_falhou("2026-10-02-DO1E.zip")
-        self.assertEqual(self.entradas(), ["2026-10-02-DO1E.falhou"])
-        self.bronze.marcar_sem_edicao("2026-10-02-DO1E.zip")
-        self.assertEqual(self.entradas(), ["2026-10-02-DO1E.sem-edicao"])
-
-    def test_falhou_deixa_em_paz_um_zip_que_ja_esta_la(self):
-        self.bronze.salvar("2026-10-02-DO1.zip", io.BytesIO(zip_com("DO1.xml", "<article/>")))
-        self.bronze.marcar_falhou("2026-10-02-DO1.zip")
-        self.assertEqual(self.entradas(), ["2026-10-02-DO1.zip"], "nenhum marcador ao lado do zip")
-
     def test_salvar_remove_o_marcador_de_falha_da_sua_edicao(self):
-        self.bronze.marcar_falhou("2026-10-02-DO1.zip")
+        self.marcador("2026-10-02-DO1.falhou")
         self.bronze.salvar("2026-10-02-DO1.zip", io.BytesIO(zip_com("DO1.xml", "<article/>")))
         self.assertEqual(self.entradas(), ["2026-10-02-DO1.zip"])
 
     def test_tem_so_enxerga_o_zip(self):
         self.assertFalse(self.bronze.tem("S01082026.zip"))
-        self.bronze.marcar_falhou("S01082026.zip")
+        self.marcador("S01082026.falhou")
         self.assertFalse(self.bronze.tem("S01082026.zip"), "um marcador não é o zip")
         self.bronze.salvar("S01082026.zip", io.BytesIO(zip_com("a.xml", "<xml/>")))
         self.assertTrue(self.bronze.tem("S01082026.zip"))

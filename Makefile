@@ -17,11 +17,14 @@ FALHOU = $(wildcard data/bronze/inlabs/$(DATA)-DO1.falhou data/bronze/inlabs/$(D
 # Sem ZIP, um dia sem edição não é erro; um que falhou ou que ninguém buscou é. A
 # falha de qualquer seção é avisada mesmo com o ZIP da outra (e o alvo sai com
 # erro no fim, pelo ZIPS_FALHOU); a falha vence o "sem edição" da outra seção.
-TEM_EDICAO = if [ -n "$(FALHOU)" ]; then echo "a busca de $(notdir $(FALHOU:.falhou=)) falhou (marcador em data/bronze/inlabs/) — baixe o ZIP pelo navegador e apague o marcador" >&2; fi; \
+TEM_EDICAO = for f in $(FALHOU:.falhou=); do \
+		if [ -e "$$f.zip" ]; then echo "a busca de $$(basename $$f) falhou (marcador em data/bronze/inlabs/), mas o ZIP está em disco — apague o marcador" >&2; \
+		else echo "a busca de $$(basename $$f) falhou (marcador em data/bronze/inlabs/) — baixe o ZIP pelo navegador e apague o marcador" >&2; fi; \
+	done; \
 	if [ -n "$(EDICOES)" ]; then :; \
 	elif [ -n "$(FALHOU)" ]; then exit 1; \
 	elif [ -n "$(SEM_EDICAO)" ]; then echo "$(DATA) não teve edição do DOU (marcador em data/bronze/inlabs/)" >&2; \
-	else echo "nenhum ZIP de $(DATA) em data/bronze/inlabs/ — baixe pelo navegador ou use make ingest-mensal"; exit 1; fi
+	else echo "nenhum ZIP de $(DATA) em data/bronze/inlabs/ — baixe o ZIP pelo navegador"; exit 1; fi
 # O valor inicial do "falhou" dos laços do extract e do persist: com uma seção
 # falha, o alvo processa o ZIP da outra e sai com erro no fim.
 ZIPS_FALHOU = $(if $(FALHOU),1,0)
