@@ -74,13 +74,15 @@ class TestApp(unittest.TestCase):
                 ultimo_mes_com_ato DATE,
                 atos_no_periodo INTEGER,
                 meses_sem_publicar INTEGER,
-                situacao VARCHAR
+                situacao VARCHAR,
+                mencoes_no_periodo INTEGER,
+                ultimo_mes_citado DATE
             );
             INSERT INTO mart_vitalidade VALUES
-                (1, 'Conselho Um', 'C1', DATE '2026-09-01', DATE '2026-09-01', 10, 0, 'ativo'),
-                (2, 'Conselho Dois', 'C2', DATE '2026-09-01', DATE '2026-07-01', 1, 2, 'em silêncio'),
-                (3, 'Conselho Três', 'C3', DATE '2026-09-01', DATE '2026-07-01', 1, 2, 'ativo'),
-                (4, 'Conselho Quatro', 'C4', DATE '2026-09-01', NULL, 0, NULL, 'sem ato no período coberto');
+                (1, 'Conselho Um', 'C1', DATE '2026-09-01', DATE '2026-09-01', 10, 0, 'ativo', 3, DATE '2026-08-01'),
+                (2, 'Conselho Dois', 'C2', DATE '2026-09-01', DATE '2026-07-01', 1, 2, 'em silêncio', 0, NULL),
+                (3, 'Conselho Três', 'C3', DATE '2026-09-01', DATE '2026-07-01', 1, 2, 'ativo', 0, NULL),
+                (4, 'Conselho Quatro', 'C4', DATE '2026-09-01', NULL, 0, NULL, 'sem ato no período coberto', 2, DATE '2026-08-01');
         """)
 
     def _cria_freshness(self, con):
@@ -133,6 +135,21 @@ class TestApp(unittest.TestCase):
             "Conselho Três": "não",
             "Conselho Quatro": "não avaliado",
         })
+
+    def test_citado_por_outros_orgaos(self):
+        # O segundo sinal (plano 2026-11-09): o conselho sem ato próprio, mas citado, aparece com as menções.
+        with duckdb.connect(self.gold_path) as con:
+            self._cria_tabelas_base(con)
+            self._cria_freshness(con)
+        os.environ["PAINEL_GOLD"] = self.gold_path
+        at = AppTest.from_file(APP).run(timeout=60)
+        self.assertEqual(len(at.exception), 0)
+        tabela = at.dataframe[0].value
+        citado = dict(zip(tabela["Conselho"], tabela["Citado por outros órgãos"]))
+        self.assertEqual(citado["Conselho Quatro"], 2)
+        self.assertEqual(citado["Conselho Dois"], 0)
+        legendas = [c.value for c in at.caption]
+        self.assertTrue(any("Citado por outros órgãos" in t for t in legendas), legendas)
 
     def test_sla_fora_aparece_na_pagina(self):
         with duckdb.connect(self.gold_path) as con:

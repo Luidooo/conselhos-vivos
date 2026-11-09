@@ -82,10 +82,13 @@ st.warning("Sem ato no DOU não prova que o conselho parou: muito conselho funci
 st.subheader("A situação de cada conselho")
 # shortcut: limite de 3 meses (meses_ativo do mart_vitalidade, provisório), atualizar quando a pesquisadora definir o limite
 st.caption("Ativo: publicou até 3 meses atrás. Em silêncio: publicou há mais de 3 meses, ou nunca publicou com mais de 3 meses de cobertura. Sem ato no período coberto: nunca publicou, com 3 meses ou menos de cobertura.")
-tabela = v[["nome", "sigla", "situacao", "ultimo_mes_com_ato", "meses_sem_publicar", "atos_no_periodo", "eh_participativo"]].copy()
+# O segundo sinal (plano 2026-11-09): atos de outros órgãos que citam o conselho no período, como uma homologação
+# ou a renovação da composição. Ele não muda a situação, que segue a regra da mart.
+st.caption("Citado por outros órgãos: atos publicados por outro órgão, no mesmo período, que têm o conselho como assunto. Um conselho sem ato próprio, mas citado, deu sinal de vida fora do DOU dele.")
+tabela = v[["nome", "sigla", "situacao", "ultimo_mes_com_ato", "meses_sem_publicar", "atos_no_periodo", "mencoes_no_periodo", "eh_participativo"]].copy()
 tabela["ultimo_mes_com_ato"] = tabela["ultimo_mes_com_ato"].map(mes)
 tabela["eh_participativo"] = tabela["eh_participativo"].map(participacao)
-st.dataframe(tabela.rename(columns={"nome": "Conselho", "sigla": "Sigla", "situacao": "Situação", "ultimo_mes_com_ato": "Último mês com ato", "meses_sem_publicar": "Meses sem publicar", "atos_no_periodo": "Atos no período", "eh_participativo": "Participação social (pesquisadora)"}), hide_index=True)
+st.dataframe(tabela.rename(columns={"nome": "Conselho", "sigla": "Sigla", "situacao": "Situação", "ultimo_mes_com_ato": "Último mês com ato", "meses_sem_publicar": "Meses sem publicar", "atos_no_periodo": "Atos no período", "mencoes_no_periodo": "Citado por outros órgãos", "eh_participativo": "Participação social (pesquisadora)"}), hide_index=True)
 
 st.subheader("Atos de conselho por mês")
 mensal["mes"] = mensal["mes"].map(mes)
