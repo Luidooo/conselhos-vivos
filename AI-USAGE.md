@@ -621,3 +621,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** o modelo, o teste e o SLA do plano ("o mês M está na gold até o dia 20 do mês M+1"). **Decidido pela IA**, a revisar: o DOU vazio conta como fora do SLA, porque um nulo faria o teste passar calado; e a var `hoje`, só para os testes unitários fixarem a data e cobrirem a fronteira do dia 20.
 - **Como foi verificado:** `make gold` com 63 de 63 em `PASS`; sem o modelo, o `make gold` falha; os testes unitários cobrem o dia 20, o dia 21 e o DOU vazio, e o do DOU vazio falha (`FAIL 1`) sem o `coalesce`; a conta do mês esperado foi conferida no DuckDB para 09/11, 20/11, 21/11, 05/01 e 25/01; com setembro tirado pelo `excluir_mes`, o `sla_vitalidade` dá `WARN 1` e o build termina com `ERROR=0`.
 - **Quem revisou:** pendente — a Luiza revisa o diff antes do commit; revisão da squad no PR.
+
+### 2026-11-09 — Queda no meio do download do mês, prova do retry (#21)
+
+- **Ferramenta:** Claude Code (Haiku 5.5 na execução, Sonnet 5.5 na conferência)
+- **Onde:** `tests/dou/test_dadosabertos.py`
+- **O que foi pedido:** provar que um download mensal que cai no meio do corpo sai com código 1 e não deixa nada no bronze, para o retry do Dagster. Só teste: `src/dou/` não muda.
+- **O que foi aproveitado:** o caso novo, no molde do `DownloadFalha`, com um servidor que anuncia um `Content-Length` maior que o enviado. **Decidido pela IA**, a revisar por Iago (@iagorrr): a #21 fala em resumo do dia e em seção, que saíram no #81; o critério que sobra, traduzido para o mês, é que o mês que falha no download sai com código 1, sem arquivo em disco, e o log diz a causa. A #21 está atribuída a Iago (@iagorrr), a quem cabe discordar.
+- **Como foi verificado:** `make test-py-dou` com `Ran 46 tests`, `OK`, código 0; `make vet-py` com código 0. Rodados pelo `agy` (Gemini 3.8 Flash), a partir do repositório. Os dois testes novos estão entre os 46 (`tests/dou` tem 46 métodos de teste). `make test` completo fica coberto pelo CI.
+- **Quem revisou:** pendente.
