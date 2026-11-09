@@ -742,7 +742,7 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - a classificação por IA aparece na Jornada como "a fazer", não como E3;
   - o catálogo e a linhagem, que a Arquitetura punha na E4, aparecem como adiantados para a E3.
 - **Como foi verificado:**
-  - o site compilou sem link quebrado. O build quebrava por um `{{ ref() }}` do dbt fora de bloco de código no plano da E3, e o trecho virou `<code v-pre>`;
+  - o site compilou sem link quebrado. O build quebrava por um `ref()` do dbt, entre chaves duplas, fora de bloco de código no plano da E3, e o trecho virou `<code v-pre>`;
   - as páginas foram vistas no servidor local: a linhagem com os rótulos legíveis, o diagrama ER renderizado e a barra lateral com as entradas novas;
   - cada número e cada prova citados em "Gold e menções" foram conferidos contra os arquivos de `docs/adr/medicoes/0009-gold/`; duas afirmações que não batiam foram corrigidas antes do commit.
 - **Quem revisou:** pendente — a Luiza autorizou os commits direto no `main`.
