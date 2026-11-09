@@ -3,9 +3,10 @@
 #   1. mês ainda não publicado: o mês corrente, que nunca está publicado; falha sem retry, com a causa (#83);
 #   2. a agenda: pede o mês anterior que falta e pula o que já foi carregado (#83);
 #   3. ZIP com um XML que não lê como matéria: falha sem retry (#84);
-#   4. lake e dbt forçados a falhar (host e banco que não existem): retry, e a causa com o erro do processo (#85).
-# Nada é baixado nem gravado: o mês corrente não tem ZIP, o ZIP do caso 3 só tem a entrada inválida, e os casos 4
-# não chegam ao banco.
+#   4. lake e dbt forçados a falhar (host e banco que não existem): retry, e a causa com o erro do processo (#85);
+#   5. um teste do dbt que falha de verdade (o mês do meio tirado com o excluir_mes): a prova traz o nome do teste (#85).
+# Nada é baixado e o OLTP não é tocado: o mês corrente não tem ZIP, o ZIP do caso 3 só tem a entrada inválida, e os
+# casos 4 não chegam ao banco. O caso 5 grava a gold sem o mês do meio e a restaura logo depois com um dbt build normal.
 # Uso: bash scripts/demo_falhas.sh   (leva uns 4 minutos: os casos 4 esperam o retry)
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -56,17 +57,35 @@ def persist_zip_ruim(context):
     roda(context, "python", "-m", "dou", "persist", "/tmp/ruim.zip",
          de_dado="ZIP corrompido ou com entrada que não lê como matéria; o que leu foi gravado")
 print("CASO zip-invalido", dg.materialize([persist_zip_ruim], instance=instancia, raise_on_error=False).run_id)
+
+# 5. A gold com o mês do meio tirado: o teste distribuicao_mes_sem_nenhum_ato falha de verdade. O asset existe só aqui,
+# com o projeto dbt de produção; o gold de produção não ganha parâmetro. Sem retry: um teste que falha não melhora.
+# shortcut: 2026-08 é o mês do meio da cobertura de julho a setembro; com outra cobertura, troque o mês.
+from dagster_dbt import DbtCliResource, dbt_assets
+from orquestracao import DBT
+@dbt_assets(manifest=DBT.manifest_path, name="gold_sem_o_mes_do_meio")
+def gold_sem_o_mes_do_meio(context, dbt: DbtCliResource):
+    yield from dbt.cli(["build", "--vars", "{excluir_mes: 2026-08-01}", "--exclude-resource-type", "unit_test"],
+                       context=context).stream()
+r = dg.materialize([gold_sem_o_mes_do_meio], instance=instancia, resources={"dbt": DbtCliResource(project_dir=DBT)},
+                   raise_on_error=False)
+print("CASO dbt-teste", r.run_id)
 PY
+# A gold volta ao normal; se não voltar, a demonstração falha.
+if dbt build --project-dir /app/dbt --quiet > /tmp/restaura.log 2>&1; then echo "GOLD restaurada com um dbt build normal"
+else echo "GOLD NAO_RESTAURADA"; tail -5 /tmp/restaura.log; fi
 # 4. Os assets de verdade, com uma variável de conexão quebrada.
 echo "CASO lake $(run_id env PGHOST=host-que-nao-existe dagster asset materialize -m orquestracao --select silver/atos --partition 2026-08-01)"
 echo "CASO dbt $(run_id env PGDATABASE=banco_que_nao_existe dagster asset materialize -m orquestracao --select stg_atos --partition 2026-08-01)"
-' 2>&1 | grep -E "^(CASO|AGENDA) " > "$log"
+' 2>&1 | grep -E "^(CASO|AGENDA|GOLD) " > "$log"
+grep -q "^GOLD restaurada" "$log" || { echo "FALHOU: a gold não foi restaurada; rode make gold"; exit 1; }
 
 {
   echo "# make demo-falhas, $(date -u '+%Y-%m-%d %H:%M:%S') UTC, mês corrente $corrente, gerado por scripts/demo_falhas.sh (horários em UTC)"
   echo "# A agenda olha as partições já materializadas no data/dagster desta máquina: noutra máquina, ou num clone limpo, o SkipReason pode virar RunRequest."
   while read -r tipo nome run; do
     if [[ "$tipo" == AGENDA ]]; then echo "==> agenda: $nome $run"; continue; fi
+    if [[ "$tipo" == GOLD ]]; then echo "==> gold $nome $run"; continue; fi
     echo "==> caso $nome, run $run"
     bash scripts/eventos_do_run.sh "$run"
   done < "$log"

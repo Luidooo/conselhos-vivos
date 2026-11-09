@@ -1162,10 +1162,11 @@ sqlite3 "data/dagster/history/runs/$run.db" "
 logs=data/dagster/storage/"$run"/compute_logs
 cat "$logs"/*.err 2>/dev/null \
   | grep -oE "done gravadas.*|run aborted err=.*" | sed -e 's/^done /persist: /' -e 's/^run aborted /persist falhou: /' || true
-# O dbt escreve no stdout; as cores saem antes do grep.
+# O dbt escreve no stdout; as cores saem antes do grep. Na saída que o Dagster grava, a linha não começa com o
+# horário ("39 of 53 FAIL 1 teste ..."); no terminal, começa ("02:42:16  39 of 53 ..."): só o horário sai.
 cat "$logs"/*.out 2>/dev/null | sed $'s/\x1b\\[[0-9;]*m//g' \
-  | grep -E " FAIL [0-9]+ | ERROR (creating|running)|Failure in |(IO|Runtime|Database|Compilation|Parsing) Error:" \
-  | sed -E 's/^[0-9:]+ +//; s/^.*Exception: //; s/^/dbt: /' | awk '!visto[$0]++' | head -8 || true
+  | grep -E " FAIL [0-9]+ | ERROR (creating|running)|Failure in |\[ERROR\]: in |(IO|Runtime|Database|Compilation|Parsing) Error:" \
+  | sed -E 's/^[0-9]{2}:[0-9]{2}:[0-9]{2} +//; s/^.*Exception: //; s/^/dbt: /' | awk '!visto[$0]++' | head -8 || true
 } | sed -E 's/(password=)[^ "]*/\1***/g'
 ```
 
