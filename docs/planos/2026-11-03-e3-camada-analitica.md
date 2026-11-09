@@ -491,27 +491,36 @@ git add dbt && git diff --cached --stat
 ### Tarefa 3: o fato do ato
 
 **Arquivos:**
-- Criar: `dbt/models/marts/fct_ato.sql`, `dbt/tests/fct_volume_igual_a_silver.sql`, `dbt/tests/fct_sem_data_no_futuro.sql`
+- Criar: `dbt/models/marts/fct_ato.sql`, `dbt/tests/fct_volume_igual_ao_staging.sql`, `dbt/tests/fct_sem_data_no_futuro.sql`, `docs/adr/medicoes/0009-gold/fct_ato-fora-do-escopo.txt`
 - Modificar: `dbt/models/marts/marts.yml`
 
 **Interfaces:**
 - Consome: `ref('stg_atos')`, `ref('dim_conselho')`.
 - Produz: `ref('fct_ato')`, com `ato_id, materia, origem, data_publicacao, mes, orgao_id, conselho_sk, nome_aproximado, tipologia_sigla, revisor_tipo`.
 
+**O que os dados mostraram (09/11/2026, banco com julho a setembro de 2026):**
+- **Fora do escopo:** 146 dos 389 atos do DOU são de 9 órgãos que não estão na `dim_conselho`. São órgãos cujo nome não começa com "Conselho", como o Comitê-Executivo de Gestão, com 100 atos, ou órgãos excluídos pela seed, como o Conselho Monetário Nacional, com 27. Pelo ADR 0010, esses atos saem do fato. Os 215 da planilha estão todos dentro.
+- **Critério de volume:** por isso, "o mesmo número de matérias da silver" vira "o mesmo número de matérias do staging dentro do escopo". O total de fora fica registrado para o ADR 0009.
+- **Nome na data:** nenhum ato do escopo fica sem nome na data, graças ao início aberto da `dim_conselho`, e não há buracos entre vigências. Mesmo assim, o join tem de cobrir dois casos que o plano anterior tratava errado: o ato depois da extinção (o plano antigo daria o *primeiro* nome) e um buraco entre dois nomes. O `asof join` do DuckDB resolve os dois: escolhe o último nome que começou até a data.
+- **Tipologias:** as do banco são `99`, `AUTO`, `DEF`, `FISC`, `GEST` e `IP`. Um ato sem classificação vira `SEM`.
+
 - [ ] **Passo 1: os testes**
 
-`dbt/tests/fct_volume_igual_a_silver.sql`:
+`dbt/tests/fct_volume_igual_ao_staging.sql`:
 
 ```sql
--- O fato tem uma linha por matéria: nem perde ato no join com a dimensão, nem duplica.
+-- O fato tem uma linha por matéria do escopo (ADR 0010): nem perde ato no join com a dimensão, nem duplica.
+-- E os 215 atos da planilha nunca podem sumir.
 with esperado as (
-    select count(distinct case when origem = 'DOU' then 'DOU:' || id_origem else 'PLANILHA:' || ato_id end) as n
-    from {{ source('silver', 'atos') }}
+    select count(*) as n from {{ ref('stg_atos') }}
+    where orgao_id in (select orgao_id from {{ ref('dim_conselho') }})
 ),
-real as (select count(*) as n from {{ ref('fct_ato') }})
-select esperado.n as esperado, real.n as real
+real as (
+    select count(*) as n, count(*) filter (where origem = 'PLANILHA') as planilha from {{ ref('fct_ato') }}
+)
+select esperado.n as esperado, real.n as real, real.planilha
 from esperado, real
-where esperado.n <> real.n or real.n < 215  -- 215: os atos da planilha nunca podem sumir
+where esperado.n <> real.n or real.planilha < 215
 ```
 
 `dbt/tests/fct_sem_data_no_futuro.sql`:
@@ -521,28 +530,59 @@ where esperado.n <> real.n or real.n < 215  -- 215: os atos da planilha nunca po
 select ato_id, data_publicacao from {{ ref('fct_ato') }} where data_publicacao > current_date
 ```
 
-Em `marts.yml`, dentro de `models:`:
+Em `marts.yml`, dentro de `models:`, a granularidade por extenso, os testes de coluna e um teste unitário dos quatro casos do nome na data:
 
 ```yaml
   - name: fct_ato
     description: >
-      Fato. Granularidade: uma linha por matéria publicada (a versão mais recente), ligada ao
-      nome que o conselho tinha na data da publicação.
+      Fato. Granularidade: uma linha por matéria publicada (a versão mais recente) de um conselho do
+      escopo da dim_conselho (ADR 0010), ligada ao nome que o conselho tinha na data da publicação.
+      nome_aproximado é verdadeiro quando a data cai fora da vigência do nome escolhido: antes do
+      primeiro nome (fica com o mais antigo) ou depois do fim do último (fica com o último).
     columns:
       - name: ato_id
-        tests: [unique, not_null]
+        data_tests: [unique, not_null]
       - name: materia
-        tests: [unique, not_null]
+        data_tests: [unique, not_null]
       - name: conselho_sk
-        tests:
+        data_tests:
           - not_null
           - relationships:
-              to: ref('dim_conselho')
-              field: conselho_sk
+              arguments:
+                to: ref('dim_conselho')
+                field: conselho_sk
       - name: tipologia_sigla
-        tests:
+        data_tests:
           - accepted_values:
-              values: ['DEF', 'FISC', 'GEST', 'AUTO', 'IP', '99', 'SEM']
+              arguments:
+                values: ['99', 'AUTO', 'DEF', 'FISC', 'GEST', 'IP', 'SEM']
+```
+
+Em `marts.yml`, numa chave `unit_tests:` no fim do arquivo:
+
+```yaml
+unit_tests:
+  - name: fct_ato_casa_o_nome_da_data
+    description: "Dentro da vigência, antes do primeiro nome, depois da extinção e órgão fora do escopo."
+    model: fct_ato
+    given:
+      - input: ref('stg_atos')
+        rows:
+          - {ato_id: 1, materia: "DOU:a", origem: DOU, data_publicacao: 2005-06-01, mes: 2005-06-01, orgao_id: 1, tipologia_sigla: DEF, revisor_tipo: HUMANO}
+          - {ato_id: 2, materia: "DOU:b", origem: DOU, data_publicacao: 1999-01-01, mes: 1999-01-01, orgao_id: 1, tipologia_sigla: null, revisor_tipo: null}
+          - {ato_id: 3, materia: "DOU:c", origem: DOU, data_publicacao: 2012-03-01, mes: 2012-03-01, orgao_id: 1, tipologia_sigla: GEST, revisor_tipo: HUMANO}
+          - {ato_id: 4, materia: "DOU:d", origem: DOU, data_publicacao: 2016-01-01, mes: 2016-01-01, orgao_id: 1, tipologia_sigla: GEST, revisor_tipo: HUMANO}
+          - {ato_id: 5, materia: "DOU:e", origem: DOU, data_publicacao: 2016-01-01, mes: 2016-01-01, orgao_id: 2, tipologia_sigla: GEST, revisor_tipo: HUMANO}
+      - input: ref('dim_conselho')
+        rows:
+          - {conselho_sk: 10, orgao_id: 1, valido_de: 2000-01-01, valido_ate: 2009-12-31}
+          - {conselho_sk: 11, orgao_id: 1, valido_de: 2010-01-01, valido_ate: 2014-12-31}
+    expect:
+      rows:
+        - {ato_id: 1, conselho_sk: 10, nome_aproximado: false, tipologia_sigla: DEF}
+        - {ato_id: 2, conselho_sk: 10, nome_aproximado: true, tipologia_sigla: SEM}
+        - {ato_id: 3, conselho_sk: 11, nome_aproximado: false, tipologia_sigla: GEST}
+        - {ato_id: 4, conselho_sk: 11, nome_aproximado: true, tipologia_sigla: GEST}
 ```
 
 - [ ] **Passo 2: rodar e ver falhar**
@@ -558,30 +598,40 @@ Esperado: erro de compilação, porque `fct_ato` não existe.
 `dbt/models/marts/fct_ato.sql`:
 
 ```sql
--- Granularidade: uma linha por matéria publicada, na versão mais recente.
-with atos as (select * from {{ ref('stg_atos') }}),
-dim as (select * from {{ ref('dim_conselho') }}),
--- Ato publicado antes do primeiro nome registrado: fica com o nome mais antigo, marcado como aproximado.
+-- Fato. Granularidade: uma linha por matéria publicada (a versão mais recente), ligada ao nome que o
+-- conselho tinha na data da publicação. Atos de órgãos fora da dim_conselho (ADR 0010) saem daqui; a
+-- contagem deles está em docs/adr/medicoes/0009-gold/fct_ato-fora-do-escopo.txt.
+with atos as (
+    select ato_id, materia, origem, data_publicacao, mes, orgao_id, tipologia_sigla, revisor_tipo
+    from {{ ref('stg_atos') }}
+    where orgao_id in (select orgao_id from {{ ref('dim_conselho') }})
+),
 primeiro_nome as (
-    select orgao_id, conselho_sk from dim
+    select orgao_id, conselho_sk from {{ ref('dim_conselho') }}
     qualify row_number() over (partition by orgao_id order by valido_de) = 1
+),
+-- asof: o último nome que começou até a data. Cobre o nome vigente, um buraco entre dois nomes e o ato
+-- depois da extinção (fica com o último nome). Antes do primeiro nome não há par: fica com o mais antigo.
+casado as (
+    select a.*, d.conselho_sk, d.valido_ate
+    from atos a
+    asof left join {{ ref('dim_conselho') }} d
+      on a.orgao_id = d.orgao_id and a.data_publicacao >= d.valido_de
 )
 select
-    a.ato_id,
-    a.materia,
-    a.origem,
-    a.data_publicacao,
-    a.mes,
-    a.orgao_id,
-    coalesce(d.conselho_sk, p.conselho_sk) as conselho_sk,
-    d.conselho_sk is null as nome_aproximado,
-    coalesce(a.tipologia_sigla, 'SEM') as tipologia_sigla,
-    a.revisor_tipo
-from atos a
-left join dim d
-  on d.orgao_id = a.orgao_id
- and a.data_publicacao between d.valido_de and d.valido_ate
-left join primeiro_nome p on p.orgao_id = a.orgao_id
+    c.ato_id,
+    c.materia,
+    c.origem,
+    c.data_publicacao,
+    c.mes,
+    c.orgao_id,
+    coalesce(c.conselho_sk, p.conselho_sk) as conselho_sk,
+    -- aproximado: a data cai fora da vigência do nome escolhido
+    c.conselho_sk is null or c.data_publicacao > c.valido_ate as nome_aproximado,
+    coalesce(c.tipologia_sigla, 'SEM') as tipologia_sigla,
+    c.revisor_tipo
+from casado c
+left join primeiro_nome p on p.orgao_id = c.orgao_id
 ```
 
 - [ ] **Passo 4: rodar e ver passar**
@@ -590,12 +640,20 @@ left join primeiro_nome p on p.orgao_id = a.orgao_id
 make gold
 ```
 
-Esperado: `fct_ato` criada, com todos os testes em `PASS`. Se `not_null` de `conselho_sk` falhar, são os atos de órgão que não é conselho, do Passo 2 da Tarefa 0. Eles saem do fato com um `where` explicado num comentário, e o teste de volume passa a descontá-los.
+Esperado: `fct_ato` criada, com o teste unitário e todos os testes em `PASS`. Para ver o teste unitário pegar o erro, troque o `asof left join` por um `left join` com `between valido_de and valido_ate` e o fallback pelo primeiro nome, como no plano antigo: o ato 4 sai com o nome 10, e o teste falha. Depois, volte o arquivo.
 
-- [ ] **Passo 5: stage**
+- [ ] **Passo 5: o que ficou fora do escopo, para o ADR 0009**
 
 ```bash
-git add dbt && git diff --cached --stat
+DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt show --project-dir /app/dbt --limit 50 --inline "select orgao_id, count(*) as atos, min(data_publicacao) as primeiro, max(data_publicacao) as ultimo from {{ ref('stg_atos') }} where orgao_id not in (select orgao_id from {{ ref('dim_conselho') }}) group by 1 order by 2 desc" > docs/adr/medicoes/0009-gold/fct_ato-fora-do-escopo.txt
+```
+
+Esperado: os 9 órgãos e os 146 atos, se o banco tiver de julho a setembro de 2026. Junte uma linha com o total do fato por origem.
+
+- [ ] **Passo 6: stage**
+
+```bash
+git add dbt docs/adr/medicoes/0009-gold && git diff --cached --stat
 ```
 
 ---

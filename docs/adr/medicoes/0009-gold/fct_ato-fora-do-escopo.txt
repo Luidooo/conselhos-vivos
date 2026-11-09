@@ -1,0 +1,22 @@
+# fct_ato (#70): atos de órgãos fora da dim_conselho (ADR 0010), make gold de 2026-11-09 00:45 UTC
+
+| orgao_id | nome                 | atos |   primeiro |     ultimo |
+| -------- | -------------------- | ---- | ---------- | ---------- |
+|       16 | Comitê-Executivo ... |  100 | 2026-07-03 | 2026-09-24 |
+|       40 | Conselho Monetári... |   27 | 2026-07-02 | 2026-09-28 |
+|        7 | Câmara Interminis... |    6 | 2026-07-07 | 2026-09-25 |
+|        6 | Câmara-Executiva ... |    5 | 2026-07-20 | 2026-09-30 |
+|       14 | Comissão Nacional... |    3 | 2026-07-27 | 2026-07-28 |
+|       17 | Comitê Executivo ... |    2 | 2026-08-19 | 2026-08-19 |
+|       10 | Comissão Especial... |    1 | 2026-08-07 | 2026-08-07 |
+|       23 | Comitê Intersetor... |    1 | 2026-09-24 | 2026-09-24 |
+|       24 | Comitê Nacional d... |    1 | 2026-07-08 | 2026-07-08 |
+
+
+# total do fato por origem
+
+| origem   | atos | nome_aproximado |
+| -------- | ---- | --------------- |
+| DOU      |  243 |               0 |
+| PLANILHA |  215 |               0 |
+
