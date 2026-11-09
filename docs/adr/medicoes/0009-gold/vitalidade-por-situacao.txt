@@ -1,0 +1,10 @@
+Contagem por situação da mart_vitalidade (dbt show, após make gold com PASS=54), carga de julho a setembro de 2026; total 59 conselhos (ADR 0010). O dbt show trunca o rótulo 'sem ato no período coberto'.
+Comando: dbt show --project-dir /app/dbt --inline "select situacao, count(*) as conselhos, min(mes_referencia) as mes_referencia from {{ ref('mart_vitalidade') }} group by 1 order by 1"
+Previewing inline node:
+| situacao             | conselhos | mes_referencia |
+| -------------------- | --------- | -------------- |
+| ativo                |        26 |     2026-09-01 |
+| sem ato no períod... |        33 |     2026-09-01 |
+
+
+Com 3 meses cobertos e meses_ativo = 3, nenhum conselho pode ficar em silêncio: a contagem não testa o limite.

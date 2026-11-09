@@ -1,0 +1,135 @@
+PROVA 1: dbt build com excluir_mes=2026-08-01 (saída integral), seguido do dbt show do teste no mesmo banco.
+time="2026-11-08T22:54:03-03:00" level=warning msg="service \"pgadmin\": configs.pgadmin_pgpass.gid: gid is not supported outside Swarm mode and will be ignored"
+time="2026-11-08T22:54:03-03:00" level=warning msg="service \"pgadmin\": configs.pgadmin_pgpass.mode: mode is not supported outside Swarm mode and will be ignored"
+time="2026-11-08T22:54:03-03:00" level=warning msg="service \"pgadmin\": configs.pgadmin_pgpass.uid: uid is not supported outside Swarm mode and will be ignored"
+01:54:47  Running with dbt=1.12.6
+01:54:48  Registered adapter: duckdb=1.11.1
+01:54:48  Unable to do partial parsing because config vars, config profile, or config target have changed
+01:54:51  Found 8 models, 40 data tests, 1 seed, 4 sources, 511 macros, 5 unit tests
+01:54:51  
+01:54:51  Concurrency: 1 threads (target='dev')
+01:54:51  
+01:54:53  1 of 49 START sql view model main.stg_atos ..................................... [RUN]
+01:54:53  1 of 49 OK created sql view model main.stg_atos ................................ [OK in 0.10s]
+01:54:53  2 of 49 START sql view model main.stg_conselho ................................. [RUN]
+01:54:53  2 of 49 OK created sql view model main.stg_conselho ............................ [OK in 0.03s]
+01:54:53  3 of 49 START sql view model main.stg_orgao .................................... [RUN]
+01:54:53  3 of 49 OK created sql view model main.stg_orgao ............................... [OK in 0.03s]
+01:54:53  4 of 49 START sql view model main.stg_orgao_nome ............................... [RUN]
+01:54:53  4 of 49 OK created sql view model main.stg_orgao_nome .......................... [OK in 0.03s]
+01:54:53  5 of 49 START seed file main.conselhos_excluidos ............................... [RUN]
+01:54:54  5 of 49 OK loaded seed file main.conselhos_excluidos ........................... [INSERT 3 in 0.06s]
+01:54:54  6 of 49 START test accepted_values_stg_atos_origem__DOU__PLANILHA .............. [RUN]
+01:54:54  6 of 49 PASS accepted_values_stg_atos_origem__DOU__PLANILHA .................... [PASS in 0.06s]
+01:54:54  7 of 49 START test not_null_stg_atos_ato_id .................................... [RUN]
+01:54:54  7 of 49 PASS not_null_stg_atos_ato_id .......................................... [PASS in 0.04s]
+01:54:54  8 of 49 START test not_null_stg_atos_data_publicacao ........................... [RUN]
+01:54:54  8 of 49 PASS not_null_stg_atos_data_publicacao ................................. [PASS in 0.03s]
+01:54:54  9 of 49 START test not_null_stg_atos_materia ................................... [RUN]
+01:54:54  9 of 49 PASS not_null_stg_atos_materia ......................................... [PASS in 0.03s]
+01:54:54  10 of 49 START test unique_stg_atos_ato_id ..................................... [RUN]
+01:54:54  10 of 49 PASS unique_stg_atos_ato_id ........................................... [PASS in 0.04s]
+01:54:54  11 of 49 START test unique_stg_atos_materia .................................... [RUN]
+01:54:54  11 of 49 PASS unique_stg_atos_materia .......................................... [PASS in 0.04s]
+01:54:54  12 of 49 START test not_null_stg_conselho_orgao_id ............................. [RUN]
+01:54:54  12 of 49 PASS not_null_stg_conselho_orgao_id ................................... [PASS in 0.02s]
+01:54:54  13 of 49 START test unique_stg_conselho_orgao_id ............................... [RUN]
+01:54:54  13 of 49 PASS unique_stg_conselho_orgao_id ..................................... [PASS in 0.02s]
+01:54:54  14 of 49 START test not_null_stg_orgao_orgao_id ................................ [RUN]
+01:54:54  14 of 49 PASS not_null_stg_orgao_orgao_id ...................................... [PASS in 0.02s]
+01:54:54  15 of 49 START test unique_stg_orgao_orgao_id .................................. [RUN]
+01:54:54  15 of 49 PASS unique_stg_orgao_orgao_id ........................................ [PASS in 0.02s]
+01:54:54  16 of 49 START test not_null_stg_orgao_nome_orgao_nome_id ...................... [RUN]
+01:54:54  16 of 49 PASS not_null_stg_orgao_nome_orgao_nome_id ............................ [PASS in 0.02s]
+01:54:54  17 of 49 START test unique_stg_orgao_nome_orgao_nome_id ........................ [RUN]
+01:54:54  17 of 49 PASS unique_stg_orgao_nome_orgao_nome_id .............................. [PASS in 0.02s]
+01:54:54  18 of 49 START test not_null_conselhos_excluidos_nome .......................... [RUN]
+01:54:54  18 of 49 PASS not_null_conselhos_excluidos_nome ................................ [PASS in 0.02s]
+01:54:54  19 of 49 START test unique_conselhos_excluidos_nome ............................ [RUN]
+01:54:54  19 of 49 PASS unique_conselhos_excluidos_nome .................................. [PASS in 0.02s]
+01:54:54  20 of 49 START sql table model main.dim_conselho ............................... [RUN]
+01:54:54  20 of 49 OK created sql table model main.dim_conselho .......................... [OK in 0.14s]
+01:54:54  21 of 49 START test dim_inicio_aberto_so_no_nome_mais_antigo ................... [RUN]
+01:54:54  21 of 49 PASS dim_inicio_aberto_so_no_nome_mais_antigo ......................... [PASS in 0.02s]
+01:54:54  22 of 49 START test dim_no_maximo_uma_linha_atual_por_conselho ................. [RUN]
+01:54:54  22 of 49 PASS dim_no_maximo_uma_linha_atual_por_conselho ....................... [PASS in 0.02s]
+01:54:54  23 of 49 START test dim_vigencias_nao_se_sobrepoem ............................. [RUN]
+01:54:54  23 of 49 PASS dim_vigencias_nao_se_sobrepoem ................................... [PASS in 0.02s]
+01:54:54  24 of 49 START test not_null_dim_conselho_conselho_sk .......................... [RUN]
+01:54:54  24 of 49 PASS not_null_dim_conselho_conselho_sk ................................ [PASS in 0.03s]
+01:54:54  25 of 49 START test not_null_dim_conselho_orgao_id ............................. [RUN]
+01:54:54  25 of 49 PASS not_null_dim_conselho_orgao_id ................................... [PASS in 0.02s]
+01:54:54  26 of 49 START test unique_dim_conselho_conselho_sk ............................ [RUN]
+01:54:54  26 of 49 PASS unique_dim_conselho_conselho_sk .................................. [PASS in 0.02s]
+01:54:54  27 of 49 START sql table model main.fct_ato .................................... [RUN]
+01:54:54  27 of 49 OK created sql table model main.fct_ato ............................... [OK in 0.08s]
+01:54:54  28 of 49 START test accepted_values_fct_ato_tipologia_sigla__99__AUTO__DEF__FISC__GEST__IP__SEM  [RUN]
+01:54:54  28 of 49 PASS accepted_values_fct_ato_tipologia_sigla__99__AUTO__DEF__FISC__GEST__IP__SEM  [PASS in 0.03s]
+01:54:54  29 of 49 START test distribuicao_fora_da_tipologia ............................. [RUN]
+01:54:54  29 of 49 PASS distribuicao_fora_da_tipologia ................................... [PASS in 0.02s]
+01:54:54  30 of 49 START test fct_sem_data_no_futuro ..................................... [RUN]
+01:54:54  30 of 49 PASS fct_sem_data_no_futuro ........................................... [PASS in 0.01s]
+01:54:54  31 of 49 START test fct_volume_igual_ao_staging ................................ [RUN]
+01:54:54  31 of 49 PASS fct_volume_igual_ao_staging ...................................... [PASS in 0.03s]
+01:54:54  32 of 49 START test not_null_fct_ato_ato_id .................................... [RUN]
+01:54:55  32 of 49 PASS not_null_fct_ato_ato_id .......................................... [PASS in 0.02s]
+01:54:55  33 of 49 START test not_null_fct_ato_conselho_sk ............................... [RUN]
+01:54:55  33 of 49 PASS not_null_fct_ato_conselho_sk ..................................... [PASS in 0.02s]
+01:54:55  34 of 49 START test not_null_fct_ato_materia ................................... [RUN]
+01:54:55  34 of 49 PASS not_null_fct_ato_materia ......................................... [PASS in 0.02s]
+01:54:55  35 of 49 START test relationships_fct_ato_conselho_sk__conselho_sk__ref_dim_conselho_  [RUN]
+01:54:55  35 of 49 PASS relationships_fct_ato_conselho_sk__conselho_sk__ref_dim_conselho_  [PASS in 0.02s]
+01:54:55  36 of 49 START test unique_fct_ato_ato_id ...................................... [RUN]
+01:54:55  36 of 49 PASS unique_fct_ato_ato_id ............................................ [PASS in 0.02s]
+01:54:55  37 of 49 START test unique_fct_ato_materia ..................................... [RUN]
+01:54:55  37 of 49 PASS unique_fct_ato_materia ........................................... [PASS in 0.02s]
+01:54:55  38 of 49 START sql table model main.fct_conselho_mes ........................... [RUN]
+01:54:55  38 of 49 OK created sql table model main.fct_conselho_mes ...................... [OK in 0.05s]
+01:54:55  39 of 49 START test distribuicao_mes_sem_nenhum_ato ............................ [RUN]
+01:54:55  39 of 49 FAIL 1 distribuicao_mes_sem_nenhum_ato ................................ [FAIL 1 in 0.01s]
+01:54:55  40 of 49 START test not_null_fct_conselho_mes_atos ............................. [RUN]
+01:54:55  40 of 49 PASS not_null_fct_conselho_mes_atos ................................... [PASS in 0.02s]
+01:54:55  41 of 49 START test not_null_fct_conselho_mes_mes .............................. [RUN]
+01:54:55  41 of 49 PASS not_null_fct_conselho_mes_mes .................................... [PASS in 0.02s]
+01:54:55  42 of 49 START test not_null_fct_conselho_mes_orgao_id ......................... [RUN]
+01:54:55  42 of 49 PASS not_null_fct_conselho_mes_orgao_id ............................... [PASS in 0.02s]
+01:54:55  43 of 49 START test relationships_fct_conselho_mes_orgao_id__orgao_id__ref_dim_conselho_  [RUN]
+01:54:55  43 of 49 PASS relationships_fct_conselho_mes_orgao_id__orgao_id__ref_dim_conselho_  [PASS in 0.02s]
+01:54:55  44 of 49 START test unique_fct_conselho_mes_orgao_id_mes ....................... [RUN]
+01:54:55  44 of 49 PASS unique_fct_conselho_mes_orgao_id_mes ............................. [PASS in 0.02s]
+01:54:55  45 of 49 SKIP relation main.mart_vitalidade .................................... [SKIP]
+01:54:55  46 of 49 SKIP test accepted_values_mart_vitalidade_situacao__ativo__em_sil_ncio__sem_ato_no_per_odo_coberto  [SKIP]
+01:54:55  47 of 49 SKIP test mart_uma_linha_por_conselho ................................. [SKIP]
+01:54:55  48 of 49 SKIP test not_null_mart_vitalidade_orgao_id ........................... [SKIP]
+01:54:55  49 of 49 SKIP test unique_mart_vitalidade_orgao_id ............................. [SKIP]
+01:54:55  
+01:54:55  Finished running 1 seed, 4 table models, 40 data tests, 4 view models in 0 hours 0 minutes and 3.82 seconds (3.82s).
+01:54:55  
+01:54:55  Completed with 1 error, 0 partial successes, and 0 warnings:
+01:54:55  
+01:54:55  [ERROR]: in test distribuicao_mes_sem_nenhum_ato (tests/distribuicao_mes_sem_nenhum_ato.sql)
+01:54:55    Got 1 result, configured to fail if != 0
+01:54:55  
+01:54:55    compiled code at target/compiled/conselhos_vivos/tests/distribuicao_mes_sem_nenhum_ato.sql
+01:54:55  
+01:54:55  Done. PASS=43 WARN=0 ERROR=1 SKIP=5 NO-OP=0 REUSED=0 TOTAL=49
+--- dbt show --select distribuicao_mes_sem_nenhum_ato (mesmo banco, agosto excluído) ---
+01:54:58  Running with dbt=1.12.6
+01:54:59  Registered adapter: duckdb=1.11.1
+01:55:00  Found 8 models, 40 data tests, 1 seed, 4 sources, 511 macros, 5 unit tests
+01:55:00  
+01:55:00  Concurrency: 1 threads (target='dev')
+01:55:00  
+Previewing node 'distribuicao_mes_sem_nenhum_ato':
+|        mes | atos |
+| ---------- | ---- |
+| 2026-08-01 |    0 |
+
+PROVA 2: make gold logo depois, sem excluir_mes, restaura o banco:
+01:55:57  Completed successfully
+01:55:57  Done. PASS=54 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=54
+
+Comando do show: dbt show --project-dir /app/dbt --select distribuicao_mes_sem_nenhum_ato --vars '{excluir_mes: "2026-08-01"}'
+Comando do build: dbt build --project-dir /app/dbt --exclude-resource-type unit_test --vars '{excluir_mes: "2026-08-01"}'
+O --exclude-resource-type unit_test é necessário: o teste unitário do stg_atos usa atos de 2026-08 como fixture, então tirar agosto o quebraria e pularia o resto antes de chegar ao teste de distribuição.
+A linha (mes 2026-08-01, atos 0) acima é a saída do dbt show, não nota à mão.
