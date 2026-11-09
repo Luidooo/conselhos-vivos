@@ -1,8 +1,9 @@
 # 0001 — O OLTP do projeto é o sistema de curadoria, com classificação insert-only
 
-- **Status:** proposto
+- **Status:** aceito
+- **Decisão:** aceito pela squad em 09/11/2026, registrado por Luiza (@LuizaMaluf).
 - **Data:** 2026-09-26
-- **Decisores:** a confirmar no PR — Luis (@Luidooo), Bruno (@BrunoBReis), Moura (@thegm445), Iago (@iagorrr), Luiza (@LuizaMaluf)
+- **Decisores:** a squad — Luis (@Luidooo), Bruno (@BrunoBReis), Moura (@thegm445), Iago (@iagorrr), Luiza (@LuizaMaluf)
 
 ## Contexto
 

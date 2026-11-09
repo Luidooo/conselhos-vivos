@@ -143,7 +143,7 @@ Com só 6 exemplos de `GEST` e 7 de `IP`, a acurácia geral esconde os erros nas
 
 ## Enriquecer com outras bases (o que entrou na E3)
 
-A tipologia enriquece cada ato. Para dizer se um conselho ainda funciona, o modelo da E3 precisava também de sinais de fora do que o próprio conselho publica. A escolha das bases era a decisão em aberto nº 6 da squad; ela foi tomada no [ADR 0009](/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster), a confirmar pela squad.
+A tipologia enriquece cada ato. Para dizer se um conselho ainda funciona, o modelo da E3 precisava também de sinais de fora do que o próprio conselho publica. A escolha das bases era a decisão em aberto nº 6 da squad; ela foi tomada no [ADR 0009](/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster), aceito pela squad.
 
 ### O que entrou: as menções de outros órgãos no próprio DOU
 

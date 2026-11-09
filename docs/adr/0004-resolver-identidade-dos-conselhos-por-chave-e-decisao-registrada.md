@@ -1,8 +1,9 @@
 # 0004 — A identidade de um conselho sai de uma chave normalizada mais decisões registradas, nunca de similaridade de texto
 
-- **Status:** proposto (o ponto 6 foi revisado pelo [ADR 0010](0010-tratar-como-conselho-todo-orgao-com-conselho-no-nome.md))
+- **Status:** aceito (o ponto 6 foi revisado pelo [ADR 0010](0010-tratar-como-conselho-todo-orgao-com-conselho-no-nome.md))
+- **Decisão:** aceito pela squad em 09/11/2026, registrado por Luiza (@LuizaMaluf).
 - **Data:** 2026-09-26
-- **Decisores:** a confirmar no PR — Luis (@Luidooo), Bruno (@BrunoBReis), Moura (@thegm445), Iago (@iagorrr), Luiza (@LuizaMaluf)
+- **Decisores:** a squad — Luis (@Luidooo), Bruno (@BrunoBReis), Moura (@thegm445), Iago (@iagorrr), Luiza (@LuizaMaluf)
 
 ## Contexto
 

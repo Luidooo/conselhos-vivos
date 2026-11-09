@@ -116,7 +116,7 @@ A página mostra o período coberto e o SLA. O painel abre a gold só para leitu
 
 ## Limites conhecidos e pendências da squad
 
-- **ADR 0010:** o escopo de 59 conselhos segue "proposto", à espera da aprovação da squad.
+- **ADR 0010:** o escopo de 59 conselhos foi aceito pela squad em 09/11/2026. O CNPq, o CONTRAN e o CCFGTS entram porque o nome começa com "Conselho"; o painel mostra ao lado a marca de participação social da pesquisadora.
 - **Regra da vitalidade:** o limite de 3 meses é provisório, à espera da pesquisadora. Com outubro na silver, a cobertura passa de 3 meses, e os conselhos sem ato viram "em silêncio".
 - **Sem ato no DOU não prova que o conselho parou:** muito conselho funciona sem publicar no DOU. O painel diz isso ao lado dos números.
 - **A silver e a gold são recalculadas inteiras a cada mês.** Vale enquanto o `dbt build` leva segundos; o ADR 0009 diz quando mudar.

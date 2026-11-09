@@ -1,8 +1,9 @@
 # 0010 — É conselho todo órgão que já teve um nome começando com "Conselho", menos uma lista curta de exclusões; a marca de participação social fica à parte
 
-- **Status:** proposto
+- **Status:** aceito
+- **Decisão:** aceito pela squad em 09/11/2026, registrado por Luiza (@LuizaMaluf).
 - **Data:** 2026-11-08
-- **Decisores:** a confirmar no PR — Luis (@Luidooo), Bruno (@BrunoBReis), Moura (@thegm445), Iago (@iagorrr), Luiza (@LuizaMaluf)
+- **Decisores:** a squad — Luis (@Luidooo), Bruno (@BrunoBReis), Moura (@thegm445), Iago (@iagorrr), Luiza (@LuizaMaluf)
 - **Revisa:** o ponto 6 do [ADR 0004](0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md). O resto do 0004 continua valendo.
 
 ## Contexto

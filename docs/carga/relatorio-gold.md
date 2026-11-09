@@ -43,5 +43,5 @@ O mais citado sem ato próprio é o CNE, com 28 menções. Rodar a carga de novo
 
 - **O limite de três meses para "ativo" é provisório.** Com só três meses cobertos, nenhum conselho pode ficar em silêncio, então a contagem ainda não testa o limite. A pesquisadora define o valor.
 - **Siglas repetidas.** CNE e CNPC aparecem duas vezes cada, em órgãos diferentes. A sigla não serve de chave; o painel usa o `orgao_id`.
-- **O escopo do ADR 0010 traz órgãos que não são de participação social.** O CNPq, o CONTRAN e o CCFGTS entram porque o nome começa com "Conselho". O painel mostra a marca `eh_participativo` da pesquisadora ao lado, sem filtrar, e a lista de exclusões aguarda a squad.
+- **O escopo do ADR 0010 traz órgãos que não são de participação social.** O CNPq, o CONTRAN e o CCFGTS entram porque o nome começa com "Conselho". O painel mostra a marca `eh_participativo` da pesquisadora ao lado, sem filtrar. Tirá-los do escopo pede uma emenda à lista de exclusões do ADR 0010, aceito em 09/11/2026.
 - **Os rótulos mudam com outubro.** Quando o ZIP de outubro entrar na silver, parte dos 33 "sem ato no período coberto" vai mudar de situação.

@@ -1,6 +1,7 @@
 # 0007 — Propagar mudanças do OLTP ao Delta por slot de replicação lógica, sem Kafka
 
-- **Status:** proposto
+- **Status:** aceito
+- **Decisão:** aceito pela squad em 09/11/2026, registrado por Luiza (@LuizaMaluf).
 - **Data:** 2026-10-13
 - **Decisores:** Luis (@Luidooo), Bruno (@BrunoBReis), Moura (@thegm445), Iago (@iagorrr), Luiza (@LuizaMaluf)
 

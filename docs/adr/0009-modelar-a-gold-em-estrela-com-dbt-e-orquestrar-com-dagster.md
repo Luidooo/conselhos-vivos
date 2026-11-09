@@ -1,8 +1,9 @@
 # 0009 — Modelar a gold em estrela com dbt sobre DuckDB e orquestrar com Dagster
 
-- **Status:** proposto
+- **Status:** aceito
+- **Decisão:** aceito pela squad em 09/11/2026, registrado por Luiza (@LuizaMaluf).
 - **Data:** 2026-11-09
-- **Decisores:** a confirmar no PR — Luis (@Luidooo), Bruno (@BrunoBReis), Moura (@thegm445), Iago (@iagorrr), Luiza (@LuizaMaluf)
+- **Decisores:** a squad — Luis (@Luidooo), Bruno (@BrunoBReis), Moura (@thegm445), Iago (@iagorrr), Luiza (@LuizaMaluf)
 
 ## Contexto
 
