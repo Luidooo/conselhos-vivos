@@ -1,0 +1,10 @@
+# make demo-retry, mês 2026-08, run 4e907cdd-1a79-4d90-a4d8-daef39524c59, banco parado antes da primeira tentativa (horários em UTC)
+# Refeito em 2026-11-09 a partir do log do run, com scripts/eventos_do_run.sh: a versão do demo_retry.sh que
+# rodou guardava os eventos sem horário e sem a causa.
+2026-11-08 23:14:01 STEP_START atos_do_mes
+2026-11-08 23:14:02 STEP_UP_FOR_RETRY atos_do_mes | causa: subprocess.CalledProcessError: Command '('python', '-m', 'dou', 'persist', '/data/bronze/dados-abertos/S01082026.zip')' returned non-zero exit status 1.
+2026-11-08 23:14:32 STEP_RESTARTED atos_do_mes
+2026-11-08 23:14:37 STEP_SUCCESS atos_do_mes
+2026-11-08 23:14:37 RUN_SUCCESS
+persist falhou: err=[Errno -2] Name or service not known
+persist: gravadas=0 versoes-novas=0 inalteradas=96 orgao-desconhecido=8494 repetidas=0 ignoradas=120 falhou=0

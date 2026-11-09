@@ -1,0 +1,8 @@
+# Instância do Dagster da E3. O serviço orquestrador copia este arquivo para /data/dagster (o DAGSTER_HOME) ao iniciar.
+# Um run por vez: a silver (Delta) e a gold (DuckDB, um escritor só) não aguentam runs em paralelo,
+# e um backfill pela interface dispara as partições ao mesmo tempo. A fila precisa do daemon, que o dagster dev sobe.
+run_coordinator:
+  module: dagster.core.run_coordinator
+  class: QueuedRunCoordinator
+  config:
+    max_concurrent_runs: 1
