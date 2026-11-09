@@ -1357,7 +1357,7 @@ git add sql/007_indice_vigencia_orgao_nome.sql docs/adr/medicoes/0009-gold && gi
 
 Ele responde só à pergunta da E1. São quatro blocos, nenhum gráfico decorativo.
 
-**Como ficou (#75):** 59 conselhos (ADR 0010), não 82; a gold vem de `PAINEL_GOLD` (o teste aponta para um DuckDB temporário); sem `freshness_vitalidade` (a #72 ainda não está no `main`), a página mostra "SLA ainda não disponível (#72)"; o teste é `tests/painel/test_app.py`, alvo `make test-painel`, ligado ao `make test`.
+**Como ficou (#75):** 59 conselhos (ADR 0010), não 82; a gold vem de `PAINEL_GOLD` (o teste aponta para um DuckDB temporário); o SLA vem de `freshness_vitalidade` (#72); sem DOU carregado, a página diz "rode `make ingest-mensal`" no lugar do período; o teste é `tests/painel/test_app.py`, alvo `make test-painel`, ligado ao `make test`.
 
 **Arquivos:**
 - Criar: `src/painel/app.py`

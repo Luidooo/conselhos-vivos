@@ -106,20 +106,44 @@ class TestApp(unittest.TestCase):
         warnings = [w.value for w in at.warning]
         self.assertGreater(len(warnings), 0)
         self.assertIn("Sem ato no DOU não prova que o conselho parou", warnings[0])
-        infos = [i.value for i in at.info]
-        self.assertFalse(any("SLA ainda não disponível" in i for i in infos))
+        legendas = [c.value for c in at.caption]
+        self.assertTrue(any("dentro do SLA" in t for t in legendas))
 
-    def test_com_dados_sem_freshness(self):
+    def test_sla_fora_aparece_na_pagina(self):
         with duckdb.connect(self.gold_path) as con:
             self._cria_tabelas_base(con)
+            con.execute("""
+                CREATE TABLE freshness_vitalidade (
+                    primeiro_mes_coberto DATE, ultimo_mes_coberto DATE, mes_esperado DATE,
+                    atraso_meses INTEGER, dentro_do_sla BOOLEAN
+                );
+                INSERT INTO freshness_vitalidade VALUES
+                    (DATE '2026-07-01', DATE '2026-09-01', DATE '2026-10-01', 1, false);
+            """)
         os.environ["PAINEL_GOLD"] = self.gold_path
         at = AppTest.from_file(APP).run(timeout=60)
         self.assertEqual(len(at.exception), 0)
-        self.assertEqual([m.label for m in at.metric], ["Ativos", "Em silêncio", "Sem ato no período coberto"])
-        self.assertEqual([m.value for m in at.metric], ["1", "2", "1"])
+        legendas = [c.value for c in at.caption]
+        self.assertTrue(any("mês esperado 10/2026" in t and "1 mês(es) fora do SLA" in t for t in legendas), legendas)
+
+    def test_fct_vazio_sem_dou(self):
+        with duckdb.connect(self.gold_path) as con:
+            self._cria_tabelas_base(con)
+            con.execute("""
+                DELETE FROM fct_conselho_mes;
+                CREATE TABLE freshness_vitalidade (
+                    primeiro_mes_coberto DATE, ultimo_mes_coberto DATE, mes_esperado DATE,
+                    atraso_meses INTEGER, dentro_do_sla BOOLEAN
+                );
+                INSERT INTO freshness_vitalidade VALUES (NULL, NULL, DATE '2026-09-01', NULL, false);
+            """)
+        os.environ["PAINEL_GOLD"] = self.gold_path
+        at = AppTest.from_file(APP).run(timeout=60)
+        self.assertEqual(len(at.exception), 0)
         infos = [i.value for i in at.info]
-        self.assertGreater(len(infos), 0)
-        self.assertIn("SLA ainda não disponível (#72)", infos[0])
+        self.assertTrue(any("DOU ainda não carregado: rode `make ingest-mensal`" in i for i in infos), infos)
+        self.assertEqual([m.label for m in at.metric], ["Ativos", "Em silêncio", "Sem ato no período coberto"])
+        self.assertEqual(len(at.dataframe[0].value), 4)
 
     def test_sem_banco(self):
         caminho_inexistente = os.path.join(self.tmpdir, "inexistente.duckdb")
