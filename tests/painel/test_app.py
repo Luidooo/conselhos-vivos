@@ -151,6 +151,19 @@ class TestApp(unittest.TestCase):
         legendas = [c.value for c in at.caption]
         self.assertTrue(any("Citado por outros órgãos" in t for t in legendas), legendas)
 
+    def test_regras_de_negocio_explicadas(self):
+        with duckdb.connect(self.gold_path) as con:
+            self._cria_tabelas_base(con)
+            self._cria_freshness(con)
+        os.environ["PAINEL_GOLD"] = self.gold_path
+        at = AppTest.from_file(APP).run(timeout=60)
+        self.assertEqual(len(at.exception), 0)
+        self.assertEqual(at.expander[0].label, "Como ler este painel: as regras de negócio")
+        regras = " ".join(m.value for m in at.expander[0].markdown)
+        for trecho in ("O que conta como conselho", "Hoje são **4 conselhos**", "Em silêncio", "Citado por outros órgãos",
+                       "não avaliado", "dia 20 do mês seguinte", "Limites"):
+            self.assertIn(trecho, regras)
+
     def test_sla_fora_aparece_na_pagina(self):
         with duckdb.connect(self.gold_path) as con:
             self._cria_tabelas_base(con)

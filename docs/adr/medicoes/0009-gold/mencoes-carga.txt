@@ -1,0 +1,43 @@
+# Menções de outros órgãos (plano 2026-11-09, Tarefa 6), 2026-11-09 04:19 UTC.
+# Os quatro ZIPs da Seção 1 já no bronze (julho a outubro de 2026), sem download e sem o make lake: a silver dos atos segue até setembro.
+
+## make mencoes, de novo depois da primeira carga (a primeira deu inseridas=139)
+[INFO] lido zip=S01072026.zip mencoes=33
+[INFO] lido zip=S01082026.zip mencoes=56
+[INFO] lido zip=S01092026.zip mencoes=26
+[INFO] lido zip=S01102026.zip mencoes=24
+[INFO] done inseridas=0 atualizadas=0 inalteradas=139
+
+## make gold
+Done. PASS=77 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=77
+
+## fct_mencao por assunto (na_janela: até setembro, a janela do DOU)
+| assunto     | mencoes | conselhos | na_janela |
+| ----------- | ------- | --------- | --------- |
+| outro       |      86 |        13 |        76 |
+| homologação |      30 |         1 |        24 |
+| composição  |      10 |         7 |         6 |
+| regimento   |       2 |         2 |         2 |
+
+
+## mart_vitalidade: quem é citado por outros órgãos, por situação
+| situacao             | conselhos | citados_por_outros | mencoes |
+| -------------------- | --------- | ------------------ | ------- |
+| ativo                |        26 |                  7 |      61 |
+| sem ato no períod... |        33 |                 10 |      47 |
+
+
+## os conselhos sem ato no período que outros órgãos citam
+| sigla   | nome                 | mencoes_no_periodo | ultimo_mes_citado |
+| ------- | -------------------- | ------------------ | ----------------- |
+| CNE     | Conselho Nacional... |                 28 |        2026-09-01 |
+| CNIg    | Conselho Nacional... |                  7 |        2026-09-01 |
+| CONANDA | Conselho Nacional... |                  3 |        2026-08-01 |
+| CCFGTS  | Conselho Curador ... |                  2 |        2026-08-01 |
+| CNCP    | Conselho Nacional... |                  2 |        2026-09-01 |
+| CDFNMA  | Conselho Delibera... |                  1 |        2026-09-01 |
+| CDFNDCT | Conselho Diretor ... |                  1 |        2026-08-01 |
+| CNPC    | Conselho Nacional... |                  1 |        2026-09-01 |
+| CNPC    | Conselho Nacional... |                  1 |        2026-07-01 |
+| CNE     | Conselho Nacional... |                  1 |        2026-09-01 |
+

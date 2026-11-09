@@ -79,6 +79,43 @@ col3.metric("Sem ato no período coberto", int((v.situacao == "sem ato no perío
 
 st.warning("Sem ato no DOU não prova que o conselho parou: muito conselho funciona sem publicar no DOU. O limite de meses para 'em silêncio' é provisório e aguarda a definição da pesquisadora.")
 
+# As regras de negócio por extenso, para quem lê o painel sem ter lido os ADRs. O 3 repete o meses_ativo da mart.
+# shortcut: os números e as regras estão escritos aqui; se a mart ou o ADR 0010 mudarem, este texto muda junto.
+with st.expander("Como ler este painel: as regras de negócio"):
+    st.markdown(f"""
+**O que conta como conselho.** Todo órgão do governo federal que tem ou já teve um nome começando com
+"Conselho", menos uma lista curta de exclusões de órgãos que não são colegiados de participação social, como
+o Conselho Monetário Nacional e o Conselho Nacional de Justiça ([ADR 0010](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/0010-tratar-como-conselho-todo-orgao-com-conselho-no-nome.md)).
+Hoje são **{len(v)} conselhos**. Comissões, comitês e câmaras ficam de fora, mesmo quando funcionam como conselho.
+
+**De onde vêm os dados.** Dos atos publicados no Diário Oficial da União, Seção 1, pelos dados abertos da
+Imprensa Nacional, e da planilha da pesquisadora, com 215 atos de 2003 a 2020, já classificados por tipologia.
+A situação de cada conselho usa só o período coberto pelo DOU; a planilha entra no bloco das tipologias.
+
+**A situação de cada conselho**, medida no último mês coberto, não hoje:
+- **Ativo:** o último ato próprio foi publicado até 3 meses antes do último mês coberto.
+- **Em silêncio:** o último ato foi há mais de 3 meses, ou o conselho não publicou nada num período coberto de
+  mais de 3 meses.
+- **Sem ato no período coberto:** o conselho não publicou nada, e o período coberto ainda tem 3 meses ou menos,
+  curto demais para chamar de silêncio.
+
+O limite de 3 meses é provisório: ele aguarda a definição da pesquisadora.
+
+**Citado por outros órgãos.** Atos publicados por outro órgão, no mesmo período, que têm o conselho como
+assunto: a homologação de um parecer, a renovação da composição, a aprovação do regimento. O nome do conselho é
+procurado só no título, na ementa e no começo do texto, para não contar citações de passagem. Isso é um segundo
+sinal de vida, mostrado ao lado: ele **não muda** a situação.
+
+**Participação social (pesquisadora).** A marca que a pesquisadora deu a cada conselho: "sim", "não" ou
+"não avaliado". Não avaliado não quer dizer "não": o painel não filtra por ela.
+
+**Atualização e SLA.** Um mês entra no painel até o dia 20 do mês seguinte, porque a Imprensa Nacional publica
+o mês cerca de duas semanas depois que ele acaba. A atualização tenta do dia 15 ao 28 de cada mês.
+
+**Limites.** Um conselho pode funcionar sem publicar no DOU, e o painel não sabe distinguir um conselho extinto
+de um calado. O ato publicado em nome de um ministério, sem citar o conselho no começo, não aparece aqui.
+""")
+
 st.subheader("A situação de cada conselho")
 # shortcut: limite de 3 meses (meses_ativo do mart_vitalidade, provisório), atualizar quando a pesquisadora definir o limite
 st.caption("Ativo: publicou até 3 meses atrás. Em silêncio: publicou há mais de 3 meses, ou nunca publicou com mais de 3 meses de cobertura. Sem ato no período coberto: nunca publicou, com 3 meses ou menos de cobertura.")
