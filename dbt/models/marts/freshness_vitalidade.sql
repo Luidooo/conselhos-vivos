@@ -1,5 +1,9 @@
 -- Freshness de mart_vitalidade. SLA: o mês M está na gold até o dia 20 do mês M+1.
 -- Hoje se espera, então, o mês de (hoje - 20 dias) menos um. A var hoje só existe para os testes fixarem a data.
+-- View, não tabela: o current_date vale na hora da leitura. Como tabela, o "hoje" congelaria no dia do make gold,
+-- e o painel diria "dentro do SLA" mesmo depois do prazo, justamente quando a carga do mês falhou e a gold não
+-- foi refeita.
+{{ config(materialized='view') }}
 with cobertura as (select min(mes) as primeiro, max(mes) as ultimo from {{ ref('fct_conselho_mes') }}),
 hoje as (
     select {% if var('hoje', none) %}date '{{ var("hoje") }}'{% else %}current_date{% endif %} as dia
