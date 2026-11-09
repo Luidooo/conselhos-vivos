@@ -19,9 +19,13 @@ def roda(context: dg.AssetExecutionContext, *cmd: str, de_dado: str | None = Non
     # Linha a linha para os compute logs, de onde o eventos_do_run.sh lê o resumo do persist: um run cancelado
     # no meio de um download longo não perde o log do comando.
     with subprocess.Popen(cmd, stderr=subprocess.PIPE, text=True) as p:
-        for linha in p.stderr:
-            sys.stderr.write(linha)
-            linhas.append(linha)
+        try:
+            for linha in p.stderr:
+                sys.stderr.write(linha)
+                linhas.append(linha)
+        except BaseException:
+            p.kill()  # run cancelado: o comando não pode seguir baixando ou gravando sozinho
+            raise
     if p.returncode == 0:
         return
     erro = _erro("".join(linhas))

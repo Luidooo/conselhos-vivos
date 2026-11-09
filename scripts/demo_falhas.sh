@@ -54,7 +54,7 @@ with zipfile.ZipFile("/tmp/ruim.zip", "w") as z:
 @dg.asset(retry_policy=RETRY)
 def persist_zip_ruim(context):
     roda(context, "python", "-m", "dou", "persist", "/tmp/ruim.zip",
-         de_dado="entrada do ZIP que não lê como matéria; o resto do ZIP foi gravado")
+         de_dado="ZIP corrompido ou com entrada que não lê como matéria; o que leu foi gravado")
 print("CASO zip-invalido", dg.materialize([persist_zip_ruim], instance=instancia, raise_on_error=False).run_id)
 PY
 # 4. Os assets de verdade, com uma variável de conexão quebrada.

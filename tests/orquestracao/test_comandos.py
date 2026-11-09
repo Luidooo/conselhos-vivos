@@ -6,8 +6,10 @@ Roda no serviço orquestrador, que tem o Dagster, depois de um dbt parse que ger
 lê ao ser importado: make test-orquestracao
 """
 
+import time
 import unittest
 from datetime import date
+from unittest import mock
 
 import dagster as dg
 
@@ -65,6 +67,22 @@ class Roda(unittest.TestCase):
         tipos, falha = materializa(*sh("echo 'done gravadas=1' >&2"))
         self.assertIn("STEP_SUCCESS", tipos)
         self.assertIsNone(falha)
+
+
+class Interrupcao(unittest.TestCase):
+    def test_run_interrompido_mata_o_comando(self):
+        # Sem o kill, o `with Popen` esperaria o comando terminar: 30 s baixando sozinho depois do cancelamento.
+        from orquestracao import comandos
+        inicio = time.monotonic()
+        def cancela_na_linha_do_comando(texto):
+            # Só a linha que o comando imprime: o log do Dagster, que repete o comando, também passa por aqui.
+            if texto == "baixando\n":
+                raise RuntimeError("run cancelado")
+
+        with mock.patch.object(comandos.sys, "stderr") as stderr, self.assertRaises(RuntimeError):
+            stderr.write.side_effect = cancela_na_linha_do_comando
+            roda(dg.build_asset_context(), *sh("echo 'baixando' >&2; sleep 30"))
+        self.assertLess(time.monotonic() - inicio, 5)
 
 
 class MesACarregar(unittest.TestCase):

@@ -960,7 +960,7 @@ def atos_do_mes(context: dg.AssetExecutionContext) -> None:
     # O mesmo nome e o mesmo diretório que o fetch-mensal usa ao gravar.
     zip_do_mes = Path(os.environ["DADOS_ABERTOS_OUTPUT_DIR"]) / dadosabertos.nome_do_zip(mes)
     roda(context, "python", "-m", "dou", "persist", str(zip_do_mes),
-         de_dado="entrada do ZIP que não lê como matéria; o resto do ZIP foi gravado")
+         de_dado="ZIP corrompido ou com entrada que não lê como matéria; o que leu foi gravado")
 
 
 # shortcut: silver e gold são recalculadas inteiras a cada mês (MERGE idempotente, tabelas pequenas);
@@ -981,6 +981,8 @@ mensal = dg.define_asset_job("mensal", selection="*", partitions_def=MENSAL)
 
 # Todo dia do 15 ao 28, às 6h de Brasília: o ZIP do mês anterior costuma sair por volta do dia 13 (setembro
 # saiu em 13/10), mas pode atrasar (#83). Mês já carregado é pulado; mês ainda não publicado falha sem retry
+# shortcut: "carregado" é o atos_do_mes materializado. Um mês com falha de dado no persist, ou com a silver ou
+# a gold falhando depois, não conta e é repetido até o dia 28; decidir com a squad se ele deve alertar.
 # e é tentado de novo no dia seguinte. Ligada desde o início: com o make orquestrador no ar, roda sozinha.
 @dg.schedule(job=mensal, cron_schedule="0 6 15-28 * *", execution_timezone="America/Sao_Paulo",
              default_status=dg.DefaultScheduleStatus.RUNNING)
