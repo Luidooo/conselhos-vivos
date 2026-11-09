@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-py-dou test-db-py vet-go reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos gold
+.PHONY: help docs setup up down migrate carga siorg fetch extract persist ingest ingest-dia janela fetch-mensal persist-mensal ingest-mensal test test-go test-py-dou test-db-py vet-go reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos gold orquestrador demo-retry demo-backfill
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -183,5 +183,15 @@ cdc-drop: .env ## remove o slot de replicação (slot parado retém WAL)
 
 gold: .env ## E3: roda o dbt (modelos e testes) e grava a gold em data/gold/conselhos.duckdb (rode make lake antes)
 	@test -d data/silver/atos/_delta_log || { echo "falta a silver: rode make lake antes"; exit 1; }
-	mkdir -p data/gold
+	mkdir -p data/gold data/dagster
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt build --project-dir /app/dbt
+
+orquestrador: .env ## E3: sobe o Dagster em http://localhost:3000 (grafo, agenda, backfill pela interface)
+	mkdir -p data/gold data/dagster
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --profile e3 up orquestrador
+
+demo-retry: .env ## E3: derruba o banco no meio de um mês e mostra o retry do Dagster recuperando
+	bash scripts/demo_retry.sh
+
+demo-backfill: .env ## E3: reprocessa um intervalo de meses (DE=AAAA-MM ATE=AAAA-MM) pelo Dagster
+	bash scripts/demo_backfill.sh $(DE) $(ATE)
