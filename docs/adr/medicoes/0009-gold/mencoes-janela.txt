@@ -1,0 +1,20 @@
+# Menções aos conselhos em matérias de outros órgãos: a janela curta contra o texto inteiro (plano 2026-11-09, Tarefa 1).
+# Bronze da Seção 1 de julho a outubro de 2026, só leitura; nomes de todos os órgãos que já tiveram nome começando com "Conselho" (antes do escopo do ADR 0010).
+# Script: o medir_janela.py desta tarefa; a regra está em src/mencoes/__init__.py.
+matérias: 34828; com menção na janela: 136; no texto inteiro: 471
+órgãos citados na janela: 22
+  outro: 96
+      2026-07-06 | Ministério da Educação/Gabinete do Ministro | Desativa programas de pós-graduação stricto sensu em decorrência de solicitações de desativação apresentadas p | conselho nacional de educacao
+      2026-07-08 | Ministério da Justiça e Segurança Pública/Sec | Decisão nº 84/DINF_Reconsideracao/CGIL-GAB/Gab-DEMIG/DEMIG/SENAJUS, de 7 de julho de 2026 | conselho nacional de imigracao
+      2026-07-10 | Ministério dos Transportes/Secretaria Naciona | PORTARIA SENATRAN Nº 465, DE 7 DE julho DE 2026 | conselho nacional de transito
+  homologação: 30
+      2026-07-02 | Ministério da Educação/Gabinete do Ministro | DESPACHO DE 30 DE JUNHO DE 2026 | conselho nacional de educacao
+      2026-07-02 | Ministério da Educação/Gabinete do Ministro | DESPACHO DE 30 DE JUNHO DE 2026 | conselho nacional de educacao
+      2026-07-06 | Ministério da Educação/Gabinete do Ministro | DESPACHO MEC DE 3 DE JULHO DE 2026 | conselho nacional de educacao
+  composição: 11
+      2026-07-01 | Ministério da Previdência Social/Gabinete do  | Estabelece os procedimentos a serem observados no processo de renovação da composição do Conselho Nacional de  | conselho nacional de previdencia complementar
+      2026-08-13 | Ministério da Educação/Gabinete do Ministro | Divulga a relação de entidades civis e a forma de indicação para a escolha de conselheiros do Conselho Naciona | conselho nacional de educacao
+      2026-08-26 | Ministério da Educação/Gabinete do Ministro | Altera a Portaria MEC nº 664, de 12 de agosto de 2026, que divulga a relação de entidades civis e a forma de i | conselho nacional de educacao
+  regimento: 2
+      2026-09-01 | Ministério do Esporte/Gabinete do Ministro | Aprova o Regimento Interno do Conselho Nacional do Esporte no âmbito do Ministério do Esporte. | conselho nacional do esporte
+      2026-09-28 | Ministério do Meio Ambiente e Mudança do Clim | Altera a Resolução CGen nº 26, de 25 de agosto de 2021. | conselho de gestao do patrimonio genetico
