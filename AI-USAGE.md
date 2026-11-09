@@ -620,6 +620,7 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi pedido:** planejar e executar a Tarefa 5 do plano da E3: o modelo de freshness da `mart_vitalidade`, o SLA na descrição e um teste que avisa sem travar o build.
 - **O que foi aproveitado:** o modelo, o teste e o SLA do plano ("o mês M está na gold até o dia 20 do mês M+1"). **Decidido pela IA**, a revisar: o DOU vazio conta como fora do SLA, porque um nulo faria o teste passar calado; e a var `hoje`, só para os testes unitários fixarem a data e cobrirem a fronteira do dia 20.
 - **Como foi verificado:** `make gold` com 63 de 63 em `PASS`; sem o modelo, o `make gold` falha; os testes unitários cobrem o dia 20, o dia 21 e o DOU vazio, e o do DOU vazio falha (`FAIL 1`) sem o `coalesce`; a conta do mês esperado foi conferida no DuckDB para 09/11, 20/11, 21/11, 05/01 e 25/01; com setembro tirado pelo `excluir_mes`, o `sla_vitalidade` dá `WARN 1` e o build termina com `ERROR=0`.
+- **Correção de 09/11, achada na revisão do #90:** o modelo virou view. Como tabela, o current_date congelava no dia do make gold, e o painel diria "dentro do SLA" depois do prazo, justamente quando a carga falhou e a gold não foi refeita. Verificado: a view fica na gold com o current_date na definição, o painel a lê em modo só leitura e o make gold segue com 63 de 63.
 - **Quem revisou:** pendente — a Luiza revisa o diff antes do commit; revisão da squad no PR.
 
 ### 2026-11-09 — Queda no meio do download do mês, prova do retry (#21)
