@@ -12,8 +12,8 @@ Levantadas na fase de entendimento do domínio, ainda sem ADR escrito:
 |---|---|---|
 | 2 | De onde vem o censo de conselhos | Sem denominador independente do DOU, o indicador de silêncio não fecha |
 | 3 | Como classificar a tipologia automaticamente — regras, classificador clássico ou LLM local | É o valor científico do projeto; temos 215 exemplos rotulados para medir |
-| 4 | Onde mora a camada analítica — Postgres+Parquet/DuckDB ou lakehouse completo | Critério de desempate é operacional: o que a pesquisadora consegue subir sozinha |
-| 5 | Formato da camada de consumo | Define o que entregamos como produto final |
+| 4 | Onde mora a camada analítica — **tomada:** silver em Delta ([ADR 0006](0006-armazenar-a-camada-analitica-em-tabelas-delta.md)) e gold no DuckDB pelo dbt ([ADR 0009](0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster.md)) | A squad confirma no ADR 0009 |
+| 5 | Formato da camada de consumo — **tomada na E3:** um painel em Streamlit que lê só a gold ([ADR 0009](0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster.md)); as abas Revisar e Perguntar ficam para a E4 e o produto | A squad confirma no ADR 0009 |
 | 6 | Quais bases enriquecem o modelo analítico — **na E3, as menções de outros órgãos no próprio DOU**, automáticas no job mensal; SIORG completo, Seção 2, Brasil Participativo e IBGE avaliados e deixados para depois ([ADR 0009](0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster.md)) | A squad confirma no ADR 0009 |
 
 ## Índice

@@ -55,7 +55,7 @@ flowchart TB
   manual -. "resultado" .-> xlsx[("Planilha da pesquisadora<br/>215 decisões classificadas · 2003 a 2020")]
   xlsx -- "importada" --> oltp
 
-  dou[("Diário Oficial da União<br/>arquivos diários desde 2020")] -- "baixado todo dia" --> bronze
+  dou[("Diário Oficial da União<br/>um ZIP por mês, desde 2002")] -- "baixado todo mês" --> bronze
 
   subgraph etapa1["Etapa 1 · montar a planilha automaticamente (E2)"]
     bronze["Guarda uma cópia fiel<br/>de cada edição"] --> conselho["Descobre qual conselho<br/>publicou cada decisão"]
@@ -65,18 +65,20 @@ flowchart TB
   linha --> oltp[("<b>Banco de dados do projeto</b><br/>onde tudo fica guardado<br/>(pronto na E1)")]
   siorg[("Cadastro oficial de<br/>órgãos do governo")] -- "confirma os 82 conselhos" --> oltp
 
-  subgraph etapa2["Etapa 2 · classificar as decisões (E3)"]
+  subgraph etapa2["Etapa 2 · classificar as decisões (a fazer)"]
     ia["Inteligência artificial<br/>classifica o tipo de decisão"]
   end
 
   oltp -- "decisões ainda sem tipo" --> ia
   ia -- "tipo e grau de certeza" --> ind
 
-  subgraph consumo["Resultado (E3 e E4)"]
+  subgraph consumo["Resultado (E3)"]
     ind["Índice de vitalidade<br/>quem parou de publicar e<br/>o que cada conselho decide"] --> pub["Painel para a pesquisadora<br/>e para o público"]
   end
 
-  extra[("Menções de outros órgãos no DOU · E3<br/>cadastro completo, Seção 2,<br/>reuniões · depois")] -. "enriquecem" .-> ind
+  bronze -- "menções de outros órgãos" --> extra[("Menções aos conselhos<br/>em atos de outros órgãos · E3")]
+  extra -- "enriquecem" --> ind
+  depois[("Cadastro completo, Seção 2,<br/>reuniões · depois")] -. "enriquecem" .-> ind
 
   subgraph final["Etapa final · perguntar em linguagem natural"]
     rag["<b>Assistente de perguntas (RAG)</b><br/>busca as decisões no banco,<br/>responde e mostra a fonte"]
@@ -89,8 +91,8 @@ flowchart TB
   classDef feito fill:#e8f2fd,stroke:#0071e3,stroke-width:2px,color:#1d1d1f
   classDef proximo fill:#ffffff,stroke:#0071e3,stroke-dasharray:4 3,color:#1d1d1f
   class manual manual
-  class oltp feito
-  class bronze,conselho,linha,ia,ind,pub,rag,extra proximo
+  class oltp,bronze,conselho,linha,ind,pub,extra feito
+  class ia,rag,depois proximo
 ```
 
 <p class="cv-legenda">Cinza: o trabalho feito hoje à mão. Azul cheio: já pronto. Contorno tracejado: o que vem nas próximas etapas, até o assistente de perguntas.</p>
@@ -103,9 +105,9 @@ A disciplina percorre os cinco estágios do ciclo de vida do dado. Cada estágio
 |---|---|---|
 | **Geração** | O DOU nasce na Imprensa Nacional. A classificação nasce na curadoria, que é o nosso OLTP ([ADR 0001](/docs/adr/0001-adotar-sistema-de-curadoria-insert-only-como-oltp)). | E1 ✅ |
 | **Armazenamento** | OLTP de curadoria em PostgreSQL 16 ([ADR 0002](/docs/adr/0002-manter-postgresql-como-motor-do-oltp)), com os 215 atos e as classificações da pesquisadora. | E1 ✅ |
-| **Ingestão** | O DOU em XML pelo INLABS, em lote diário, e as mudanças da curadoria por CDC, gravados em formato aberto (Parquet). | E2 |
-| **Transformação** | A planilha replicada, a tipologia proposta pela IA e o indicador de vitalidade por conselho. | E3 |
-| **Disponibilização** | O indicador publicado para a pesquisadora e, no fim, um assistente de perguntas (RAG). | E4 em diante |
+| **Ingestão** | O DOU em XML pelos dados abertos da Imprensa Nacional, um ZIP por mês ([ADR 0008](/docs/adr/0008-unificar-o-pipeline-em-python)), e as mudanças da curadoria por CDC, gravados em formato aberto (Delta, sobre Parquet). | E2 ✅ |
+| **Transformação** | A gold em estrela no dbt, com o indicador de vitalidade por conselho e as menções de outros órgãos ([ADR 0009](/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster)). A tipologia proposta pela IA fica para depois. | E3 ✅ |
+| **Disponibilização** | O painel da vitalidade para a pesquisadora (`make painel`) e, no fim, um assistente de perguntas (RAG). | E3 ✅ painel · E4 em diante |
 
 ## Etapa 1 · Replicar a planilha
 
@@ -181,7 +183,7 @@ Com a planilha replicada e classificada para os 82 conselhos, o **indicador de v
 
 Com as decisões guardadas e classificadas, o último passo é deixar qualquer pessoa **perguntar em linguagem natural**, por exemplo: *"o que o CONAMA decidiu sobre licenciamento em 2023?"* ou *"quais conselhos não publicam nada há mais de um ano?"*.
 
-Como as peças e as ferramentas se encaixam está na [arquitetura final](/arquitetura).
+Como as peças e as ferramentas se encaixam está na [arquitetura final](/arquitetura), e de onde vem cada número do painel, na [linhagem dos dados](/linhagem).
 
 O assistente usa **RAG** (geração aumentada por recuperação): antes de responder, ele **busca no banco as decisões relevantes** e só então escreve a resposta, **citando o ato do Diário Oficial** de onde tirou cada informação. Assim, a resposta pode ser conferida, e o assistente não inventa o que não está nos documentos.
 

@@ -478,7 +478,7 @@ DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm
 
 Esperado: conselhos com mais de um nome (CNDPI, CNDM e CNDH), cada nome numa linha, um só com `atual = true`. Esse print vai para o ADR 0009, em `docs/adr/medicoes/0009-gold/dim_conselho-renomeados.txt`.
 
-O python do container não tem o `duckdb` fora do `dbt`. Para esta conferência, use `dbt show --project-dir /app/dbt --inline "select ... from {{ ref('dim_conselho') }}"`.
+O python do container não tem o `duckdb` fora do `dbt`. Para esta conferência, use <code v-pre>dbt show --project-dir /app/dbt --inline "select ... from {{ ref('dim_conselho') }}"</code>.
 
 - [ ] **Passo 6: stage**
 

@@ -102,7 +102,7 @@ export default withMermaid(defineConfig({
       { text: 'Visão geral', link: '/visao-geral' },
       { text: 'Decisões', link: '/docs/adr/' },
       { text: 'Dados', link: '/docs/carga/relatorio-planilha' },
-      { text: 'Processo', link: '/docs/diario/2026-09-26' },
+      { text: 'Processo', link: '/docs/diario/2026-11-10' },
     ],
     sidebar: [
       {
@@ -129,6 +129,8 @@ export default withMermaid(defineConfig({
           { text: '0006 · Camada analítica em Delta', link: '/docs/adr/0006-armazenar-a-camada-analitica-em-tabelas-delta' },
           { text: '0007 · CDC por slot lógico', link: '/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica' },
           { text: '0008 · Pipeline em Python, sem INLABS', link: '/docs/adr/0008-unificar-o-pipeline-em-python' },
+          { text: '0009 · Gold em estrela, dbt e Dagster', link: '/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster' },
+          { text: '0010 · Quem é conselho', link: '/docs/adr/0010-tratar-como-conselho-todo-orgao-com-conselho-no-nome' },
         ],
       },
       {
@@ -136,6 +138,7 @@ export default withMermaid(defineConfig({
         items: [
           { text: 'Carga da planilha', link: '/docs/carga/relatorio-planilha' },
           { text: 'Identidade dos conselhos', link: '/docs/carga/relatorio-conselhos' },
+          { text: 'Gold e menções (E3)', link: '/docs/carga/relatorio-gold' },
         ],
       },
       {
@@ -147,6 +150,9 @@ export default withMermaid(defineConfig({
           { text: 'Diário · semana 9 (06/10)', link: '/docs/diario/2026-10-06' },
           { text: 'Diário · semana 10 (13/10)', link: '/docs/diario/2026-10-13' },
           { text: 'Diário · semana 14 (10/11)', link: '/docs/diario/2026-11-10' },
+          { text: 'Plano · migração do Go para Python', link: '/docs/planos/2026-10-13-migracao-ingestor-go-para-python' },
+          { text: 'Plano · camada analítica da E3', link: '/docs/planos/2026-11-03-e3-camada-analitica' },
+          { text: 'Plano · menções de outros órgãos', link: '/docs/planos/2026-11-09-mencoes-de-terceiros' },
           { text: 'Uso de IA', link: '/AI-USAGE' },
         ],
       },

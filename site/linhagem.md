@@ -9,56 +9,9 @@ De onde vem cada número do painel: do ZIP do Diário Oficial até a tabela que 
 
 ## Do dado bruto ao painel
 
-```mermaid
-flowchart LR
-  subgraph fontes["Fontes públicas"]
-    dou["DOU Seção 1<br/>dados abertos da Imprensa Nacional<br/>um ZIP por mês"]
-    plan["Planilha da pesquisadora<br/>215 atos, 2003 a 2020"]
-    siorg["SIORG<br/>código dos órgãos"]
-  end
-  subgraph bronze["Bronze"]
-    zip["data/bronze/dados-abertos/<br/>o ZIP como veio"]
-  end
-  subgraph oltp["OLTP · Postgres"]
-    ato["ato · versões"]
-    nome["orgao_nome · vigências"]
-    cls["classificacao · insert-only"]
-  end
-  subgraph silver["Silver · Delta"]
-    satos["silver/atos"]
-    smen["silver/mencoes"]
-  end
-  subgraph gold["Gold · DuckDB (dbt)"]
-    dim["dim_conselho · SCD 2"]
-    fato["fct_ato"]
-    mes["fct_conselho_mes"]
-    men["fct_mencao"]
-    vit["mart_vitalidade"]
-    fr["freshness_vitalidade"]
-  end
-  painel["Painel<br/>make painel"]
+<LinhagemInterativa />
 
-  dou -- "fetch-mensal" --> zip
-  zip -- "persist" --> ato
-  zip -- "mencoes · atos de outros órgãos" --> smen
-  plan -- "carga" --> ato
-  plan -- "carga" --> cls
-  siorg -- "make siorg" --> nome
-  ato -- "make lake · CDC" --> satos
-  cls -- "CDC" --> satos
-  satos --> fato
-  nome --> dim
-  dim --> fato
-  fato --> mes
-  smen --> men
-  dim --> men
-  mes --> vit
-  men --> vit
-  mes --> fr
-  vit --> painel
-  fr --> painel
-  fato --> painel
-```
+<p class="cv-legenda">Clique numa tabela para ver o que ela guarda, o comando que a gera e os testes que a protegem, ou percorra a linhagem passo a passo.</p>
 
 O Dagster roda os passos do ZIP até a gold num job mensal: `atos_do_mes` → `silver/atos` e `silver/mencoes` → modelos do dbt, com retry e backfill. O grafo dele, como aparece na interface, está em [grafo-dagster.jpg](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0009-gold/grafo-dagster.jpg).
 

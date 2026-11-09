@@ -716,3 +716,33 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - o site compilou sem link quebrado, e a página foi vista no servidor local.
 - **Quem revisou:** pendente — a Luiza autorizou os commits direto no `main`.
 
+
+### 2026-11-09 — Linhagem interativa e as abas do site atualizadas para a E3
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:**
+  - `site/.vitepress/theme/LinhagemInterativa.vue` (novo) e `site/.vitepress/theme/index.ts`, `site/linhagem.md`;
+  - `site/.vitepress/theme/ArquiteturaInterativa.vue`, `site/arquitetura.md`;
+  - `site/jornada-do-dado.md`, `site/entrega-e3.md`;
+  - `site/.vitepress/config.mts`, `docs/adr/README.md`, `docs/diario/2026-11-10.md`, `docs/carga/relatorio-gold.md` (novo);
+  - `docs/planos/2026-11-03-e3-camada-analitica.md`.
+- **O que foi pedido:**
+  - o diagrama da linhagem interativo, como o da Arquitetura, com as caixas afastadas e o texto das setas em negrito;
+  - a Arquitetura com o que cada entrega cobre e com a estrela (dimensão, fatos e mart);
+  - as abas Processo, Dados, Decisões e a Jornada do dado atualizadas.
+- **O que foi aproveitado:**
+  - o componente da linhagem, no mesmo molde do da Arquitetura;
+  - a seção da estrela, com o tipo e o grão de cada modelo e um diagrama ER com as colunas principais;
+  - as entregas E1 a E4 em tabelas;
+  - o ADR 0009 e o 0010, os três planos e a página "Gold e menções (E3)" na barra lateral;
+  - as decisões em aberto nº 4 e 5 marcadas como tomadas, a confirmar pela squad;
+  - a Jornada com a E2 e a E3 marcadas como feitas.
+
+  **Decidido pela IA**, a revisar:
+  - a classificação por IA aparece na Jornada como "a fazer", não como E3;
+  - o catálogo e a linhagem, que a Arquitetura punha na E4, aparecem como adiantados para a E3.
+- **Como foi verificado:**
+  - o site compilou sem link quebrado. O build quebrava por um `{{ ref() }}` do dbt fora de bloco de código no plano da E3, e o trecho virou `<code v-pre>`;
+  - as páginas foram vistas no servidor local: a linhagem com os rótulos legíveis, o diagrama ER renderizado e a barra lateral com as entradas novas;
+  - cada número e cada prova citados em "Gold e menções" foram conferidos contra os arquivos de `docs/adr/medicoes/0009-gold/`; duas afirmações que não batiam foram corrigidas antes do commit.
+- **Quem revisou:** pendente — a Luiza autorizou os commits direto no `main`.

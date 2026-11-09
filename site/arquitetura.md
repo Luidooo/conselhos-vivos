@@ -21,6 +21,71 @@ Este é o desenho que o projeto entrega ao fim da E4. Ele parte de uma regra: **
 
 O RAG lê só o Postgres. O lakehouse fica fora do caminho das perguntas, então uma falha na parte analítica não derruba o assistente.
 
+## A gold em estrela: dimensão, fatos e mart
+
+A gold é um modelo em estrela ([ADR 0009](/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster)): uma dimensão no centro, três fatos em volta, cada um com o grão declarado, e um mart que responde à pergunta da E1. Uma tabela por ato não teria linha para o mês sem ato, e é a ausência que diz se um conselho parou. Por isso o fato mensal guarda os zeros.
+
+| Tabela | Tipo | Uma linha por | Para quê |
+|---|---|---|---|
+| `dim_conselho` | dimensão, SCD tipo 2 | nome que o conselho teve, com a vigência | renomear é inserir; o fato pega o nome que valia na data |
+| `fct_ato` | fato | matéria do próprio conselho, na versão mais recente | o que o conselho publicou e a tipologia, ligado ao nome da data por asof join |
+| `fct_conselho_mes` | fato agregado | conselho × mês coberto pelo DOU, com zero no mês sem ato | o silêncio vira linha, e pode ser testado |
+| `fct_mencao` | fato | matéria de outro órgão × conselho citado | o segundo sinal de vida, o enriquecimento da E3 |
+| `mart_vitalidade` | mart, a camada de consumo | conselho | a situação (ativo, em silêncio, sem ato no período coberto) e as menções ao lado |
+| `freshness_vitalidade` | view de controle | uma linha só | o último mês coberto contra o SLA do dia 20 |
+
+A dimensão tem duas chaves. A `conselho_sk` é substituta e aponta um nome; a `orgao_id` é durável e aponta o conselho, com todos os nomes. O `fct_ato` guarda as duas, porque precisa do nome da época. O fato mensal e o das menções contam por conselho, então usam só a durável.
+
+```mermaid
+erDiagram
+  dim_conselho ||--o{ fct_ato : "nome na data (conselho_sk)"
+  dim_conselho ||--o{ fct_conselho_mes : "conselho (orgao_id)"
+  dim_conselho ||--o{ fct_mencao : "conselho citado (orgao_id)"
+  fct_ato ||--o{ fct_conselho_mes : "conta por mês"
+  fct_conselho_mes }o--|| mart_vitalidade : "resume"
+  fct_mencao }o--|| mart_vitalidade : "conta ao lado"
+  dim_conselho {
+    int conselho_sk PK "um nome"
+    int orgao_id "o conselho"
+    string nome
+    string sigla
+    date valido_de
+    date valido_ate
+    bool atual
+    bool eh_participativo "nulo = não avaliado"
+  }
+  fct_ato {
+    string ato_id PK
+    int conselho_sk FK
+    int orgao_id
+    date data_publicacao
+    date mes
+    string tipologia_sigla
+    bool nome_aproximado
+  }
+  fct_conselho_mes {
+    int orgao_id FK
+    date mes
+    int atos "zero no mês sem ato"
+  }
+  fct_mencao {
+    string mencao_id PK
+    int orgao_id FK
+    date data_publicacao
+    string publicador
+    string assunto
+  }
+  mart_vitalidade {
+    int orgao_id PK
+    string situacao
+    date ultimo_mes_com_ato
+    int meses_sem_publicar
+    int mencoes_no_periodo
+  }
+```
+
+<p class="cv-legenda">As colunas são as principais de cada modelo; a lista completa, com as descrições e os testes, está no <a href="/conselhos-vivos/linhagem/catalogo-dbt.html" target="_blank">catálogo do dbt</a>. A linhagem de cada tabela está em <a href="/conselhos-vivos/linhagem">Linhagem dos dados</a>.</p>
+
 ## Ferramentas
 
 | Parte | Ferramenta | Situação | Por que essa |
@@ -39,11 +104,11 @@ O RAG lê só o Postgres. O lakehouse fica fora do caminho das perguntas, então
 | Busca do RAG | busca textual do Postgres (`tsvector`, em português) | 🆕 | já vem no banco: sem extensão, sem modelo de embedding, sem conta a mais |
 | Respostas do RAG | API do Claude, pelo SDK `anthropic` | 🆕 | escreve a resposta a partir dos trechos achados |
 | App da pesquisadora | Streamlit | ✅ E3 (aba Painel) | um app Python, com as três abas |
-| Catálogo e linhagem | `dbt docs`, publicado no site | 🆕 E4 | o grafo vai da fonte até o painel e os alertas |
+| Catálogo e linhagem | `dbt docs`, publicado no site, e a [linhagem dos dados](/linhagem) | ✅ E3 | o grafo vai da fonte até o painel; adiantado da E4 |
 | Controle de acesso | papéis e `GRANT` do Postgres, com RLS se precisar | 🆕 E4 | o app só lê e escreve o que precisa |
 | CI e documentação | GitHub Actions + VitePress | ✅ já tem | |
 
-São quatro peças novas de verdade: dbt, Dagster, Streamlit e o SDK do Claude. O resto é configuração do que já existe.
+São quatro peças novas de verdade: dbt, Dagster, Streamlit e o SDK do Claude. As três primeiras entraram na E3. O resto é configuração do que já existe.
 
 ### O que fica de fora, e por quê
 
@@ -55,24 +120,62 @@ São quatro peças novas de verdade: dbt, Dagster, Streamlit e o SDK do Claude. 
 
 ## Decisões em aberto
 
-Cada uma vira um ADR, com a opção nula tratada a sério e medida.
+Cada uma vira um ADR, com a opção nula tratada a sério e medida. O orquestrador já saiu daqui: Dagster, com cron + `make` como opção nula, no [ADR 0009](/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster).
 
-- **Orquestrador.** Dagster cumpre retry e backfill por configuração, mas é mais um serviço. Com cron + `make`, os dois viram código nosso.
 - **Camada semântica.** As métricas no próprio dbt ou uma tabela de métricas escrita à mão.
 
 ## O que cada entrega cobre
 
-| Entrega | Exigência | Onde está no desenho |
+O que o plano de ensino pede em cada entrega, como o projeto responde e em que parte do desenho isso está. A página de cada entrega tem o checklist com as provas.
+
+### E1 ✅ · Fonte transacional modelada e populada
+
+[Página da E1](/entrega-e1)
+
+| O que se pede | No projeto | Parte do desenho |
 |---|---|---|
-| E1 ✅ | OLTP com integridade e decisões registradas | Postgres: atos e curadoria |
-| E2 ✅ | ingestão em lote, CDC, formato aberto, dado atrasado | dados abertos, slot lógico, silver em Delta |
-| E3 | fato, dimensões e SCD em camadas | gold no dbt |
-| E3 | testes de dados | testes do dbt |
-| E3 | orquestração com retry e backfill | orquestrador |
-| E3 | `EXPLAIN` antes e depois, frescor e SLA | gold e índices do Postgres |
-| E3 | painel | aba Painel |
-| E4 | camada semântica | métricas no dbt |
-| E4 | ETL reverso para quem age | alertas e aba Revisar |
-| E4 | catálogo e linhagem da fonte ao consumo | `dbt docs` |
-| E4 | LGPD e controle de acesso por linha e coluna | papéis do Postgres |
-| Produto | a pesquisadora pergunta e confere a fonte | aba Perguntar, busca textual do Postgres, API do Claude |
+| Domínio e pergunta de gestão | quais conselhos nacionais de participação social ainda funcionam | o app inteiro responde a ela |
+| Esquema versionado, migrações do zero | `sql/`, aplicado em ordem pelo `make setup` | Postgres |
+| Carga reprodutível com um comando | a planilha da pesquisadora e o SIORG, pelo `make carga` | Atos do DOU e Curadoria |
+| Histórico na origem | classificação insert-only e versões do ato | Curadoria |
+| ADR da modelagem | [0001](/docs/adr/0001-adotar-sistema-de-curadoria-insert-only-como-oltp) a [0004](/docs/adr/0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada) | Postgres |
+
+### E2 ✅ · Ingestão em lote e captura de mudanças
+
+[Página da E2](/entrega-e2)
+
+| O que se pede | No projeto | Parte do desenho |
+|---|---|---|
+| Ingestão em lote, idempotente | o ZIP mensal dos dados abertos, por `src/dou` | Dados abertos → Atos do DOU |
+| Fluxo de mudanças do OLTP | slot de replicação lógica, sem Kafka ([ADR 0007](/docs/adr/0007-propagar-mudancas-por-slot-de-replicacao-logica)) | seta CDC |
+| Formato aberto, serialização e compressão | Delta sobre Parquet, por ano, com zstd ([ADR 0006](/docs/adr/0006-armazenar-a-camada-analitica-em-tabelas-delta)) | Silver |
+| Semântica de entrega e dado atrasado | queda forçada sem duplicar; ato atrasado cai no ano certo | Silver |
+| ADR da ingestão, com a opção nula | [0005](/docs/adr/0005-ingerir-dou-no-oltp-e-propagar-ao-delta-via-cdc) | Dados abertos |
+
+### E3 ✅ · Camada analítica transformada, testada e orquestrada
+
+[Página da E3](/entrega-e3)
+
+| O que se pede | No projeto | Parte do desenho |
+|---|---|---|
+| Fato, dimensão, grão e variação lenta | estrela no dbt: `dim_conselho` (SCD tipo 2), `fct_ato`, `fct_conselho_mes`, `fct_mencao` | Gold |
+| Transformações em camadas, com testes | staging → marts, 77 testes de esquema, volume, unicidade, integridade e distribuição | Gold |
+| Orquestração com retry e backfill | Dagster, com agenda mensal, retry e backfill demonstrados | Orquestrador |
+| Consulta otimizada pelo `EXPLAIN` | a extração do Postgres; o índice candidato não teve ganho neste volume | Postgres |
+| Freshness e SLA | `freshness_vitalidade`: o mês M até o dia 20 do mês M+1 | Gold |
+| Painel que responde à pergunta | `make painel` | aba Painel |
+| Enriquecimento com outra base | as menções aos conselhos em atos de outros órgãos, do mesmo ZIP | Gold |
+| Catálogo e linhagem, adiantados da E4 | [linhagem dos dados](/linhagem) e o catálogo do dbt no site | Catálogo e linhagem |
+| ADR da modelagem e da ferramenta | [0009](/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster) e [0010](/docs/adr/0010-tratar-como-conselho-todo-orgao-com-conselho-no-nome), com o [0008](/docs/adr/0008-unificar-o-pipeline-em-python) | Gold e Orquestrador |
+
+### E4 · O que falta
+
+| O que se pede | No projeto | Parte do desenho |
+|---|---|---|
+| Camada semântica | as métricas definidas uma vez no dbt | Gold |
+| ETL reverso para quem age | os alertas gravados no Postgres | Alertas e aba Revisar |
+| LGPD e controle de acesso por linha e coluna | papéis e `GRANT` do Postgres | Postgres |
+
+### Produto · depois das entregas
+
+A pesquisadora pergunta e confere a fonte: a aba Perguntar, a busca textual do Postgres e a API do Claude.

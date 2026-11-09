@@ -28,7 +28,7 @@ Pré-requisitos: Docker com Compose v2, `make` e `sqlite3`. O backfill baixa os 
 |---|---|---|
 | **Modelo em estrela** com variação lenta | `dbt/models/marts/` · `dim_conselho`, `fct_ato`, `fct_conselho_mes` | `make gold`; grão declarado na descrição de cada modelo |
 | **Resposta à pergunta** | `mart_vitalidade` · `make painel` | 26 ativos, 33 sem ato no período coberto, 59 conselhos |
-| **Testes de dados** | `dbt/models/*/*.yml` · `dbt/tests/` | `make gold`: 63 de 63 em `PASS` |
+| **Testes de dados** | `dbt/models/*/*.yml` · `dbt/tests/` | `make gold`: 77 de 77 em `PASS` |
 | **Orquestração** com retry, backfill e agenda | `src/orquestracao/` · `dagster/dagster.yaml` | `make orquestrador`, `make demo-retry`, `make demo-backfill`, `make demo-falhas` |
 | **Enriquecimento:** menções de outros órgãos | `src/mencoes/` · `fct_mencao` · asset `silver/mencoes` | `make mencoes`; 10 dos 33 conselhos sem ato próprio são citados por outros órgãos |
 | **Freshness e SLA** | `freshness_vitalidade` · `dbt/tests/sla_vitalidade.sql` | o mês M até o dia 20 do mês M+1 |
