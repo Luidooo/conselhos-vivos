@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
 # Derruba o banco, dispara um mês no Dagster e religa o banco antes do retry: a primeira tentativa
 # falha, o RetryPolicy (30 s) tenta de novo e passa. O mês usado já está no bronze: nada é baixado.
+# Atenção: o Postgres é o mesmo do pgAdmin e do CDC, que ficam sem banco por cerca de 1 minuto.
+# Cada execução grava um arquivo novo, com data e hora no nome.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 MES=${MES:-2026-08}
 mkdir -p data/dagster/history/runs docs/adr/medicoes/0009-gold
-saida=docs/adr/medicoes/0009-gold/retry-$MES.txt
+saida=docs/adr/medicoes/0009-gold/retry-$MES-$(date -u +%Y%m%dT%H%M%SZ).txt
 test -f dbt/target/manifest.json || { echo "falta o manifesto do dbt: rode make gold antes"; exit 1; }
 command -v sqlite3 >/dev/null || { echo "falta o sqlite3, que lê o log de eventos do Dagster"; exit 1; }
-eventos() {  # os eventos de passo e de run, do log que o Dagster grava durante o run
-  sqlite3 "$1" "select replace(dagster_event_type, 'PIPELINE_', 'RUN_') || ' ' || coalesce(step_key, '') from event_logs where dagster_event_type in ('STEP_START','STEP_FAILURE','STEP_UP_FOR_RETRY','STEP_RESTARTED','STEP_SUCCESS','PIPELINE_SUCCESS','PIPELINE_FAILURE') order by id"
-}
-marca=$(mktemp)   # o run desta demonstração é o único log de eventos mais novo que esta marca
+marca=$(mktemp)
 trap 'docker compose start db >/dev/null; rm -f "$marca"' EXIT   # o banco volta mesmo se o script cair
 docker compose stop db
 DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T --no-deps orquestrador \
@@ -19,16 +18,22 @@ DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm
 pid=$!
 # Só religa o banco depois que a primeira tentativa cair: o pip install leva uns 30 s, e um tempo fixo
 # pode religar cedo demais. O retry espera 30 s, tempo de o Postgres subir.
-db=""
+# shortcut: o run da demonstração é o primeiro log de eventos mais novo que a marca; não rode a agenda
+# nem a interface ao mesmo tempo.
+run=""
 for _ in $(seq 180); do
-  db=${db:-$(find data/dagster/history/runs -name '*.db' -newer "$marca" | head -1)}
-  [[ -n "$db" ]] && eventos "$db" 2>/dev/null | grep -q STEP_UP_FOR_RETRY && break
+  if [[ -z "$run" ]]; then
+    db=$(find data/dagster/history/runs -name '*.db' -newer "$marca" | head -1)
+    [[ -n "$db" ]] && run=$(basename "$db" .db)
+  fi
+  [[ -n "$run" ]] && bash scripts/eventos_do_run.sh "$run" 2>/dev/null | grep -q STEP_UP_FOR_RETRY && break
   sleep 1
 done
 docker compose start db
 rc=0; wait "$pid" || rc=$?   # sem o || o set -e encerraria o script antes da conferência
-[[ -n "$db" ]] || { echo "FALHOU: o run não começou"; tail -20 "$saida.log"; exit 1; }
-{ echo "run $(basename "$db" .db), mês $MES, banco parado antes da primeira tentativa"; eventos "$db"; } > "$saida"
+[[ -n "$run" ]] || { echo "FALHOU: o run não começou"; tail -20 "$saida.log"; exit 1; }
+{ echo "# make demo-retry, mês $MES, run $run, banco parado antes da primeira tentativa (horários em UTC)"
+  bash scripts/eventos_do_run.sh "$run"; } > "$saida"
 rm -f "$saida.log"
 cat "$saida"
 grep -q STEP_UP_FOR_RETRY "$saida" || { echo "FALHOU: não houve retry"; exit 1; }

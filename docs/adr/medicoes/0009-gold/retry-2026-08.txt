@@ -1,6 +1,0 @@
-run 4e907cdd-1a79-4d90-a4d8-daef39524c59, mês 2026-08, banco parado antes da primeira tentativa
-STEP_START atos_do_mes
-STEP_UP_FOR_RETRY atos_do_mes
-STEP_RESTARTED atos_do_mes
-STEP_SUCCESS atos_do_mes
-RUN_SUCCESS 

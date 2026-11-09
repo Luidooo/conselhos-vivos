@@ -13,7 +13,8 @@ DBT = DbtProject(project_dir=Path("/app/dbt"), profiles_dir=Path("/app/dbt"))
 DBT.prepare_if_dev()
 
 # O mês só existe nos dados abertos depois que acaba: a última partição é o mês passado.
-MENSAL = dg.MonthlyPartitionsDefinition(start_date="2002-01-01")
+# O fuso das partições é também o da agenda: 6h de Brasília, não de UTC.
+MENSAL = dg.MonthlyPartitionsDefinition(start_date="2002-01-01", timezone="America/Sao_Paulo")
 # A Imprensa Nacional e o banco falham de vez em quando; 30 s dá tempo de voltar.
 RETRY = dg.RetryPolicy(max_retries=3, delay=30)
 
@@ -52,6 +53,8 @@ defs = dg.Definitions(
     assets=[atos_do_mes, silver_atos, gold],
     jobs=[mensal],
     # dia 15: o ZIP do mês anterior costuma sair por volta do dia 13 (setembro saiu em 13/10).
-    schedules=[dg.build_schedule_from_partitioned_job(mensal, day_of_month=15, hour_of_day=6)],
+    # Ligada desde o início: com o make orquestrador no ar, o daemon dispara o mês anterior sozinho.
+    schedules=[dg.build_schedule_from_partitioned_job(mensal, day_of_month=15, hour_of_day=6,
+                                                      default_status=dg.DefaultScheduleStatus.RUNNING)],
     resources={"dbt": DbtCliResource(project_dir=DBT)},
 )

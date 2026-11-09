@@ -818,7 +818,7 @@ git add dbt && git diff --cached --stat
 ### Tarefa 6: orquestração com Dagster, retry e backfill
 
 **Arquivos:**
-- Criar: `src/orquestracao/__init__.py`, `scripts/demo_retry.sh`, `scripts/demo_backfill.sh`
+- Criar: `src/orquestracao/__init__.py`, `scripts/demo_retry.sh`, `scripts/demo_backfill.sh`, `scripts/eventos_do_run.sh`
 - Modificar: `Makefile` (alvos `orquestrador`, `demo-retry`, `demo-backfill`), `docker-compose.yml` (o Dagster no serviço `orquestrador`)
 
 **Interfaces:**
@@ -864,7 +864,8 @@ DBT = DbtProject(project_dir=Path("/app/dbt"), profiles_dir=Path("/app/dbt"))
 DBT.prepare_if_dev()
 
 # O mês só existe nos dados abertos depois que acaba: a última partição é o mês passado.
-MENSAL = dg.MonthlyPartitionsDefinition(start_date="2002-01-01")
+# O fuso das partições é também o da agenda: 6h de Brasília, não de UTC.
+MENSAL = dg.MonthlyPartitionsDefinition(start_date="2002-01-01", timezone="America/Sao_Paulo")
 # A Imprensa Nacional e o banco falham de vez em quando; 30 s dá tempo de voltar.
 RETRY = dg.RetryPolicy(max_retries=3, delay=30)
 
@@ -903,7 +904,9 @@ defs = dg.Definitions(
     assets=[atos_do_mes, silver_atos, gold],
     jobs=[mensal],
     # dia 15: o ZIP do mês anterior costuma sair por volta do dia 13 (setembro saiu em 13/10).
-    schedules=[dg.build_schedule_from_partitioned_job(mensal, day_of_month=15, hour_of_day=6)],
+    # Ligada desde o início: com o make orquestrador no ar, o daemon dispara o mês anterior sozinho.
+    schedules=[dg.build_schedule_from_partitioned_job(mensal, day_of_month=15, hour_of_day=6,
+                                                      default_status=dg.DefaultScheduleStatus.RUNNING)],
     resources={"dbt": DbtCliResource(project_dir=DBT)},
 )
 ```
@@ -945,11 +948,36 @@ Abra http://localhost:3000. Esperado: `atos_do_mes`, depois `silver/atos`, depoi
 
 - [ ] **Passo 4: o backfill**
 
+Os dois scripts leem os eventos de cada run com `scripts/eventos_do_run.sh`:
+
+```bash
+#!/usr/bin/env bash
+# Eventos de passo e de run de um run do Dagster, com horário (UTC) e a causa de cada falha, lidos do log
+# que o Dagster grava durante o run. A saída do `dagster asset materialize` não traz os eventos de passo,
+# porque cada passo roda noutro processo. Depois, o resumo do persist e o erro dele, dos compute logs.
+# Uso: bash scripts/eventos_do_run.sh RUN_ID
+set -euo pipefail
+cd "$(dirname "$0")/.."
+run=${1:?run id}
+sqlite3 "data/dagster/history/runs/$run.db" "
+  select substr(timestamp, 1, 19) || ' ' || replace(dagster_event_type, 'PIPELINE_', 'RUN_')
+         || coalesce(' ' || step_key, '')
+         || coalesce(' | causa: ' || trim(json_extract(event, '$.dagster_event.event_specific_data.error.cause.message'), char(10)), '')
+  from event_logs
+  where dagster_event_type in ('STEP_START','STEP_FAILURE','STEP_UP_FOR_RETRY','STEP_RESTARTED','STEP_SUCCESS',
+                               'PIPELINE_SUCCESS','PIPELINE_FAILURE')
+  order by id"
+cat data/dagster/storage/"$run"/compute_logs/*.err 2>/dev/null \
+  | grep -oE "done gravadas.*|run aborted err=.*" | sed -e 's/^done /persist: /' -e 's/^run aborted /persist falhou: /' || true
+```
+
 `scripts/demo_backfill.sh`:
 
 ```bash
 #!/usr/bin/env bash
 # Backfill de um intervalo de meses pelo Dagster: um run por mês, em ordem, cada um com retry.
+# Em sequência de propósito: a silver (Delta) e a gold (DuckDB, um escritor só) não aguentam runs em paralelo.
+# Cada execução grava um arquivo novo, com data e hora no nome: uma prova já versionada nunca é sobrescrita.
 # Uso: bash scripts/demo_backfill.sh 2026-07 2026-09
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -957,22 +985,19 @@ de=${1:?mês inicial AAAA-MM}; ate=${2:?mês final AAAA-MM}
 test -f dbt/target/manifest.json || { echo "falta o manifesto do dbt: rode make gold antes"; exit 1; }
 command -v sqlite3 >/dev/null || { echo "falta o sqlite3, que lê o log de eventos do Dagster"; exit 1; }
 mkdir -p data/gold data/dagster docs/adr/medicoes/0009-gold
-saida=docs/adr/medicoes/0009-gold/backfill-$de-a-$ate.txt
-[[ -e "$saida" ]] && saida=${saida%.txt}-de-novo.txt   # a segunda rodada, que prova que nada duplica
-: > "$saida"
+saida=docs/adr/medicoes/0009-gold/backfill-$de-a-$ate-$(date -u +%Y%m%dT%H%M%SZ).txt
+echo "# make demo-backfill DE=$de ATE=$ate, $(date -u '+%Y-%m-%d %H:%M:%S') UTC, gerado por scripts/demo_backfill.sh" | tee "$saida"
 mes=$de
 while [[ "$mes" < "$ate" || "$mes" == "$ate" ]]; do
-  echo "==> partição $mes-01" | tee -a "$saida"
   log=$(DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T orquestrador \
     dagster asset materialize -m orquestracao --select '*' --partition "$mes-01" 2>&1) || { tail -30 <<<"$log"; exit 1; }
-  run=$(grep -m1 -oE '[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}' <<<"$log")
-  # Cada passo roda noutro processo: os eventos dele ficam no log do run, e a saída do persist nos compute logs.
-  sqlite3 "data/dagster/history/runs/$run.db" \
-    "select replace(dagster_event_type, 'PIPELINE_', 'RUN_') || ' ' || coalesce(step_key, '') from event_logs where dagster_event_type in ('STEP_SUCCESS','STEP_FAILURE','STEP_UP_FOR_RETRY','PIPELINE_SUCCESS','PIPELINE_FAILURE') order by id" | tee -a "$saida"
-  grep -ho "done gravadas.*" data/dagster/storage/"$run"/compute_logs/*.err | sed 's/^done /persist: /' | tee -a "$saida"
+  # O run id está em toda linha de evento da saída: "... - __ASSET_JOB - <run id> - ...".
+  run=$(grep -m1 -oE '__ASSET_JOB - [0-9a-f-]{36}' <<<"$log" | cut -d' ' -f3)
+  echo "==> partição $mes-01, run $run" | tee -a "$saida"
+  bash scripts/eventos_do_run.sh "$run" | tee -a "$saida"
   mes=$(date -j -v+1m -f "%Y-%m-%d" "$mes-01" +%Y-%m 2>/dev/null || date -d "$mes-01 +1 month" +%Y-%m)
 done
-echo "==> atos por mês depois do backfill" | tee -a "$saida"
+echo "==> atos do DOU por mês depois do backfill" | tee -a "$saida"
 docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "select date_trunc('"'"'month'"'"', data_publicacao)::date, count(*) from ato where origem = '"'"'DOU'"'"' group by 1 order by 1"' | tee -a "$saida"
 ```
 
@@ -982,9 +1007,9 @@ Rode com três meses. O bronze já tem agosto e setembro, então só julho é ba
 make demo-backfill DE=2026-07 ATE=2026-09
 ```
 
-Os eventos de cada passo não aparecem na saída do `dagster asset materialize`: cada passo roda noutro processo. Os scripts leem o log de eventos do run (`data/dagster/history/runs/<run>.db`, com `sqlite3`) e o resumo do `persist` nos compute logs. Nesse log, o fim do run se chama `PIPELINE_SUCCESS`; os scripts mostram como `RUN_SUCCESS`.
+Rode pelo script, não pela interface: um backfill pela interface dispara as partições em paralelo, e a silver (Delta) e a gold (DuckDB, um escritor só) não aguentam isso. Os eventos de cada passo não aparecem na saída do `dagster asset materialize`: cada passo roda noutro processo. Os scripts leem o log de eventos do run (`data/dagster/history/runs/<run>.db`, com `sqlite3`) e o resumo do `persist` nos compute logs. Nesse log, o fim do run se chama `PIPELINE_SUCCESS`; os scripts mostram como `RUN_SUCCESS`.
 
-Esperado: `RUN_SUCCESS` nas três partições, e julho, agosto e setembro na contagem final. Rodar de novo não duplica nada: o persist grava `inalteradas`. Essa segunda rodada também vai para o ADR, em `backfill-…-de-novo.txt`.
+Esperado: `RUN_SUCCESS` nas três partições, e julho, agosto e setembro na contagem final. Rodar de novo não duplica nada: o persist grava `inalteradas`. Essa segunda rodada também vai para o ADR. Cada execução grava um arquivo novo, com data e hora no nome, então nenhuma prova versionada é sobrescrita.
 
 Resultado em 08/11/2026: o ZIP de julho tem 555 MB. A primeira rodada gravou 161 atos de julho e 132 de setembro, e agosto ficou `inalteradas=96`; a segunda deu `gravadas=0` nos três meses. Levou 3 min 8 s com o download e 1 min 38 s sem ele.
 
@@ -996,17 +1021,16 @@ Resultado em 08/11/2026: o ZIP de julho tem 555 MB. A primeira rodada gravou 161
 #!/usr/bin/env bash
 # Derruba o banco, dispara um mês no Dagster e religa o banco antes do retry: a primeira tentativa
 # falha, o RetryPolicy (30 s) tenta de novo e passa. O mês usado já está no bronze: nada é baixado.
+# Atenção: o Postgres é o mesmo do pgAdmin e do CDC, que ficam sem banco por cerca de 1 minuto.
+# Cada execução grava um arquivo novo, com data e hora no nome.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 MES=${MES:-2026-08}
 mkdir -p data/dagster/history/runs docs/adr/medicoes/0009-gold
-saida=docs/adr/medicoes/0009-gold/retry-$MES.txt
+saida=docs/adr/medicoes/0009-gold/retry-$MES-$(date -u +%Y%m%dT%H%M%SZ).txt
 test -f dbt/target/manifest.json || { echo "falta o manifesto do dbt: rode make gold antes"; exit 1; }
 command -v sqlite3 >/dev/null || { echo "falta o sqlite3, que lê o log de eventos do Dagster"; exit 1; }
-eventos() {  # os eventos de passo e de run, do log que o Dagster grava durante o run
-  sqlite3 "$1" "select replace(dagster_event_type, 'PIPELINE_', 'RUN_') || ' ' || coalesce(step_key, '') from event_logs where dagster_event_type in ('STEP_START','STEP_FAILURE','STEP_UP_FOR_RETRY','STEP_RESTARTED','STEP_SUCCESS','PIPELINE_SUCCESS','PIPELINE_FAILURE') order by id"
-}
-marca=$(mktemp)   # o run desta demonstração é o único log de eventos mais novo que esta marca
+marca=$(mktemp)
 trap 'docker compose start db >/dev/null; rm -f "$marca"' EXIT   # o banco volta mesmo se o script cair
 docker compose stop db
 DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T --no-deps orquestrador \
@@ -1014,16 +1038,22 @@ DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm
 pid=$!
 # Só religa o banco depois que a primeira tentativa cair: o pip install leva uns 30 s, e um tempo fixo
 # pode religar cedo demais. O retry espera 30 s, tempo de o Postgres subir.
-db=""
+# shortcut: o run da demonstração é o primeiro log de eventos mais novo que a marca; não rode a agenda
+# nem a interface ao mesmo tempo.
+run=""
 for _ in $(seq 180); do
-  db=${db:-$(find data/dagster/history/runs -name '*.db' -newer "$marca" | head -1)}
-  [[ -n "$db" ]] && eventos "$db" 2>/dev/null | grep -q STEP_UP_FOR_RETRY && break
+  if [[ -z "$run" ]]; then
+    db=$(find data/dagster/history/runs -name '*.db' -newer "$marca" | head -1)
+    [[ -n "$db" ]] && run=$(basename "$db" .db)
+  fi
+  [[ -n "$run" ]] && bash scripts/eventos_do_run.sh "$run" 2>/dev/null | grep -q STEP_UP_FOR_RETRY && break
   sleep 1
 done
 docker compose start db
 rc=0; wait "$pid" || rc=$?   # sem o || o set -e encerraria o script antes da conferência
-[[ -n "$db" ]] || { echo "FALHOU: o run não começou"; tail -20 "$saida.log"; exit 1; }
-{ echo "run $(basename "$db" .db), mês $MES, banco parado antes da primeira tentativa"; eventos "$db"; } > "$saida"
+[[ -n "$run" ]] || { echo "FALHOU: o run não começou"; tail -20 "$saida.log"; exit 1; }
+{ echo "# make demo-retry, mês $MES, run $run, banco parado antes da primeira tentativa (horários em UTC)"
+  bash scripts/eventos_do_run.sh "$run"; } > "$saida"
 rm -f "$saida.log"
 cat "$saida"
 grep -q STEP_UP_FOR_RETRY "$saida" || { echo "FALHOU: não houve retry"; exit 1; }
