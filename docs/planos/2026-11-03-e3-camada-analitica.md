@@ -1065,6 +1065,16 @@ def silver_atos(context: dg.AssetExecutionContext) -> None:
     roda(context, "python", "-m", "lake", "/data/silver/atos")
 
 
+# O mesmo ZIP do mês: as matérias de outros órgãos que citam um conselho (plano 2026-11-09). A chave é a
+# mesma da fonte silver.mencoes do dbt, e assim a gold passa a depender deste asset sem configuração a mais.
+@dg.asset(key=["silver", "mencoes"], deps=[atos_do_mes], partitions_def=MENSAL, retry_policy=RETRY, group_name="silver")
+def silver_mencoes(context: dg.AssetExecutionContext) -> None:
+    """Grava na silver as menções aos conselhos em atos de outros órgãos, do ZIP do mês."""
+    mes = dadosabertos.Mes.parse(context.partition_key[:7])
+    zip_do_mes = Path(os.environ["DADOS_ABERTOS_OUTPUT_DIR"]) / dadosabertos.nome_do_zip(mes)
+    roda(context, "python", "-m", "mencoes", str(zip_do_mes))
+
+
 @dbt_assets(manifest=DBT.manifest_path, partitions_def=MENSAL, retry_policy=RETRY)
 def gold(context: dg.AssetExecutionContext, dbt: DbtCliResource):
     yield from dbt.cli(["build"], context=context).stream()
@@ -1088,7 +1098,7 @@ def mensal_schedule(context: dg.ScheduleEvaluationContext):
     return dg.RunRequest(run_key=f"{mes}@{quando:%Y-%m-%d}", partition_key=mes)
 
 defs = dg.Definitions(
-    assets=[atos_do_mes, silver_atos, gold],
+    assets=[atos_do_mes, silver_atos, silver_mencoes, gold],
     jobs=[mensal],
     schedules=[mensal_schedule],
     resources={"dbt": DbtCliResource(project_dir=DBT)},
