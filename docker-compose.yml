@@ -219,7 +219,10 @@ services:
       db:
         condition: service_healthy
     command: ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000", "-m", "orquestracao"]
-    entrypoint: ["sh", "-c", "cp /app/dagster/dagster.yaml /data/dagster/dagster.yaml && pip install -q --disable-pip-version-check --root-user-action=ignore --no-warn-script-location --target /tmp/site -r /app/src/orquestracao/requirements.txt && export PATH=/tmp/site/bin:$$PATH && \"$$@\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data /app/dbt; exit $$rc", "sh"]
+    # O dbt-core puxa o dbt-core-experimental-parser, um sdist cujo build baixa um wheel do GitHub Releases
+    # por conta própria: o --retries do pip não cobre esse download, e um 504 do GitHub derrubava o CI.
+    # Por isso o pip install tenta até três vezes.
+    entrypoint: ["sh", "-c", "cp /app/dagster/dagster.yaml /data/dagster/dagster.yaml && ok=1 && for t in 1 2 3; do if pip install -q --disable-pip-version-check --root-user-action=ignore --no-warn-script-location --target /tmp/site -r /app/src/orquestracao/requirements.txt; then ok=0; break; fi; echo \"pip install falhou (tentativa $$t de 3)\" >&2; [ $$t = 3 ] || sleep 15; done && [ $$ok = 0 ] && export PATH=/tmp/site/bin:$$PATH && \"$$@\"; rc=$$?; chown -R $${DOCKER_UID}:$${DOCKER_GID} /data /app/dbt; exit $$rc", "sh"]
 
   # E3: o painel lê a gold só para leitura; não fala com o Postgres.
   painel:
