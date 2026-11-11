@@ -10,6 +10,11 @@ APP = "/app/app.py"
 METRICAS = ["Ativos", "Em silêncio", "Sem ato no período coberto", "Sem ato próprio, mas citados"]
 
 
+def textos(at):
+    # a cobertura e o SLA estão em chips (markdown); as regras de leitura, em legendas
+    return [c.value for c in at.caption] + [m.value for m in at.markdown]
+
+
 def tabela_com(at, coluna):
     # as abas mudam a ordem dos dataframes: acha a tabela pela coluna que só ela tem
     return next(d.value for d in at.dataframe if coluna in d.value.columns)
@@ -132,7 +137,7 @@ class TestApp(unittest.TestCase):
         warnings = [w.value for w in at.warning]
         self.assertGreater(len(warnings), 0)
         self.assertIn("Sem ato no DOU não prova que o conselho parou", warnings[0])
-        legendas = [c.value for c in at.caption]
+        legendas = textos(at)
         self.assertTrue(any("DOU coberto de 07/2026 a 09/2026." in t for t in legendas), legendas)
         self.assertTrue(any("dentro do SLA" in t for t in legendas))
 
@@ -166,7 +171,7 @@ class TestApp(unittest.TestCase):
         citado = dict(zip(tabela["Conselho"], tabela["Citado por outros órgãos"]))
         self.assertEqual(citado["Conselho Quatro"], 2)
         self.assertEqual(citado["Conselho Dois"], 0)
-        legendas = [c.value for c in at.caption]
+        legendas = textos(at)
         self.assertTrue(any("Citado por outros órgãos" in t for t in legendas), legendas)
 
     def test_regras_de_negocio_explicadas(self):
@@ -196,7 +201,7 @@ class TestApp(unittest.TestCase):
         os.environ["PAINEL_GOLD"] = self.gold_path
         at = AppTest.from_file(APP).run(timeout=60)
         self.assertEqual(len(at.exception), 0)
-        legendas = [c.value for c in at.caption]
+        legendas = textos(at)
         self.assertTrue(any("mês esperado 10/2026" in t and "1 mês(es) fora do SLA" in t for t in legendas), legendas)
 
     def test_sla_adiantado_nao_mostra_atraso(self):
@@ -213,7 +218,7 @@ class TestApp(unittest.TestCase):
         os.environ["PAINEL_GOLD"] = self.gold_path
         at = AppTest.from_file(APP).run(timeout=60)
         self.assertEqual(len(at.exception), 0)
-        legendas = [c.value for c in at.caption]
+        legendas = textos(at)
         self.assertFalse(any("atraso -" in t for t in legendas), legendas)
         self.assertTrue(any("dentro do SLA" in t for t in legendas), legendas)
 
