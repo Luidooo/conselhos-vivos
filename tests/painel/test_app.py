@@ -329,6 +329,12 @@ class TestApp(unittest.TestCase):
         # composição, atos por mês, heatmap, mensal do detalhe, tipologia por ano do detalhe e tipologia por conselho
         self.assertGreaterEqual(len(at.get("vega_lite_chart")), 5)
 
+    def test_mapa_oculta_conselho_sem_ato(self):
+        at = self._abre()
+        # o Conselho Quatro não tem ato em nenhum mês: fica fora do mapa e é contado na legenda
+        legendas = [c.value for c in at.caption]
+        self.assertTrue(any("1 conselho(s) sem nenhum ato no período ficam fora do mapa" in t for t in legendas), legendas)
+
     def test_sem_tabela_de_mencoes_pede_make_gold(self):
         with duckdb.connect(self.gold_path) as con:
             self._cria_tabelas_base(con)
