@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E3 · Conselhos Vivos</title>
+<meta name="description" content="Apresentação de 15 minutos da E3 do Conselhos Vivos: a resposta no painel, a gold em estrela, testes no dbt, Dagster, EXPLAIN, SLA e enriquecimento.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Apresentação de 15 minutos da E3, na ordem do roteiro. Palco fixo de 1280×720, escalado para a janela.
+   Navegação: ← → espaço PageUp PageDown Home End; F tela cheia; o número do slide fica no #.
+   O rodapé de cada slide mostra o tempo sugerido e quem fala; a soma dá 15:00. A versão longa está em completa.html. */
+:root{
+  --bg:#f6f7f4; --surface:#ffffff; --fg:#1b2420; --muted:#5b6a63; --line:#d9dfdb;
+  --accent:#0f6b4f; --accent-soft:#e3f0ea; --ochre:#9a6a12; --ochre-soft:#f6ecd7;
+  --code-bg:#eef1ee; --ink:#13201b; --ink-fg:#e4ebe7; --ink-muted:#9aa9a1; --mint:#5fc59d; --sand:#e0b35c;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0c110f;overflow:hidden}
+body{font-family:var(--f-body);color:var(--fg)}
+.deck{position:fixed;inset:0;display:grid;place-items:center}
+.stage{width:1280px;height:720px;position:relative;transform-origin:center center;flex:none}
+.slide{position:absolute;inset:0;background:var(--bg);padding:60px 80px 60px;display:none;flex-direction:column;overflow:hidden}
+.slide.on{display:flex}
+.slide.dark{background:var(--ink);color:var(--ink-fg)}
+.foot{position:absolute;left:80px;right:80px;bottom:22px;display:flex;gap:18px;font-family:var(--f-mono);font-size:12px;color:var(--muted);letter-spacing:.04em}
+.dark .foot{color:var(--ink-muted)}
+.foot .time{color:var(--accent)}
+.dark .foot .time{color:var(--mint)}
+.foot .n{visibility:hidden;margin-left:auto}
+.eyebrow{font-family:var(--f-mono);font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:0 0 12px}
+.dark .eyebrow{color:var(--mint)}
+h1{font-family:var(--f-display);font-weight:800;font-size:58px;line-height:1.05;margin:0 0 20px;letter-spacing:-.015em;text-wrap:balance;max-width:24ch}
+h2{font-family:var(--f-display);font-weight:800;font-size:38px;line-height:1.1;margin:0 0 24px;letter-spacing:-.01em;text-wrap:balance;max-width:34ch}
+h3{font-family:var(--f-display);font-weight:700;font-size:19px;margin:0 0 6px}
+p{margin:0 0 12px;font-size:19px;line-height:1.5;max-width:54ch}
+code{font-family:var(--f-mono);font-size:.86em;background:var(--code-bg);padding:1px 6px;border-radius:4px}
+.dark code{background:#22302a;color:var(--ink-fg)}
+ul.b{margin:0;padding:0;list-style:none;display:grid;gap:12px;align-content:start}
+ul.b li{font-size:19px;line-height:1.45;padding-left:22px;position:relative}
+ul.b li::before{content:"";position:absolute;left:0;top:10px;width:9px;height:9px;border-radius:2px;background:var(--accent)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:40px;flex:1;min-height:0}
+.cols.shot-l{grid-template-columns:1.15fr .85fr}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.card p{font-size:16px;color:var(--muted);margin:0}
+.card.k{border-color:var(--accent);background:var(--accent-soft)}
+.card.k p{color:var(--fg)}
+.stack{display:grid;gap:14px;align-content:start}
+.big{font-family:var(--f-display);font-weight:800;font-size:60px;line-height:1;font-variant-numeric:tabular-nums}
+.lbl{font-size:15px;color:var(--muted);margin-top:6px}
+.dark .lbl{color:var(--ink-muted)}
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.q{font-family:var(--f-display);font-weight:800;font-size:44px;line-height:1.12;max-width:22ch;margin:0 0 24px}
+.q em{font-style:normal;color:var(--mint)}
+.shot{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface);align-self:start}
+.shot img{display:block;width:100%;height:auto}
+.shot.crop{max-height:440px}
+.shot.crop img{height:440px;object-fit:cover;object-position:top}
+.eyebrow{max-width:none}
+.fail{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:22px}
+.fail div{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14.5px;line-height:1.4}
+.fail b{display:block;font-family:var(--f-display);font-size:15.5px;margin-bottom:4px}
+.fail .tag{display:inline-block;font-family:var(--f-mono);font-size:11.5px;padding:1px 8px;border-radius:999px;margin-bottom:6px}
+.fail .no{background:var(--ochre-soft);color:var(--ochre)}
+.fail .yes{background:var(--accent-soft);color:var(--accent)}
+.live{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:13px;padding:5px 12px;border-radius:999px;background:var(--accent);color:#fff;align-self:flex-start;margin:0 0 16px}
+.live::before{content:"";width:8px;height:8px;border-radius:50%;background:#fff}
+.term{font-family:var(--f-mono);font-size:13.5px;line-height:1.65;background:#13201b;color:#d6e0db;border-radius:10px;padding:16px 18px;margin:0;overflow:hidden;white-space:pre}
+.term .c{color:#7f918a}
+.term .ok{color:var(--mint)}
+.term .w{color:var(--sand)}
+.check{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}
+.check div{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14.5px;line-height:1.35}
+.check b{display:block;font-family:var(--f-mono);font-size:11.5px;color:var(--accent);font-weight:500;margin-bottom:3px}
+.check .w b{color:var(--ochre)}
+svg .box{fill:var(--surface);stroke:var(--line);stroke-width:1.4}
+svg .box.k{fill:var(--accent-soft);stroke:var(--accent)}
+svg .box.o{fill:var(--ochre-soft);stroke:var(--ochre)}
+svg .box.g{fill:var(--bg);stroke:var(--line)}
+svg .t{fill:var(--fg);font-family:var(--f-display);font-weight:700;font-size:17px}
+svg .s{fill:var(--muted);font-family:var(--f-mono);font-size:13px}
+svg .ln{stroke:var(--muted);stroke-width:1.8;fill:none}
+svg .ln.o{stroke:var(--ochre)}
+svg .ar{fill:var(--muted)}
+svg .aro{fill:var(--ochre)}
+svg .nm{fill:var(--fg);font-family:var(--f-mono);font-size:11.5px;font-weight:500}
+svg .ds{fill:var(--muted);font-family:var(--f-body);font-size:11.5px}
+svg .grp{fill:var(--accent);font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+svg .dash{stroke-dasharray:5 4}
+svg .wt{fill:var(--ochre);font-family:var(--f-mono);font-size:13px}
+.foot .who{color:var(--fg)}
+.dark .foot .who{color:var(--ink-fg)}
+.sm li{font-size:16.5px!important;line-height:1.42!important}
+.sm li::before{top:8px!important}
+ul.b.sm{gap:9px}
+.nums.n4{grid-template-columns:repeat(4,1fr);gap:10px}
+.nums.n4 .card{padding:12px 12px}
+.nums.n4 .big{font-size:38px!important}
+.nums.n4 .lbl{font-size:13.5px;margin-top:4px}
+.sit{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.sit .card{padding:16px 18px}
+.sit .card p{font-size:15.5px;line-height:1.45}
+.sit .big{font-size:46px;margin-bottom:4px}
+.sit h3{font-size:18px;margin-bottom:8px}
+.key{border-left:4px solid var(--accent);background:var(--accent-soft);padding:12px 18px;border-radius:0 8px 8px 0;font-size:18px;line-height:1.45;margin-top:auto;margin-bottom:28px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 0}
+.chips span{font-family:var(--f-mono);font-size:12.5px;padding:3px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--f-mono);font-size:13px}
+.flow span{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 10px}
+.flow span.k{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.flow i{font-style:normal;color:var(--muted)}
+.funnel{display:grid;gap:8px;margin:2px 0 16px}
+.funnel div{display:flex;align-items:baseline;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:15px;color:var(--muted)}
+.funnel b{font-family:var(--f-display);font-size:26px;color:var(--fg);min-width:92px;font-variant-numeric:tabular-nums}
+.funnel .k{border-color:var(--accent);background:var(--accent-soft)}
+.funnel .k b{color:var(--accent)}
+.flow.tight{gap:5px;font-size:12px;flex-wrap:nowrap}.flow.tight span{padding:4px 7px;white-space:nowrap}
+.nums.n4.vol .big{font-size:20px!important;white-space:nowrap}.nums.n4.vol .card{padding:9px 10px}.nums.n4.vol .lbl{font-size:12.5px}
+.term.sm{font-size:12.5px;line-height:1.6;padding:12px 16px}
+.ui{position:fixed;right:16px;bottom:14px;display:flex;gap:8px;align-items:center;font-family:var(--f-mono);font-size:12px;color:#9aa9a1;z-index:5}
+.ui button{font-family:var(--f-mono);font-size:13px;background:#1b2621;color:#e4ebe7;border:1px solid #2b3631;border-radius:6px;padding:5px 11px;cursor:pointer}
+.ui button:hover{background:#24332c}
+.ui button:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+.bar{position:fixed;left:0;top:0;height:3px;background:var(--mint);z-index:5;transition:width .2s}
+@media (prefers-reduced-motion:reduce){.bar{transition:none}}
+@media print{
+  @page{size:1280px 720px;margin:0}
+  html,body{overflow:visible;height:auto;background:#fff}
+  .deck{position:static;display:block}
+  .stage{transform:none!important;width:1280px;height:auto}
+  .slide{display:flex!important;position:relative;width:1280px;height:720px;break-after:page}
+  .ui,.bar{display:none}
+  .foot .n{visibility:visible}
+}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck"><div class="stage" id="stage">
+
+<!-- 1 · a pergunta · 1:00 · gestão -->
+<section class="slide dark">
+  <p class="eyebrow">BD2 · FCTE/UnB · 2026/2 · Entrega E3 · Conselhos Vivos</p>
+  <p class="q">Quais conselhos nacionais de participação social <em>ainda estão funcionando?</em></p>
+  <ul class="b" style="max-width:62ch">
+    <li style="color:var(--ink-fg)">Conselho que para de funcionar não é extinto nem noticiado: só deixa de publicar no Diário Oficial.</li>
+    <li style="color:var(--ink-fg)">A pesquisadora lia o DOU ato por ato e, em vinte anos, cobriu <strong>5 conselhos</strong>.</li>
+    <li style="color:var(--ink-fg)">A E3 responde para <strong>os 59 de uma vez</strong>, com o DOU de julho a setembro de 2026.</li>
+  </ul>
+  <div style="display:flex;gap:28px;margin-top:auto;padding-bottom:24px">
+    <div><div class="big" style="font-size:44px">dbt</div><div class="lbl">gold em estrela, 77 testes</div></div>
+    <div><div class="big" style="font-size:44px;color:var(--mint)">Dagster</div><div class="lbl">agenda, retry, backfill</div></div>
+    <div><div class="big" style="font-size:44px;color:var(--sand)">Streamlit</div><div class="lbl">a resposta no painel</div></div>
+  </div>
+  <div class="foot"><span class="time">1:00</span><span class="who">Luiza</span><span>Luis · Bruno · Moura · Iago · Luiza · tag e3</span><span class="n"></span></div>
+</section>
+
+<!-- 2 · a resposta no painel · 2:00 · gestão -->
+<section class="slide">
+  <p class="eyebrow">A resposta · painel em Streamlit</p>
+  <h2>A resposta na primeira linha</h2>
+  <span class="live">ao vivo: make painel → 127.0.0.1:8501</span>
+  <div class="cols shot-l">
+    <div class="shot crop"><img src="painel.png" alt="Painel em Streamlit: título com a pergunta, 26 ativos, 0 em silêncio, 33 sem ato no período coberto e a tabela da situação de cada conselho"></div>
+    <div class="stack">
+      <div class="nums n4">
+        <div class="card"><div class="big">59</div><div class="lbl">conselhos</div></div>
+        <div class="card k"><div class="big" style="color:var(--accent)">26</div><div class="lbl">ativos</div></div>
+        <div class="card"><div class="big">0</div><div class="lbl">em silêncio</div></div>
+        <div class="card"><div class="big" style="color:var(--ochre)">33</div><div class="lbl">sem ato no período</div></div>
+      </div>
+      <ul class="b sm">
+        <li><strong>Período coberto:</strong> 07 a 09/2026, dentro do SLA.</li>
+        <li><strong>Aviso amarelo:</strong> sem ato no DOU não prova que parou.</li>
+        <li><strong>Citado por outros órgãos:</strong> 10 dos 33 sem ato próprio aparecem em atos de outros órgãos. O CNE, 28 vezes.</li>
+        <li><strong>“Como ler este painel”:</strong> as regras de negócio por extenso, para quem não leu os ADRs.</li>
+        <li>Lê só a gold (DuckDB, analítico); a regra fica no dbt.</li>
+      </ul>
+      <div>
+        <div class="lbl" style="margin:0 0 6px;font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)">Volume dos três meses, do ZIP à gold</div>
+        <div class="nums n4 vol">
+          <div class="card"><div class="big">894 MB</div><div class="lbl">3 ZIPs; 1,25 GB abertos</div></div>
+          <div class="card"><div class="big">26.971</div><div class="lbl">matérias da Seção 1</div></div>
+          <div class="card"><div class="big">389</div><div class="lbl">atos de conselho (1,4%)</div></div>
+          <div class="card k"><div class="big" style="color:var(--accent)">3,7 MB</div><div class="lbl">gold no DuckDB</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span class="time">2:00</span><span class="who">Moura</span><span>DOU de julho a setembro de 2026 + 215 atos da planilha</span><span class="n"></span></div>
+</section>
+
+<!-- 3 · as regras da situação · 1:00 · gestão -->
+<section class="slide">
+  <p class="eyebrow">A resposta · as regras da situação</p>
+  <h2>Por que ninguém está “em silêncio”</h2>
+  <div class="sit">
+    <div class="card k"><div class="big" style="color:var(--accent)">26</div><h3>ativo</h3><p>O último ato próprio saiu até 3 meses antes do mês de referência (setembro de 2026).</p></div>
+    <div class="card"><div class="big">0</div><h3>em silêncio</h3><p>O último ato próprio foi há mais de 3 meses, ou o conselho não publicou nada num período coberto de mais de 3 meses.</p></div>
+    <div class="card"><div class="big" style="color:var(--ochre)">33</div><h3>sem ato no período coberto</h3><p>Não publicou nada, e o período coberto tem 3 meses ou menos: é cedo demais para chamar de silêncio.</p></div>
+  </div>
+  <ul class="b sm">
+    <li><strong>Quem entra:</strong> órgão federal que tem ou teve nome começando com “Conselho”, menos CJF, CMN e CNJ, que não são de participação social. São 59 (ADR 0010).</li>
+    <li><strong>Ato próprio:</strong> matéria publicada pelo próprio conselho. A planilha (2003 a 2020) não entra na situação, só na tipologia.</li>
+    <li><strong>O limite de 3 meses é provisório:</strong> fica num parâmetro só do dbt (<code>meses_ativo</code>) e espera a pesquisadora.</li>
+  </ul>
+  <p class="key">O painel separa “não publicou” de “parou”, e mostra o segundo sinal de vida ao lado, sem misturar os dois.</p>
+  <div class="foot"><span class="time">1:00</span><span class="who">Moura</span><span>mart_vitalidade · ADR 0010</span><span class="n"></span></div>
+</section>
+
+<!-- 4 · arquitetura · 0:30 · técnico -->
+<section class="slide">
+  <p class="eyebrow">Arquitetura · bronze, silver e gold</p>
+  <h2>Do ZIP do Diário Oficial ao painel, num job só</h2>
+  <svg viewBox="0 0 1120 330" style="width:100%;height:auto" role="img" aria-label="Fluxo: dados abertos, bronze, Postgres, silver em Delta, gold no DuckDB pelo dbt, painel; menções saindo do bronze para a silver; Dagster orquestrando tudo">
+    <defs>
+      <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ar" d="M0,0L10,5L0,10z"/></marker>
+      <marker id="ao" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="aro" d="M0,0L10,5L0,10z"/></marker>
+    </defs>
+    <rect class="box k" x="0" y="0" width="1120" height="46" rx="8"/>
+    <text class="t" x="18" y="29">Dagster</text><text class="s" x="110" y="29">orquestra tudo abaixo · partição por mês · agenda dia 15–28, 6h · retry · backfill</text>
+    <rect class="box" x="0" y="90" width="150" height="86" rx="10"/><text class="t" x="14" y="120">Dados abertos</text><text class="s" x="14" y="142">Imprensa Nacional</text><text class="s" x="14" y="160">1 ZIP/mês</text>
+    <rect class="box" x="190" y="90" width="140" height="86" rx="10"/><text class="t" x="204" y="120">Bronze</text><text class="s" x="204" y="142">ZIP como veio</text>
+    <rect class="box" x="370" y="90" width="170" height="86" rx="10"/><text class="t" x="384" y="120">Postgres 16</text><text class="s" x="384" y="142">OLTP de curadoria</text><text class="s" x="384" y="160">só atos de conselho</text>
+    <rect class="box" x="580" y="90" width="150" height="86" rx="10"/><text class="t" x="594" y="120">Silver</text><text class="s" x="594" y="142">Delta · zstd</text><text class="s" x="594" y="160">tabela consolidada</text>
+    <rect class="box k" x="770" y="90" width="190" height="86" rx="10"/><text class="t" x="784" y="120">Gold · E3</text><text class="s" x="784" y="142">dbt sobre DuckDB</text><text class="s" x="784" y="160">estrela + 77 testes</text>
+    <rect class="box k" x="1000" y="90" width="120" height="86" rx="10"/><text class="t" x="1014" y="120">Streamlit</text><text class="s" x="1014" y="142">o painel</text>
+    <path class="ln" d="M150,133 H188" marker-end="url(#a)"/><path class="ln" d="M330,133 H368" marker-end="url(#a)"/>
+    <path class="ln" d="M540,133 H578" marker-end="url(#a)"/><path class="ln" d="M730,133 H768" marker-end="url(#a)"/>
+    <path class="ln" d="M960,133 H998" marker-end="url(#a)"/>
+    <rect class="box o" x="580" y="236" width="150" height="70" rx="10"/><text class="t" x="594" y="264">menções</text><text class="s" x="594" y="286">enriquecimento</text>
+    <path class="ln o" d="M260,176 V271 H578" marker-end="url(#ao)"/>
+    <path class="ln o" d="M730,271 H865 V178" marker-end="url(#ao)"/>
+    <text class="wt" x="276" y="262">mesmo ZIP: quem CITA um conselho</text>
+  </svg>
+  <p style="margin-top:18px;max-width:none">Bronze é o arquivo como veio, silver é a tabela consolidada, gold é o modelo pronto para a pergunta. E1 trouxe o Postgres; E2, o bronze e a silver. <strong>A E3 acrescenta a gold, o orquestrador e o painel</strong>, e o pipeline fica todo em Python.</p>
+  <div class="foot"><span class="time">0:30</span><span class="who">Moura</span><span>E1 → E2 → E3</span><span class="n"></span></div>
+</section>
+
+<!-- 5 · estrela · 1:30 · técnico -->
+<section class="slide">
+  <p class="eyebrow">Gold · modelo em estrela · ADR 0009</p>
+  <h2>Uma estrela que guarda o mês sem ato</h2>
+  <div class="cols">
+    <div class="stack" style="gap:16px">
+      <svg viewBox="0 0 560 350" style="width:100%;height:auto" role="img" aria-label="dim_conselho no centro ligada a fct_ato, fct_conselho_mes e fct_mencao; mart_vitalidade abaixo">
+        <defs><marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ar" d="M0,0L10,5L0,10z"/></marker></defs>
+        <rect class="box" x="0" y="10" width="170" height="68" rx="10"/><text class="t" x="14" y="40">fct_ato</text><text class="s" x="14" y="62">1 por matéria</text>
+        <rect class="box k" x="195" y="10" width="170" height="68" rx="10"/><text class="t" x="209" y="40">fct_conselho_mes</text><text class="s" x="209" y="62">conselho × mês</text>
+        <rect class="box" x="390" y="10" width="170" height="68" rx="10"/><text class="t" x="404" y="40">fct_mencao</text><text class="s" x="404" y="62">órgão × citado</text>
+        <rect class="box k" x="150" y="140" width="260" height="72" rx="10"/><text class="t" x="166" y="170">dim_conselho</text><text class="s" x="166" y="192">SCD tipo 2 · nome da época</text>
+        <path class="ln" d="M85,78 L200,140"/><path class="ln" d="M280,78 V140"/><path class="ln" d="M475,78 L360,140"/>
+        <rect class="box o" x="150" y="270" width="260" height="72" rx="10"/><text class="t" x="166" y="300">mart_vitalidade</text><text class="s" x="166" y="322">1 por conselho · a resposta</text>
+        <path class="ln" d="M280,212 V268" marker-end="url(#m1)"/>
+      </svg>
+      <div class="nums">
+        <div class="card"><div class="big" style="font-size:32px">458</div><div class="lbl">linhas por matéria</div></div>
+        <div class="card k"><div class="big" style="font-size:32px;color:var(--accent)">177</div><div class="lbl">conselho × mês</div></div>
+        <div class="card"><div class="big" style="font-size:32px;color:var(--muted)">5.428</div><div class="lbl">se o grão fosse diário</div></div>
+      </div>
+    </div>
+    <ul class="b sm">
+      <li><strong>Dimensão, <code>dim_conselho</code>:</strong> SCD tipo 2, uma linha por nome, com a vigência. Renomear é inserir: CNDM, CNDH e CNDPI têm duas linhas.</li>
+      <li><strong><code>fct_ato</code>:</strong> uma linha por matéria, ligada ao nome da época por <em>asof join</em>.</li>
+      <li><strong><code>fct_conselho_mes</code>:</strong> conselho × mês, com <strong>zero</strong> no mês sem ato.</li>
+      <li><strong><code>fct_mencao</code>:</strong> matéria de outro órgão × conselho citado.</li>
+      <li><strong>Por que estrela, e não uma tabela só:</strong> a pergunta se mede pela ausência. Uma tabela por ato não tem linha para o mês sem ato; o fato mensal guarda o zero.</li>
+    </ul>
+  </div>
+  <div class="foot"><span class="time">1:30</span><span class="who">Moura e Luiza</span><span>granularidade.txt · dim_conselho-renomeados.txt</span><span class="n"></span></div>
+</section>
+
+<!-- 6 · dbt: camadas e testes · 2:00 · técnico -->
+<section class="slide">
+  <p class="eyebrow">Camadas e testes · dbt</p>
+  <h2>77 de 77, e o teste que pega o erro silencioso</h2>
+  <div class="cols">
+    <div class="stack" style="gap:18px">
+      <div>
+        <h3>Camadas versionadas em <code>dbt/models/</code></h3>
+        <div class="flow" style="margin-top:8px"><span>silver (Delta)</span><i>→</i><span>staging · view</span><i>→</i><span class="k">marts · tabela</span><i>→</i><span>painel</span></div>
+      </div>
+      <div>
+        <h3><code>make gold</code>: 77 testes em PASS</h3>
+        <div class="chips"><span>esquema</span><span>volume</span><span>unicidade</span><span>integridade referencial</span><span>distribuição</span></div>
+      </div>
+      <div class="card k"><p><strong>O que surpreendeu:</strong> o DOU vazio quase passou calado em três lugares: na vitalidade, no SLA e no teste de distribuição. Cada um ganhou um teste que falha sem a correção.</p></div>
+    </div>
+    <div class="stack">
+      <h3>Tirando agosto da carga</h3>
+<pre class="term sm"><span class="c">$ dbt build --vars '{excluir_mes: "2026-08-01"}'</span>
+29 <span class="ok">PASS</span> distribuicao_fora_da_tipologia
+39 <span class="w">FAIL 1</span> distribuicao_mes_sem_nenhum_ato
+<span class="w">[ERROR]</span>: in test distribuicao_mes_sem_nenhum_ato
+Done. PASS=43 WARN=0 <span class="w">ERROR=1</span> SKIP=5</pre>
+      <p style="font-size:16.5px">Nenhum mês coberto pode ficar sem ato. Sem esse teste, agosto sumiria e todo conselho pareceria “sem ato” em agosto, sem erro nenhum.</p>
+    </div>
+  </div>
+  <div class="foot"><span class="time">2:00</span><span class="who">Luiza</span><span>teste-distribuicao-pega-o-mes.txt</span><span class="n"></span></div>
+</section>
+
+<!-- 7 · Dagster · 1:00 · técnico -->
+<section class="slide">
+  <p class="eyebrow">Orquestração · Dagster</p>
+  <h2>Um job mensal que roda sozinho e se recupera</h2>
+  <span class="live">ao vivo: make orquestrador → 127.0.0.1:3000</span>
+  <div class="cols shot-l">
+    <div class="shot"><img src="grafo-dagster.jpg" alt="Interface do Dagster com o grafo de linhagem: atos_do_mes no grupo ingestão, atos no grupo silver e stg_atos do dbt"></div>
+    <ul class="b sm">
+      <li><strong>Grafo de assets:</strong> <code>atos_do_mes</code> → <code>silver/atos</code> e <code>silver/mencoes</code> → cada modelo do dbt vira um asset.</li>
+      <li><strong>Partição por mês:</strong> o backfill é escolher um intervalo de meses.</li>
+      <li><strong>Agenda:</strong> do dia 15 ao 28, às 6h de Brasília, pulando o mês já carregado.</li>
+      <li><strong>Retry</strong> só para rede e banco. Mês não publicado ou ZIP inválido falham na hora: repetir não resolve.</li>
+      <li><strong>Um run por vez:</strong> Delta e DuckDB têm um só escritor.</li>
+    </ul>
+  </div>
+  <div class="foot"><span class="time">1:00</span><span class="who">Luiza</span><span>src/orquestracao/ · dagster/dagster.yaml</span><span class="n"></span></div>
+</section>
+
+<!-- 7b · Dagster: o grafo de assets · 0:30 · técnico -->
+<section class="slide">
+  <p class="eyebrow">Orquestração · o grafo de assets do job mensal</p>
+  <h2>Um mês entra pela esquerda e chega à gold</h2>
+  <svg class="dag" viewBox="-2 0 1124 400" style="width:100%;height:auto" role="img" aria-label="Grafo de assets: atos_do_mes alimenta silver/atos e silver/mencoes; elas alimentam stg_atos e stg_mencoes; as tabelas do OLTP alimentam stg_orgao, stg_orgao_nome e stg_conselho, que com o seed de excluídos formam dim_conselho; dim_conselho e os staging formam fct_ato e fct_mencao; fct_ato vira fct_conselho_mes; fct_conselho_mes alimenta freshness_vitalidade e mart_vitalidade, que também usa fct_mencao e dim_conselho; o painel lê a gold fora do Dagster">
+    <defs>
+      <marker id="dg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="ar" d="M0,0L10,5L0,10z"/></marker>
+      <marker id="dgo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="aro" d="M0,0L10,5L0,10z"/></marker>
+    </defs>
+    <!-- grupos -->
+    <text class="grp" x="0" y="18">ingestão</text>
+    <text class="grp" x="150" y="18">silver</text>
+    <text class="grp" x="316" y="18">dbt · staging</text>
+    <text class="grp" x="500" y="18">dbt · marts (gold no DuckDB)</text>
+    <path class="ln" style="stroke:var(--line)" d="M500,28 H1120"/>
+    <!-- arestas -->
+    <path class="ln" d="M104,130 H127 V85 H148" marker-end="url(#dg)"/>
+    <path class="ln" d="M127,130 V175 H148" marker-end="url(#dg)"/>
+    <path class="ln" d="M104,275 H314" marker-end="url(#dg)"/>
+    <path class="ln" d="M274,85 H314" marker-end="url(#dg)"/>
+    <path class="ln" d="M274,175 H314" marker-end="url(#dg)"/>
+    <path class="ln" d="M462,85 H644" marker-end="url(#dg)"/>
+    <path class="ln" d="M462,175 H644" marker-end="url(#dg)"/>
+    <path class="ln" d="M462,275 H498" marker-end="url(#dg)"/>
+    <path class="ln" d="M462,365 H554 V302" marker-end="url(#dg)"/>
+    <path class="ln" d="M608,275 H1000 V202" marker-end="url(#dg)"/>
+    <path class="ln" d="M627,275 V85"/>
+    <path class="ln" d="M850,275 V112" marker-end="url(#dg)"/>
+    <path class="ln" d="M748,85 H782" marker-end="url(#dg)"/>
+    <path class="ln" d="M748,175 H954" marker-end="url(#dg)"/>
+    <path class="ln" d="M916,85 H954" marker-end="url(#dg)"/>
+    <path class="ln" d="M934,85 V165 H954" marker-end="url(#dg)"/>
+    <path class="ln o" d="M1090,202 V338" marker-end="url(#dgo)"/>
+    <!-- nós: Python (branco), dbt (verde), fora do Dagster (tracejado) -->
+    <rect class="box" x="0" y="105" width="104" height="50" rx="8"/><text class="nm" x="10" y="127">atos_do_mes</text><text class="ds" x="10" y="144">ZIP → Postgres</text>
+    <rect class="box g dash" x="0" y="250" width="104" height="50" rx="8"/><text class="nm" x="10" y="272">oltp</text><text class="ds" x="10" y="289">make carga</text>
+    <rect class="box" x="150" y="60" width="124" height="50" rx="8"/><text class="nm" x="160" y="82">silver/atos</text><text class="ds" x="160" y="99">Postgres → Delta</text>
+    <rect class="box" x="150" y="150" width="124" height="50" rx="8"/><text class="nm" x="160" y="172">silver/mencoes</text><text class="ds" x="160" y="189">mesmo ZIP → Delta</text>
+    <rect class="box k" x="316" y="60" width="146" height="50" rx="8"/><text class="nm" x="326" y="90">stg_atos</text>
+    <rect class="box k" x="316" y="150" width="146" height="50" rx="8"/><text class="nm" x="326" y="180">stg_mencoes</text>
+    <rect class="box k" x="316" y="232" width="146" height="86" rx="8"/><text class="nm" x="326" y="256">stg_orgao</text><text class="nm" x="326" y="279">stg_orgao_nome</text><text class="nm" x="326" y="302">stg_conselho</text>
+    <rect class="box k" x="316" y="340" width="146" height="50" rx="8"/><text class="nm" x="326" y="362">seed: excluídos</text><text class="ds" x="326" y="379">CJF · CMN · CNJ</text>
+    <rect class="box k" x="500" y="250" width="108" height="50" rx="8"/><text class="nm" x="510" y="272">dim_conselho</text><text class="ds" x="510" y="289">SCD tipo 2</text>
+    <rect class="box k" x="646" y="60" width="102" height="50" rx="8"/><text class="nm" x="656" y="90">fct_ato</text>
+    <rect class="box k" x="646" y="150" width="102" height="50" rx="8"/><text class="nm" x="656" y="180">fct_mencao</text>
+    <rect class="box k" x="784" y="60" width="132" height="50" rx="8"/><text class="nm" x="794" y="82">fct_conselho_mes</text><text class="ds" x="794" y="99">zero no mês vazio</text>
+    <rect class="box k" x="956" y="60" width="164" height="50" rx="8"/><text class="nm" x="966" y="82">freshness_vitalidade</text><text class="ds" x="966" y="99">SLA · view</text>
+    <rect class="box o" x="956" y="150" width="164" height="50" rx="8"/><text class="nm" x="966" y="172">mart_vitalidade</text><text class="ds" x="966" y="189">a resposta</text>
+    <rect class="box g dash" x="956" y="340" width="164" height="50" rx="8"/><text class="nm" x="966" y="362">painel</text><text class="ds" x="966" y="379">Streamlit, fora do grafo</text>
+  </svg>
+  <div class="check" style="grid-template-columns:repeat(3,1fr);margin:18px 0 0">
+    <div><b>3 assets em Python</b>baixar e gravar o mês; atualizar as duas tabelas da silver.</div>
+    <div><b>11 modelos + 1 seed do dbt</b>cada modelo vira um asset, lido do <code>manifest.json</code>.</div>
+    <div><b>job mensal, seleção *</b>tudo particionado por mês, cada nó com retry 3&nbsp;×&nbsp;30&nbsp;s.</div>
+  </div>
+  <div class="foot"><span class="time">0:30</span><span class="who">Luiza</span><span>src/orquestracao/__init__.py · dbt/models/</span><span class="n"></span></div>
+</section>
+
+<!-- 8 · Dagster: provas · 1:30 · técnico -->
+<section class="slide">
+  <p class="eyebrow">Orquestração · provas no clone limpo de 09/11</p>
+  <h2>Retry ao vivo, backfill e falhas no log do run</h2>
+  <div class="cols" style="flex:none">
+    <div class="stack">
+      <h3>make demo-retry · ao vivo, cerca de 1 min</h3>
+<pre class="term sm"><span class="c"># o Postgres para antes da 1ª tentativa</span>
+<span class="w">STEP_UP_FOR_RETRY</span> atos_do_mes
+  causa: [Errno -2] Name or service not known
+<span class="c"># espera 30 s e tenta de novo</span>
+STEP_RESTARTED atos_do_mes
+<span class="ok">RUN_SUCCESS</span>
+<span class="ok">OK: a primeira tentativa caiu com o banco fora
+    e o retry recuperou</span></pre>
+    </div>
+    <div class="stack">
+      <h3>make demo-backfill DE=2026-07 ATE=2026-09</h3>
+<pre class="term sm"><span class="c">          1ª rodada      2ª rodada</span>
+2026-07   <span class="ok">gravadas=161</span>   inalteradas=161
+2026-08   <span class="ok">gravadas=96</span>    inalteradas=96
+2026-09   <span class="ok">gravadas=132</span>   inalteradas=132</pre>
+      <p style="font-size:16px">Um run por mês. Não roda ao vivo, porque leva 2 min. A segunda rodada não grava nada: os mesmos atos saem como inalterados, e a carga é idempotente.</p>
+    </div>
+  </div>
+  <div class="fail" aria-label="make demo-falhas">
+    <div><span class="tag no">sem retry</span><b>Mês não publicado</b>Falha na hora. A agenda tenta de novo no dia seguinte.</div>
+    <div><span class="tag no">sem retry</span><b>ZIP corrompido</b>Falha de vez: repetir não conserta dado.</div>
+    <div><span class="tag yes">3 retries · 30 s</span><b>Banco fora</b>Tenta de novo; se não voltar, falha com a causa.</div>
+    <div><span class="tag yes">causa com nome</span><b>Teste do dbt quebra</b>O run falha, e a causa traz o nome do teste.</div>
+  </div>
+  <div class="foot"><span class="time">1:30</span><span class="who">Luiza</span><span>clone-limpo-20261109.txt · backfill-…T000430Z.txt · falhas-…T024652Z.txt</span><span class="n"></span></div>
+</section>
+
+<!-- 9 · EXPLAIN e SLA · 1:00 · técnico -->
+<section class="slide">
+  <p class="eyebrow">Plano de execução e SLA</p>
+  <h2>O índice que não entrou e o prazo do dia 20</h2>
+  <div class="cols">
+    <div class="stack">
+      <h3>EXPLAIN (ANALYZE, BUFFERS) da extração do lake</h3>
+      <div class="funnel">
+        <div><b>1.429</b>buffers sem índice, ~20,8 ms</div>
+        <div><b>1.412</b>com o índice candidato: o planner não o usa</div>
+      </div>
+      <ul class="b sm">
+        <li>Com 311 atos, ler a tabela inteira é mais barato que usar índice.</li>
+        <li>Índice sem ganho medido não entra. É um <strong>resultado negativo medido</strong>, não esquecimento, e será refeito com mais volume.</li>
+      </ul>
+    </div>
+    <div class="stack">
+      <h3>SLA: o mês M até o dia 20 de M+1</h3>
+      <div class="flow tight"><span>fim do mês M</span><i>→</i><span>ZIP em ~2 sem.</span><i>→</i><span>agenda 15–28</span><i>→</i><span class="k">prazo: dia 20</span></div>
+      <ul class="b sm" style="margin-top:6px">
+        <li><code>freshness_vitalidade</code> é uma <strong>view</strong>, para o “hoje” valer na leitura. Como tabela, congelava no dia do build.</li>
+        <li>O teste <code>sla_vitalidade</code> <strong>avisa sem travar</strong> o build: <code>WARN=1 ERROR=0</code>.</li>
+        <li>No painel, aparece a linha “dentro do SLA”.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span class="time">1:00</span><span class="who">Moura e Luiza</span><span>resultado.md · sla-vitalidade-avisa.txt</span><span class="n"></span></div>
+</section>
+
+<!-- 10 · enriquecimento e linhagem · 2:00 · os dois públicos -->
+<section class="slide">
+  <p class="eyebrow">Enriquecimento e linhagem</p>
+  <h2>Um segundo sinal de vida, tirado do mesmo ZIP</h2>
+  <div class="cols">
+    <div class="stack" style="gap:10px">
+      <h3>Menções em atos de outros órgãos, no job mensal</h3>
+      <div class="funnel">
+        <div><b>34.828</b>matérias da Seção 1, de julho a outubro</div>
+        <div><b>471</b>citariam um conselho no texto inteiro, quase sempre numa lista</div>
+        <div class="k"><b>136</b>na janela curta: o conselho é o assunto</div>
+      </div>
+      <ul class="b sm">
+        <li>Janela: título, ementa, identificação e os primeiros 600 caracteres.</li>
+        <li>A matéria do próprio conselho não conta como menção.</li>
+        <li>Assunto, o primeiro que casar: extinção, criação, estrutura, regimento, homologação, composição ou outro.</li>
+        <li>Não muda a situação: aparece ao lado.</li>
+      </ul>
+    </div>
+    <div class="stack" style="gap:14px">
+      <h3>Linhagem no site, do ZIP ao painel</h3>
+      <span class="live" style="margin:0">ao vivo: localhost:5173/conselhos-vivos/</span>
+      <div class="flow"><span>ZIP</span><i>→</i><span>bronze</span><i>→</i><span>silver</span><i>→</i><span>gold</span><i>→</i><span class="k">painel</span></div>
+      <ul class="b sm">
+        <li>“Percorrer a linhagem” avança os cinco passos.</li>
+        <li>Clicar numa tabela mostra o comando que a gera e os testes dela.</li>
+        <li>Abaixo, o diagrama do dbt gerado do <code>manifest.json</code> e o catálogo do dbt.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span class="time">2:00</span><span class="who">Luiza</span><span>mencoes-janela.txt · src/mencoes/</span><span class="n"></span></div>
+</section>
+
+<!-- 11 · checklist · 0:20 -->
+<section class="slide">
+  <p class="eyebrow">Checklist da E3</p>
+  <h2>Os oito itens, com prova no repositório</h2>
+  <div class="check">
+    <div><b>1 · modelo</b>estrela com SCD tipo 2</div>
+    <div><b>2 · camadas</b>dbt: staging → marts</div>
+    <div><b>3 · testes</b>77 em PASS</div>
+    <div><b>4 · orquestração</b>Dagster, retry, backfill</div>
+    <div class="w"><b>5 · EXPLAIN</b>medido; índice sem ganho, não entrou</div>
+    <div><b>6 · SLA</b>mês M até o dia 20 de M+1; avisa sem travar</div>
+    <div><b>7 · ADR</b>0009, mais 0008 e 0010</div>
+    <div><b>8 · painel</b>Streamlit</div>
+  </div>
+  <p style="max-width:none"><strong>Processo:</strong> 17 PRs com revisão cruzada, o diário da semana 14 e o <code>AI-USAGE.md</code> por tarefa.</p>
+  <p style="max-width:none"><strong>Conferência num clone limpo do main:</strong> setup, testes, backfill, gold e retry passaram.</p>
+  <div class="foot"><span class="time">0:20</span><span class="who">todos</span><span>site: entrega-e3</span><span class="n"></span></div>
+</section>
+
+<!-- 12 · decisões e limites · 0:40 -->
+<section class="slide dark">
+  <p class="eyebrow">Decisões e limites</p>
+  <h2 style="max-width:none">O que decidimos, e o que o dado não mostra</h2>
+  <div class="cols" style="flex:none;margin-bottom:22px">
+    <div class="stack">
+      <h3>ADRs da E3, aceitos pela squad</h3>
+      <ul class="b sm">
+        <li><strong>0009:</strong> estrela, dbt e Dagster, com a opção nula cron + make.</li>
+        <li><strong>0010:</strong> quem conta como conselho.</li>
+        <li><strong>0008:</strong> pipeline em Python, sem o INLABS.</li>
+        <li>Ainda local, em <code>127.0.0.1</code>. E4: camada semântica, ETL reverso, LGPD e controle de acesso.</li>
+      </ul>
+    </div>
+    <div class="stack">
+      <h3>Limites, ditos por nós</h3>
+      <ul class="b sm">
+        <li>O DOU não vê conselho que funciona sem publicar.</li>
+        <li>O limite de 3 meses é provisório e espera a pesquisadora.</li>
+        <li>CNPq, CONTRAN e CCFGTS entram no escopo pelo nome, mas não são de participação social; a marca da pesquisadora aparece ao lado.</li>
+      </ul>
+    </div>
+  </div>
+<pre class="term" style="background:#1b2621">make setup &amp;&amp; make test &amp;&amp; make demo-backfill DE=2026-07 ATE=2026-09 &amp;&amp; make gold &amp;&amp; make painel</pre>
+  <div class="foot"><span class="time">0:40</span><span class="who">todos</span><span>Obrigado · total 15:00</span><span class="n"></span></div>
+</section>
+
+</div></div>
+
+<div class="ui" aria-label="Navegação">
+  <button type="button" id="prev" aria-label="Slide anterior">←</button>
+  <span id="count">1 / 1</span>
+  <button type="button" id="next" aria-label="Próximo slide">→</button>
+  <button type="button" id="full" aria-label="Tela cheia">tela cheia</button>
+</div>
+
+<script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const stage = document.getElementById('stage');
+  const total = slides.length;
+  let i = 0;
+  slides.forEach((s, k) => { const n = s.querySelector('.foot .n'); if (n) n.textContent = `${k + 1} / ${total}`; });
+  function fit() { stage.style.transform = `scale(${Math.min(innerWidth / 1280, innerHeight / 720)})`; }
+  function show(n, push = true) {
+    i = Math.max(0, Math.min(total - 1, n));
+    slides.forEach((s, k) => s.classList.toggle('on', k === i));
+    document.getElementById('count').textContent = `${i + 1} / ${total}`;
+    document.getElementById('bar').style.width = `${((i + 1) / total) * 100}%`;
+    if (push) history.replaceState(null, '', `#${i + 1}`);
+  }
+  function fromHash() { const n = parseInt(location.hash.slice(1), 10); return Number.isFinite(n) ? n - 1 : 0; }
+  function toggleFull() {
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    else document.documentElement.requestFullscreen?.().catch(() => {});
+  }
+  addEventListener('resize', fit);
+  addEventListener('hashchange', () => show(fromHash(), false));
+  addEventListener('keydown', e => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(total - 1);
+    else if (e.key === 'f' || e.key === 'F') toggleFull();
+  });
+  document.getElementById('prev').onclick = () => show(i - 1);
+  document.getElementById('next').onclick = () => show(i + 1);
+  document.getElementById('full').onclick = toggleFull;
+  let x0 = null;
+  addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+  addEventListener('touchend', e => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 50) show(i + (dx < 0 ? 1 : -1));
+    x0 = null;
+  });
+  fit();
+  show(fromHash(), false);
+})();
+</script>
+</body>
+</html>
