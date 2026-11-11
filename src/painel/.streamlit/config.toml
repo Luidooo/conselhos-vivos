@@ -1,11 +1,44 @@
-# O tema do site (site/.vitepress/theme/custom.css) aplicado ao painel: mesmo azul, mesmos cinzas, mesma fonte.
+# A identidade visual da documentação (site/.vitepress/theme/custom.css) aplicada ao painel: a fonte do sistema, o
+# azul de destaque, os cinzas da Apple, cantos arredondados e títulos em 700. Os dois modos seguem o do site: claro
+# em fundo branco com #0071e3, escuro em fundo preto com #2997ff. O painel acompanha o modo do sistema.
 [theme]
-base = "light"
+font = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+headingFont = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+codeFont = "'SF Mono', ui-monospace, Menlo, Monaco, Consolas, monospace"
+headingFontWeights = [700, 700, 700, 600, 600, 600]
+headingFontSizes = ["2.75rem", "1.75rem", "1.6rem"]
+metricValueFontSize = "2.125rem"
+metricValueFontWeight = 700
+baseRadius = "14px"
+buttonRadius = "980px"
+showWidgetBorder = false
+linkUnderline = false
+
+[theme.light]
 primaryColor = "#0071e3"
 backgroundColor = "#ffffff"
 secondaryBackgroundColor = "#f5f5f7"
 textColor = "#1d1d1f"
-font = "sans serif"
+linkColor = "#0071e3"
+borderColor = "#e5e5ea"
+dataframeBorderColor = "#e5e5ea"
+dataframeHeaderBackgroundColor = "#f5f5f7"
+dataframeHeaderTextColor = "#1d1d1f"
+blueColor = "#0071e3"
+chartSequentialColors = ["#f0efec", "#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#0071e3", "#256abf", "#1c5cab", "#184f95", "#104281"]
+
+[theme.dark]
+primaryColor = "#2997ff"
+backgroundColor = "#000000"
+secondaryBackgroundColor = "#1c1c1e"
+textColor = "#f5f5f7"
+linkColor = "#2997ff"
+borderColor = "#2c2c2e"
+dataframeBorderColor = "#2c2c2e"
+dataframeHeaderBackgroundColor = "#1c1c1e"
+dataframeHeaderTextColor = "#f5f5f7"
+blueColor = "#2997ff"
+chartSequentialColors = ["#1c1c1e", "#0d366b", "#104281", "#184f95", "#1c5cab", "#256abf", "#2a78d6", "#3987e5", "#6da7ec", "#9ec5f4"]
 
 [browser]
 gatherUsageStats = false

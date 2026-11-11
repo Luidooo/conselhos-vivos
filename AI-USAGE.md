@@ -799,3 +799,41 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 
   Nenhum código do plano foi rodado ainda.
 - **Quem revisou:** pendente — a Luiza autorizou o commit direto no `main`.
+
+### 2026-11-11 — Painel em Streamlit: abas, gráficos e a identidade visual do site
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `src/painel/app.py`, `src/painel/.streamlit/config.toml`, `tests/painel/test_app.py`, PR #104
+- **O que foi pedido:**
+  - conferir se o painel responde a tudo da E1 e o que falta nele;
+  - um plano para melhorar a visualização, depois a implementação e o PR;
+  - seguir a identidade visual da documentação;
+  - ativo em azul e em silêncio numa cor que contraste com o azul, sem emojis;
+  - ocultar do mapa mês a mês os conselhos sem ato, com um botão para expandir.
+- **O que foi aproveitado:**
+  - **Diagnóstico da E1:** a pergunta é uma só e o painel a responde, mas com só 3 meses de DOU "em silêncio" nunca aparece, e 33 dos 59 conselhos ficam "sem ato no período coberto". O backfill de mais meses ficou fora do PR.
+  - **Painel:**
+    - a 4ª métrica, "sem ato próprio, mas citados", e a barra de composição das situações;
+    - as abas Resposta, Conselho a conselho, O que decidem e Como ler;
+    - os filtros por situação, a busca e "só os citados";
+    - o mapa conselho × mês, só com quem publicou e um botão que mostra também os sem ato;
+    - o detalhe por conselho, com as tipologias da planilha por ano e as citações;
+    - a reconciliação de 82 órgãos para 59 conselhos (ADR 0010) nas regras.
+  - **Identidade visual:**
+    - os tokens do `site/.vitepress/theme/custom.css` em `[theme.light]` e `[theme.dark]`, com a fonte, o azul, os cinzas, os cartões de 18 px e as abas em pílula;
+    - o hero e os botões da página inicial;
+    - a configuração dos gráficos em cada gráfico, não num tema global, porque cada sessão pode estar num modo.
+  - **Decidido pela IA**, a confirmar pela squad:
+    - o vermelho para "em silêncio", que forma com o azul o par de opostos da paleta;
+    - "botão para expandir" lido como "mostrar os conselhos ocultos no mapa".
+- **Como foi verificado:**
+  - `make test-painel`: 21 testes passando. Os testes acham as tabelas pela coluna, porque as abas mudam a ordem, e cobrem os filtros, o detalhe, o botão do mapa e a falta da `fct_mencao`;
+  - a página foi aberta no navegador com a gold real, nos modos claro e escuro, aba por aba. Isso achou e corrigiu:
+    - as abas sem estilo: o Streamlit 1.66 não usa mais `baseweb`;
+    - os rótulos das métricas cortados;
+    - a barra estourando a borda;
+    - o mapa esverdeado pela interpolação da escala;
+    - o texto branco com menos de 3:1 sobre o azul do modo escuro;
+  - as cores da situação e das tipologias passaram no validador de paleta para daltonismo (ΔE 10,3 no claro e 7,0 no escuro, coberto pelo rótulo escrito em cada fatia);
+  - a frase 82 → 59 foi conferida no ADR 0010: 62 órgãos com "Conselho" no nome, menos 3 exclusões.
+- **Quem revisou:** pendente — PR #104, com Luis e Márcio como coautores dos commits.
