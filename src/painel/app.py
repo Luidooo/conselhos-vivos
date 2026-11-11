@@ -137,10 +137,16 @@ deixam de publicar. Este painel lê o Diário Oficial da União e mostra quais c
   <a class="cv-botao" href="{DOCS}linhagem" target="_blank">De onde vem cada número</a>
 </div>""", unsafe_allow_html=True)
 
-# A situação é um estado, então usa a paleta de status (dataviz, references/palette.md): verde para ativo, âmbar para
-# em silêncio e cinza neutro para "ainda não dá para dizer". A cor nunca vem sozinha: o rótulo está sempre ao lado.
+# A situação: ativo no azul do site, em silêncio no vermelho (o par azul e vermelho da paleta, lido como opostos) e
+# cinza neutro para "ainda não dá para dizer". O par passou no validador do dataviz (daltonismo: ΔE 10,3 no claro, 7,0
+# no escuro); a cor nunca vem sozinha, o rótulo está sempre ao lado, o que cobre a faixa de aviso do escuro.
 SITUACOES = ["ativo", "em silêncio", "sem ato no período coberto"]
-CORES_SITUACAO = ["#0ca30c", "#fab219", "#8e8e93"]
+CORES_SITUACAO = ["#2997ff", "#e66767", "#8e8e93"] if ESCURO else ["#0071e3", "#e34948", "#8e8e93"]
+# o texto dentro de cada fatia da barra: no claro, branco no azul e no vermelho (4,7 e 4,0:1); no escuro, as cores são
+# mais claras e o branco cairia para menos de 3:1, então o texto é escuro em todas
+TEXTO_SITUACAO = ["#1d1d1f"] * 3 if ESCURO else ["#ffffff", "#ffffff", "#1d1d1f"]
+# o SLA é status, não situação: verde em dia, âmbar atrasado
+SLA_OK, SLA_ATRASO = "#0ca30c", "#fab219"
 # As tipologias são identidades: a paleta categórica, em ordem fixa, com os passos de cada modo. O 99 e o SEM ficam em
 # cinza, porque não são categoria da pesquisadora.
 TIPOLOGIAS = ["DEF", "FISC", "GEST", "AUTO", "IP", "99", "SEM"]
@@ -210,11 +216,13 @@ def grafico_composicao(v):
     # o rótulo diz a situação e o número: a cor nunca fala sozinha
     rotulo = base.transform_filter("datum.conselhos > 0").transform_calculate(
         texto="datum.situacao + ': ' + datum.conselhos + ' (' + format(datum.percentual, '.0%') + ')'"
-    ).mark_text(color="#1d1d1f", fontWeight=600, fontSize=14).encode(
+    ).mark_text(fontWeight=600, fontSize=14).encode(
         x=alt.X("conselhos:Q", stack="normalize", bandPosition=0.5),
         text="texto:N",
+        color=alt.Color("situacao:N", scale=alt.Scale(domain=SITUACOES, range=TEXTO_SITUACAO), legend=None),
     )
-    return (barra + rotulo).properties(height=44)
+    # escalas de cor independentes: a da barra (situação) e a do texto (contraste sobre cada fatia)
+    return (barra + rotulo).resolve_scale(color="independent").properties(height=44)
 
 def heatmap(serie, v):
     nomes = v[["orgao_id", "nome", "situacao"]]
@@ -331,7 +339,7 @@ if f is None:
     st.info("DOU ainda não carregado: rode `make ingest-mensal MES=AAAA-MM`, depois `make lake` e `make gold`.")
 else:
     sla = "dentro do SLA" if f["dentro_do_sla"] else f"atraso {f['atraso_meses']} mês(es) fora do SLA"
-    cor_sla = CORES_SITUACAO[0] if f["dentro_do_sla"] else CORES_SITUACAO[1]
+    cor_sla = SLA_OK if f["dentro_do_sla"] else SLA_ATRASO
     st.markdown(f"""<div class="cv-chips">
   <span class="cv-chip"><strong>DOU coberto de {mes(periodo['primeiro'])} a {mes(periodo['ultimo'])}.</strong></span>
   <span class="cv-chip">A situação vale para o último mês coberto ({mes(v['mes_referencia'].iloc[0])}), não para hoje.</span>
