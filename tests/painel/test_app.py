@@ -335,6 +335,15 @@ class TestApp(unittest.TestCase):
         legendas = [c.value for c in at.caption]
         self.assertTrue(any("1 conselho(s) sem nenhum ato no período ficam fora do mapa" in t for t in legendas), legendas)
 
+    def test_botao_expande_o_mapa(self):
+        at = self._abre()
+        expandir = next(t for t in at.toggle if t.key == "expandir_mapa")
+        self.assertIn("1 conselho(s) sem ato", expandir.label)
+        expandir.set_value(True).run(timeout=60)
+        self.assertEqual(len(at.exception), 0)
+        legendas = [c.value for c in at.caption]
+        self.assertFalse(any("ficam fora do mapa" in t for t in legendas), legendas)
+
     def test_sem_tabela_de_mencoes_pede_make_gold(self):
         with duckdb.connect(self.gold_path) as con:
             self._cria_tabelas_base(con)

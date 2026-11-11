@@ -415,13 +415,17 @@ with aba_resposta:
         st.markdown("**Conselho a conselho, mês a mês.** Cada célula é um mês: quanto mais forte o azul, mais atos. A célula cinza é o mês sem ato.")
         # só os conselhos com algum ato no período: uma linha toda cinza não diz nada que a tabela acima já não diga
         com_ato = set(serie.loc[serie.atos > 0, "orgao_id"])
-        no_mapa = visiveis[visiveis.orgao_id.isin(com_ato)]
+        so_com_ato = visiveis[visiveis.orgao_id.isin(com_ato)]
+        ocultos = len(visiveis) - len(so_com_ato)
+        # o botão para expandir: por padrão o mapa mostra só quem publicou; ligado, mostra também as linhas cinzas
+        expandir = st.toggle(f"Mostrar também os {ocultos} conselho(s) sem ato", disabled=ocultos == 0,
+                             key="expandir_mapa") if ocultos else False
+        no_mapa = visiveis if expandir else so_com_ato
         if no_mapa.empty:
             st.caption("Nenhum dos conselhos filtrados publicou ato no período coberto.")
         else:
             grafico(heatmap(serie, no_mapa))
-            ocultos = len(visiveis) - len(no_mapa)
-            if ocultos:
+            if ocultos and not expandir:
                 st.caption(f"{ocultos} conselho(s) sem nenhum ato no período ficam fora do mapa; eles estão na tabela acima.")
 
 with aba_conselho:
