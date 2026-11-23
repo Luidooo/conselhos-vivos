@@ -902,3 +902,25 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 
   A medição de verdade (`novos=10` e depois `inalterados=10`) e a prova em `docs/adr/medicoes/0011-disponibilizacao/` ficam para o banco de trabalho, depois do merge.
 - **Quem revisou:** pendente — PR da #96.
+
+### 2026-11-23 — Camada semântica no MetricFlow (#94)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:**
+  - `src/orquestracao/requirements.txt`, `dbt/dbt_project.yml`;
+  - `dbt/models/marts/marts.yml`, `dbt/models/metricas/`;
+  - `src/metricas/`, `tests/metricas/`, `Makefile`.
+- **O que foi pedido:** a Tarefa 1 do plano da E4, a camada semântica.
+- **O que foi aproveitado:**
+  - os modelos semânticos `atos` e `mencoes`, com as métricas `atos_publicados`, `atos_classificados`, `atos_de_autorregulacao`, `proporcao_autorregulacao` e `mencoes_recebidas`;
+  - a espinha de tempo diária;
+  - as consultas salvas `atividade_por_mes` e `atividade_por_conselho`;
+  - o exportador `python -m metricas` e os alvos `make metricas` e `make test-metricas`.
+- **Como foi verificado:**
+  - `mf validate-configs` sem erro, inclusive contra o banco;
+  - `atos_publicados` por mês igual ao SQL direto na `fct_ato` (julho 94, agosto 56, setembro 93);
+  - `make gold` com 79 em PASS e 1 aviso, o do SLA, porque hoje o prazo de outubro venceu;
+  - `make test-metricas` com 3 testes e `make test-orquestracao` com 9, todos OK.
+
+  O `make test` inteiro não rodou, porque outra frente usava o pgAdmin ao mesmo tempo; fica para o CI.
+- **Quem revisou:** pendente, no PR.

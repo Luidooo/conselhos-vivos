@@ -24,11 +24,23 @@ models:
       escopo da dim_conselho (ADR 0010), ligada ao nome que o conselho tinha na data da publicação.
       nome_aproximado é verdadeiro quando a data cai fora da vigência do nome escolhido: antes do
       primeiro nome (fica com o mais antigo), num buraco entre dois nomes (fica com o anterior) ou depois do fim do último (fica com o último).
+    semantic_model:
+      enabled: true
+      name: atos
+    agg_time_dimension: data_publicacao
     columns:
       - name: ato_id
+        entity: {type: primary, name: ato}
         data_tests: [unique, not_null]
       - name: materia
         data_tests: [unique, not_null]
+      - name: orgao_id
+        entity: {type: foreign, name: conselho}
+      - name: data_publicacao
+        granularity: day
+        dimension: {type: time}
+      - name: origem
+        dimension: {type: categorical}
       - name: conselho_sk
         data_tests:
           - not_null
@@ -37,10 +49,43 @@ models:
                 to: ref('dim_conselho')
                 field: conselho_sk
       - name: tipologia_sigla
+        dimension: {type: categorical}
         data_tests:
           - accepted_values:
               arguments:
                 values: ['99', 'AUTO', 'DEF', 'FISC', 'GEST', 'IP', 'SEM']
+    metrics:
+      - name: atos_publicados
+        label: Atos publicados no DOU
+        description: >
+          Matérias publicadas pelo próprio conselho no DOU, na versão mais recente. Não conta os atos da
+          planilha, que não são uma amostra do DOU. É a métrica do "Atos por mês" do painel.
+        type: simple
+        agg: sum
+        expr: 1
+        filter: "{{ Dimension('ato__origem') }} = 'DOU'"
+      - name: atos_classificados
+        label: Atos classificados
+        description: "Atos, do DOU ou da planilha, com tipologia atribuída: fora o SEM (não classificado) e o 99 da planilha."
+        type: simple
+        agg: sum
+        expr: 1
+        filter: "{{ Dimension('ato__tipologia_sigla') }} not in ('SEM', '99')"
+      - name: atos_de_autorregulacao
+        label: Atos de autorregulação
+        description: "Atos classificados como AUTO: o conselho cuidando de si, não da política pública."
+        type: simple
+        agg: sum
+        expr: 1
+        filter: "{{ Dimension('ato__tipologia_sigla') }} = 'AUTO'"
+      - name: proporcao_autorregulacao
+        label: Proporção de autorregulação
+        description: >
+          Atos AUTO sobre os atos classificados. Um conselho perto de 1 está se administrando, não decidindo
+          política pública (pergunta P2 da E1).
+        type: ratio
+        numerator: atos_de_autorregulacao
+        denominator: atos_classificados
 
   - name: fct_conselho_mes
     description: "Fato agregado. Granularidade: uma linha por conselho por mês do período coberto pelo DOU, inclusive meses sem ato."
@@ -77,10 +122,16 @@ models:
       Fato. Granularidade: uma linha por matéria publicada por outro órgão × conselho citado nela, no escopo
       da dim_conselho (ADR 0010). O nome é procurado só no título, na ementa e no começo do texto, para o
       conselho ser o assunto do ato e não uma citação de passagem (plano 2026-11-09).
+    semantic_model:
+      enabled: true
+      name: mencoes
+    agg_time_dimension: data_publicacao
     columns:
       - name: mencao_id
+        entity: {type: primary, name: mencao}
         data_tests: [unique, not_null]
       - name: orgao_id
+        entity: {type: foreign, name: conselho}
         data_tests:
           - not_null
           - relationships:
@@ -88,12 +139,22 @@ models:
                 to: ref('dim_conselho')
                 field: orgao_id
       - name: data_publicacao
+        granularity: day
+        dimension: {type: time}
         data_tests: [not_null]
       - name: assunto
+        dimension: {type: categorical}
         data_tests:
           - accepted_values:
               arguments:
                 values: ['extinção', 'criação', 'estrutura', 'regimento', 'homologação', 'composição', 'outro']
+    metrics:
+      - name: mencoes_recebidas
+        label: Menções de outros órgãos
+        description: "Matérias de outro órgão que têm o conselho como assunto: o segundo sinal de vida (ADR 0009)."
+        type: simple
+        agg: sum
+        expr: 1
 
   - name: freshness_vitalidade
     description: >
