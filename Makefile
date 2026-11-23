@@ -106,7 +106,7 @@ test-db-py: .env ## testes do ingestor em Python que gravam no banco, em transa�
 vet-py: ## compila src/ e tests/ com aviso virando erro, em container
 	docker compose --progress quiet run --rm -T -e PYTHONPYCACHEPREFIX=/tmp/pyc --entrypoint python carga -W error -m compileall -q src tests
 
-test: .env test-py-dou test-orquestracao test-painel test-mencoes ## testes: ingestor em Python, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos, carga e persistência do DOU
+test: .env test-py-dou test-orquestracao test-painel test-mencoes test-metricas ## testes: ingestor em Python, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos, carga e persistência do DOU
 	bash tests/infra/test_compose.sh
 	bash scripts/migrate.sh
 	bash tests/db/test_schema.sh
@@ -167,6 +167,13 @@ gold: .env ## E3: roda o dbt (modelos e testes) e grava a gold em data/gold/cons
 	@test -d data/silver/mencoes/_delta_log || { echo "falta a silver das menções: rode make mencoes antes"; exit 1; }
 	mkdir -p data/gold data/dagster
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt build --project-dir /app/dbt
+
+metricas: .env ## E4: exporta as consultas salvas da camada semântica para data/gold/metricas/ (rode make gold antes)
+	@test -f data/gold/conselhos.duckdb || { echo "falta a gold: rode make gold antes"; exit 1; }
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador sh -c 'cd /app/dbt && dbt parse -q && mf validate-configs && python -m metricas /data/gold/metricas'
+
+test-metricas: ## testes do exportador da camada semântica, no serviço orquestrador, sem rede nem banco
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T --no-deps orquestrador python -m unittest discover -s tests/metricas
 
 gold-docs: .env ## E3: gera o catálogo e a linhagem do dbt, publica o catálogo no site (public/linhagem/) e atualiza o diagrama de site/linhagem.md
 	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador dbt docs generate --static --project-dir /app/dbt
