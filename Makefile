@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg extract persist fetch-mensal persist-mensal ingest-mensal test test-py-dou test-db-py vet-py reset pgadmin-reset psql logs lake cdc cdc-demo cdc-drop cdc-chaos gold orquestrador demo-retry demo-backfill demo-falhas test-orquestracao painel test-painel gold-docs mencoes test-mencoes
+.PHONY: help docs setup up down migrate carga siorg extract persist fetch-mensal persist-mensal ingest-mensal test test-py-dou test-db-py vet-py reset pgadmin-reset psql anonimizar-revisor logs lake cdc cdc-demo cdc-drop cdc-chaos gold orquestrador demo-retry demo-backfill demo-falhas test-orquestracao painel test-painel gold-docs mencoes test-mencoes
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -110,6 +110,7 @@ test: .env test-py-dou test-orquestracao test-painel test-mencoes test-metricas 
 	bash tests/infra/test_compose.sh
 	bash scripts/migrate.sh
 	bash tests/db/test_schema.sh
+	bash tests/db/test_acesso.sh
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/planilha
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/conselhos
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/linhagem
@@ -135,6 +136,9 @@ pgadmin-reset: ## recria o pgAdmin do zero (use se mudar POSTGRES_USER ou POSTGR
 docs: ## sobe o site de documentação em http://localhost:5173/conselhos-vivos/ (precisa de Node)
 	npm --prefix site ci --no-audit --no-fund
 	npm --prefix site run dev -- --port 5173
+
+anonimizar-revisor: .env ## E4 (LGPD): apaga o nome e o e-mail do revisor ID e mantém as classificações dele
+	bash scripts/anonimizar_revisor.sh $(ID)
 
 psql: ## abre o psql dentro do container
 	docker compose exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
