@@ -859,3 +859,26 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 
   Nenhum código das tarefas novas foi rodado.
 - **Quem revisou:** pendente — a Luiza autorizou o commit direto no `main`.
+
+### 2026-11-22 — Tabela de alertas e papéis com privilégio mínimo (#95)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `sql/007_alertas_e_papeis.sql`, `tests/db/test_acesso.sh`, `scripts/anonimizar_revisor.sh`, `docker-compose.yml`, `.env.example`, `dbt/profiles.yml`, `tests/db/test_schema.sh`, `Makefile`
+- **O que foi pedido:** implementar a Tarefa 2 do plano da E4 num worktree com banco próprio, sem tocar no banco de trabalho, e abrir o PR.
+- **O que foi aproveitado:** o código da Tarefa 2 entrou como está no plano:
+  - a tabela `alerta`;
+  - os papéis `etl_reverso`, `app_curadoria` e `leitor_analitico`, com as senhas lidas do ambiente por `\getenv`;
+  - a função `anonimizar_revisor`, só para o superusuário, e o alvo `make anonimizar-revisor ID=n`;
+  - o teste de acesso, que monta o próprio órgão e o próprio ato e troca de papel com `SET LOCAL ROLE`;
+  - o dbt anexando o OLTP com `DBT_PGUSER` e `DBT_PGPASSWORD`, com `PGUSER` e `PGPASSWORD` de reserva.
+
+  O único acréscimo fora do plano é o `anonimizar-revisor` no `.PHONY` do `Makefile`.
+- **Como foi verificado:** num projeto compose próprio (`e4b`, porta 5433), descartado no fim:
+  - `test_acesso.sh` falhou antes da migração e deu 14 casos em `ok` depois, num banco só migrado;
+  - a `007` foi aplicada num banco limpo e num banco que já tinha da `001` à `006`;
+  - `make test` passou inteiro, com o teste de acesso logo depois do de esquema, que conta 10 tabelas;
+  - `make anonimizar-revisor` recusa id que não é número e anonimiza o revisor de verdade. Como `app_curadoria`, a função dá `permission denied`;
+  - pelo `dbt show` no orquestrador, o attach entra como `leitor_analitico`: lê os 5 conselhos e leva `permission denied` em `ato`.
+
+  O `make gold` com o papel novo não rodou: o worktree não tem a silver. Fica para o banco de trabalho, depois do merge.
+- **Quem revisou:** pendente — PR da #95.

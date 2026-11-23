@@ -8,6 +8,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      # E4 (ADR 0011): a migração 007 cria os papéis com estas senhas. Padrão de desenvolvimento: o nome do papel.
+      ETL_REVERSO_PASSWORD: ${ETL_REVERSO_PASSWORD:-etl_reverso}
+      APP_CURADORIA_PASSWORD: ${APP_CURADORIA_PASSWORD:-app_curadoria}
+      LEITOR_ANALITICO_PASSWORD: ${LEITOR_ANALITICO_PASSWORD:-leitor_analitico}
     ports:
       # só 127.0.0.1: os containers usam db:5432, e ninguém na rede alcança o banco
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
@@ -200,6 +204,11 @@ services:
       PGDATABASE: ${POSTGRES_DB}
       PIP_CACHE_DIR: /tmp/pipcache
       DBT_PROFILES_DIR: /app/dbt
+      # E4: o dbt lê o OLTP como leitor_analitico, e o ETL reverso grava como etl_reverso (ADR 0011)
+      DBT_PGUSER: leitor_analitico
+      DBT_PGPASSWORD: ${LEITOR_ANALITICO_PASSWORD:-leitor_analitico}
+      ALERTAS_PGUSER: etl_reverso
+      ALERTAS_PGPASSWORD: ${ETL_REVERSO_PASSWORD:-etl_reverso}
       DOCKER_UID: ${DOCKER_UID:-1000}
       DOCKER_GID: ${DOCKER_GID:-1000}
     volumes:
