@@ -882,3 +882,23 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 
   O `make gold` com o papel novo não rodou: o worktree não tem a silver. Fica para o banco de trabalho, depois do merge.
 - **Quem revisou:** pendente — PR da #95.
+
+### 2026-11-22 — ETL reverso: os alertas da gold no Postgres (#96)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `src/alertas/__init__.py`, `src/alertas/__main__.py`, `tests/alertas/test_regra.py`, `tests/dou_db/test_alertas.py`, `Makefile`
+- **O que foi pedido:** implementar a Tarefa 3 do plano da E4 sobre a branch da #95, no mesmo worktree com banco próprio, e abrir o PR.
+- **O que foi aproveitado:** o código da Tarefa 3 entrou como está no plano:
+  - a regra `alertas()`, com `em_silencio` e `citado_sem_ato_proprio`, que podem valer juntos;
+  - a gravação `gravar()`, um upsert que não duplica e não reescreve alerta tratado, e que conta novos, atualizados e inalterados pelo `xmax`;
+  - o `python -m alertas`, que lê a `mart_vitalidade` e grava como `etl_reverso`;
+  - os alvos `make alertas` e `make test-alertas`, este nos pré-requisitos do `make test`.
+- **Como foi verificado:** num projeto compose próprio (`e4b`, porta 5433), descartado no fim:
+  - `make test-alertas`: falhou antes do módulo existir, depois deu 6 testes `OK`;
+  - os 3 testes de gravação passaram em transação desfeita, no `dou-db-test`;
+  - `make test` passou inteiro;
+  - `make alertas` rodou duas vezes contra uma cópia da gold de trabalho e falhou as duas com a chave estrangeira do `orgao_id=26`. Era o esperado: a gold é do banco de trabalho, e o banco do worktree só tem os 5 conselhos da migração. A falha não deixou alerta gravado;
+  - a regra, aplicada à mesma gold sem gravar, dá 10 alertas `citado_sem_ato_proprio` de setembro, como o plano espera.
+
+  A medição de verdade (`novos=10` e depois `inalterados=10`) e a prova em `docs/adr/medicoes/0011-disponibilizacao/` ficam para o banco de trabalho, depois do merge.
+- **Quem revisou:** pendente — PR da #96.

@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg extract persist fetch-mensal persist-mensal ingest-mensal test test-py-dou test-db-py vet-py reset pgadmin-reset psql anonimizar-revisor logs lake cdc cdc-demo cdc-drop cdc-chaos gold orquestrador demo-retry demo-backfill demo-falhas test-orquestracao painel test-painel gold-docs mencoes test-mencoes
+.PHONY: help docs setup up down migrate carga siorg extract persist fetch-mensal persist-mensal ingest-mensal test test-py-dou test-db-py vet-py reset pgadmin-reset psql anonimizar-revisor logs lake cdc cdc-demo cdc-drop cdc-chaos gold orquestrador demo-retry demo-backfill demo-falhas test-orquestracao painel test-painel gold-docs mencoes test-mencoes alertas test-alertas
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -106,7 +106,7 @@ test-db-py: .env ## testes do ingestor em Python que gravam no banco, em transa�
 vet-py: ## compila src/ e tests/ com aviso virando erro, em container
 	docker compose --progress quiet run --rm -T -e PYTHONPYCACHEPREFIX=/tmp/pyc --entrypoint python carga -W error -m compileall -q src tests
 
-test: .env test-py-dou test-orquestracao test-painel test-mencoes ## testes: ingestor em Python, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos, carga e persistência do DOU
+test: .env test-py-dou test-orquestracao test-painel test-mencoes test-alertas ## testes: ingestor em Python, infra, esquema do OLTP, leitura da planilha, identidade dos conselhos, carga e persistência do DOU
 	bash tests/infra/test_compose.sh
 	bash scripts/migrate.sh
 	bash tests/db/test_schema.sh
@@ -190,6 +190,13 @@ demo-backfill: .env ## E3: reprocessa um intervalo de meses (DE=AAAA-MM ATE=AAAA
 
 demo-falhas: .env ## E3: mês não publicado, ZIP inválido, lake e dbt falhando; prova em docs/adr/medicoes/0009-gold (não baixa nem grava nada)
 	bash scripts/demo_falhas.sh
+
+alertas: .env ## E4: ETL reverso, grava no Postgres os alertas da mart_vitalidade (rode make gold antes)
+	@test -f data/gold/conselhos.duckdb || { echo "falta a gold: rode make gold antes"; exit 1; }
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador python -m alertas
+
+test-alertas: ## testes da regra do ETL reverso, no serviço orquestrador, sem rede nem banco
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T --no-deps orquestrador python -m unittest discover -s tests/alertas
 
 painel: .env ## E3: sobe o painel em http://127.0.0.1:8501 (rode make gold antes)
 	mkdir -p data/gold
