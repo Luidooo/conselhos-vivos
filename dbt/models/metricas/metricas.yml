@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: metricflow_time_spine
+    description: "Espinha de tempo do MetricFlow (ADR 0011). Granularidade: um dia por linha, de 2002 a 2030."
+    time_spine:
+      standard_granularity_column: date_day
+    columns:
+      - name: date_day
+        granularity: day
+        data_tests: [unique, not_null]
+
+# As consultas que saem da camada semântica. O painel lê as duas; quem quiser os números fora do painel
+# roda make metricas e abre o CSV. Consulta nova entra aqui, e o exportador a pega sozinho.
+saved_queries:
+  - name: atividade_por_mes
+    description: "Atos publicados pelos conselhos no DOU e menções de outros órgãos, por mês."
+    query_params:
+      metrics: [atos_publicados, mencoes_recebidas]
+      group_by: ["TimeDimension('metric_time', 'month')"]
+  - name: atividade_por_conselho
+    description: "As mesmas métricas e a proporção de autorregulação, por conselho, em todo o período carregado."
+    query_params:
+      metrics: [atos_publicados, mencoes_recebidas, proporcao_autorregulacao]
+      group_by: ["Entity('conselho')"]
