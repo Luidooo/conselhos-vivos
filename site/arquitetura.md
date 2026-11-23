@@ -101,8 +101,8 @@ erDiagram
 | Orquestração | Dagster, com a opção nula cron + `make` | ✅ E3 | partições mensais dão o backfill e o retry por configuração |
 | Enriquecimento | menções de outros órgãos no DOU (`src/mencoes`, `fct_mencao`) | ✅ E3 | automático no job mensal, sem download novo; SIORG completo, Seção 2 e Brasil Participativo ficam para depois |
 | ETL reverso | script Python, disparado pelo orquestrador | 🆕 E4 | lê a gold e grava os alertas no Postgres |
-| Busca do RAG | busca textual do Postgres (`tsvector`, em português) | 🆕 | já vem no banco: sem extensão, sem modelo de embedding, sem conta a mais |
-| Respostas do RAG | API do Claude, pelo SDK `anthropic` | 🆕 | escreve a resposta a partir dos trechos achados |
+| Busca do RAG | busca textual do Postgres (`tsvector`, em português) | 🆕 E4 | já vem no banco: sem extensão, sem modelo de embedding, sem conta a mais |
+| Respostas do RAG | API do Claude (Sonnet 5.5, configurável), pelo SDK `anthropic` | 🆕 E4 | escreve a resposta a partir dos trechos achados |
 | App da pesquisadora | Streamlit | ✅ E3 (aba Painel) | um app Python, com as três abas |
 | Catálogo e linhagem | `dbt docs`, publicado no site, e a [linhagem dos dados](/linhagem) | ✅ E3 | o grafo vai da fonte até o painel; adiantado da E4 |
 | Controle de acesso | papéis e `GRANT` do Postgres, com RLS se precisar | 🆕 E4 | o app só lê e escreve o que precisa |
@@ -176,6 +176,6 @@ O que o plano de ensino pede em cada entrega, como o projeto responde e em que p
 | ETL reverso para quem age | os alertas gravados no Postgres | Alertas e aba Revisar |
 | LGPD e controle de acesso por linha e coluna | papéis e `GRANT` do Postgres | Postgres |
 
-### Produto · depois das entregas
+### Também na E4 · o assistente de perguntas (RAG)
 
-A pesquisadora pergunta e confere a fonte: a aba Perguntar, a busca textual do Postgres e a API do Claude.
+Decidido pela squad em 11/11/2026: a pesquisadora pergunta e confere a fonte na aba Perguntar, com a busca textual do Postgres e a API do Claude. A resposta só cita atos que a busca achou, e a avaliação mede isso com perguntas reais ([plano da E4](/docs/planos/2026-11-09-e4-plataforma-governada), tarefas 12 a 16).

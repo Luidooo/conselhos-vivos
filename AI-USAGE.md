@@ -837,3 +837,25 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - as cores da situação e das tipologias passaram no validador de paleta para daltonismo (ΔE 10,3 no claro e 7,0 no escuro, coberto pelo rótulo escrito em cada fatia);
   - a frase 82 → 59 foi conferida no ADR 0010: 62 órgãos com "Conselho" no nome, menos 3 exclusões.
 - **Quem revisou:** pendente — PR #104, com Luis e Márcio como coautores dos commits.
+
+### 2026-11-22 — Plano da E4: P1, P2, RAG e dicionário (tarefas 10 a 17, issues #105 a #112)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `docs/planos/2026-11-09-e4-plataforma-governada.md`, `site/arquitetura.md`, `site/.vitepress/theme/ArquiteturaInterativa.vue`, `site/jornada-do-dado.md`, issues #105 a #112, #101 e #102
+- **O que foi pedido:** pôr no plano da E4 as perguntas P1 e P2 da E1, o RAG, que a squad decidiu trazer para a E4, e o dicionário de dados; criar as issues; tirar o RAG do "produto, depois das entregas" na arquitetura e na jornada.
+- **O que foi aproveitado:** oito tarefas novas, com código, testes e comandos:
+  - P1: as colunas de 6 e 12 meses na `mart_vitalidade`;
+  - P2: a tipologia por ano numa consulta salva;
+  - RAG: a busca textual com o papel `app_perguntas`, a resposta pela API do Claude que recusa citação de ato não enviado, a página Perguntar, a avaliação com perguntas reais, e o ADR 0012 com a LGPD da transferência;
+  - o dicionário gerado do banco e do dbt.
+
+  **Decidido pela Luiza:** a chave da API é dela e fica só no `.env`; o modelo padrão é o Claude Sonnet 5.5, configurável.
+
+  **Decidido pela IA**, a revisar: a P3 fica fora sem a autorização do download, e a P4 fica para depois da E4.
+- **Como foi verificado:**
+  - a versão do SDK `anthropic` (2.3.0, de 23/10) no PyPI, e a forma de chamar a API na documentação dele;
+  - o tamanho do dicionário, medido no banco: 2 de 30 colunas declaradas da gold descritas, e 16 de 50 do OLTP comentadas;
+  - o site compilou sem link quebrado e sem chaves duplas fora de bloco.
+
+  Nenhum código das tarefas novas foi rodado.
+- **Quem revisou:** pendente — a Luiza autorizou o commit direto no `main`.

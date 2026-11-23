@@ -105,7 +105,7 @@ const PASSOS = [
 ]
 
 const SITUACAO: Record<Situacao, string> = {
-  pronto: 'Já existe', E3: 'Entra na E3', E4: 'Entra na E4', produto: 'Assistente (RAG)',
+  pronto: 'Já existe', E3: 'Entra na E3', E4: 'Entra na E4', produto: 'Entra na E4 · assistente (RAG)',
 }
 
 const selecionada = ref<string | null>(null)

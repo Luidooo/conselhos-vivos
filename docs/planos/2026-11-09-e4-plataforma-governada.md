@@ -11,9 +11,10 @@
 - **Controle de acesso:** cada serviço fala com o Postgres por um papel com privilégio mínimo. O papel do app não enxerga o e-mail de quem classifica, que é o recorte de coluna.
 - **Fechamento:** a análise de LGPD, o ADR 0011, a linhagem até o alerta, a retrospectiva e o roteiro da defesa.
 
-Esse é o desenho da [arquitetura final](../../site/arquitetura.md), menos a aba Perguntar, que é do produto, depois das entregas.
+Esse é o desenho da [arquitetura final](../../site/arquitetura.md), com a aba Perguntar (RAG), que entrou na E4 em 11/11/2026. Além do checklist, as tarefas 10 a 17 respondem a P1 e a P2 da E1, fazem o RAG e o dicionário de dados.
 
 **Ferramentas:**
+- **Novo:** `anthropic==2.3.0`, o SDK da API do Claude, para o RAG.
 - **Novo:** `dbt-metricflow[dbt-duckdb]==0.15.0`. Ele aceita `dbt-core` de 1.11 até antes da 1.13 e o DuckDB 1.5, e saiu em 10/09/2026.
 - **Já existentes:** dbt-core 1.12.6, dbt-duckdb 1.11.1, Dagster 1.13.28, Streamlit 1.66.1, Postgres 16, `psycopg[binary]==3.2.5`, Docker Compose + make.
 
@@ -96,10 +97,11 @@ A opção nula é um modelo `metricas` no dbt, com a definição na descrição 
 | `site/entrega-e4.md`, `site/.vitepress/config.mts`, `site/arquitetura.md` | a página da entrega, o menu e os estados das peças |
 | `docs/diario/2026-11-24.md` | a retrospectiva do ciclo de vida |
 | `docs/defesa.md` | o roteiro da defesa e a demonstração |
+| Tarefas 10 a 17 | os arquivos estão listados em cada tarefa: P1, P2, RAG (`src/painel/busca.py`, `perguntar.py`, `pages/2_Perguntar.py`, `avaliar.py`, `sql/008_*`), ADR 0012 e o dicionário (`src/dicionario/`, `sql/009_*`, `site/dicionario.md`) |
 
 ## Quem faz o quê (sugestão)
 
-Issues: Tarefa 1 #94, 2 #95, 3 #96, 4 #97, 5 #98, 6 #99, 7 #100, 8 #101, 9 #102.
+Issues: Tarefa 1 #94, 2 #95, 3 #96, 4 #97, 5 #98, 6 #99, 7 #100, 8 #101, 9 #102, 10 #105, 11 #106, 12 #107, 13 #108, 14 #109, 15 #110, 16 #111, 17 #112.
 
 - A Tarefa 1 e a 2 são independentes e destravam o resto.
 - A 3 depende da 2. A 4 depende da 1 e da 3. A 5 depende da 1, da 2 e da 3.
@@ -988,6 +990,8 @@ git diff --cached --stat
 
 ### Tarefa 5: o painel lê a camada semântica, e a página Revisar
 
+> **Se o PR #104 (painel em abas, do Bruno) entrar antes:** os trechos do `app.py` desta tarefa vão para a estrutura dele (a `carregar()`, as funções de gráfico e as abas), com o mesmo comportamento pedido aqui. O `grafico_mensal` dele lê `fct_conselho_mes` direto: ele passa a ler o `atividade_por_mes.csv`, para a métrica ter uma definição só.
+
 **Arquivos:**
 - Modificar: `src/painel/app.py`, `src/painel/requirements.txt`, `docker-compose.yml`, `tests/painel/test_app.py`
 - Criar: `src/painel/pages/1_Revisar.py`, `tests/painel/test_revisar.py`
@@ -1285,7 +1289,7 @@ O que **não** existe: dado sensível (art. 5º, II), dado de criança, login de
 
 ## Quando revisar esta análise
 
-- Antes de ligar a aba Perguntar: ela manda trechos do DOU e a pergunta da pesquisadora à API do Claude, o que é uma transferência internacional (art. 33).
+- A aba Perguntar (Tarefa 16 completa esta análise): ela manda trechos do DOU e a pergunta da pesquisadora à API do Claude, o que é uma transferência internacional (art. 33).
 - Se o painel ganhar login ou sair de `127.0.0.1`.
 - Se entrar uma fonte com dado pessoal que não seja público, como lista de conselheiros com contato.
 ````
@@ -1638,14 +1642,15 @@ Nenhum número é escrito de memória: cada um sai de um arquivo de `docs/adr/me
 | 7–10 | | gestão e técnica | A página Revisar: um alerta, quem o trata, e por que ele não vira uma decisão automática. |
 | 10–15 | | técnica | O caminho do dado na linhagem interativa, do ZIP ao alerta, com o ADR de cada trecho. |
 | 15–18 | | técnica | Governança: a métrica com uma definição só, o papel que não vê o e-mail, a LGPD. |
-| 18–20 | | as duas | O que faríamos diferente (retrospectiva) e o que vem depois (a aba Perguntar). |
+| 18–20 | | as duas | O que faríamos diferente (retrospectiva) e o que vem depois (a classificação automática, P4). |
 
 ## Demonstração, na ordem
 
 1. `make painel` → http://127.0.0.1:8501: os três números, a tabela, o gráfico das métricas.
 2. Revisar: marcar um alerta como tratado ao vivo.
-3. http://localhost:5173/conselhos-vivos/linhagem: "Percorrer a linhagem".
-4. `bash tests/db/test_acesso.sh`: o `permission denied` do e-mail.
+3. Perguntar: uma pergunta com resposta citando o ato, e uma sem resposta nos atos.
+4. http://localhost:5173/conselhos-vivos/linhagem: "Percorrer a linhagem".
+5. `bash tests/db/test_acesso.sh`: o `permission denied` do e-mail.
 
 ## Plano B
 
@@ -1671,6 +1676,989 @@ Guarde o resumo em `docs/adr/medicoes/0011-disponibilizacao/clone-limpo-AAAAMMDD
   - Rode `npm --prefix site run build 2>&1 | grep -E '^[A-Za-z]*Error:|dead link|build complete'`. Esperado: só `build complete`.
   - Stage, e commit com o ok da Luiza.
   - Com o CI verde no `main`, crie a tag anotada `e4`, com a mensagem "Entrega E4: plataforma completa, governada e defendida", e a release "Entrega 4", em pre-release, no molde da `e3`.
+
+---
+
+## Além do checklist: as perguntas da E1, o RAG e o dicionário de dados
+
+Decidido pela Luiza em 11/11/2026:
+- **O RAG entra na E4.** A arquitetura punha a aba Perguntar no "produto, depois das entregas"; isso mudou.
+- **A chave da API do Claude é dela:** fica só no `.env`, que está no `.gitignore`.
+- **O modelo padrão é o Claude Sonnet 5.5** (`claude-sonnet-5-5`), configurável por `PERGUNTAR_MODELO`. O Opus 5.5 (`claude-opus-5-5`) é a alternativa, se a avaliação da Tarefa 15 pedir.
+
+| O quê | Tarefa | Depende de |
+|---|---|---|
+| P1: quem não publicou em 6 e 12 meses | 10 | o ok do download (um ano de DOU) |
+| P2: a tipologia por ano | 11 | 1, 5 |
+| RAG: busca textual | 12 | 2 |
+| RAG: resposta citando o ato | 13 | 12 |
+| RAG: página Perguntar | 14 | 12, 13 |
+| RAG: avaliação com perguntas reais (HITL) | 15 | 12, 13 |
+| RAG: ADR 0012 e LGPD (HITL) | 16 | 6, 15 |
+| Dicionário de dados | 17 | 1, 2 |
+
+A P3, atos por mês entre governos, fica fora. Ela pede uns 58 meses de DOU, perto de 13 GB, e o download não foi autorizado. A P4, a classificação automática, fica para depois da E4, com o ADR do classificador.
+
+**Restrições a mais, além das globais:**
+- `anthropic==2.3.0` (23/10/2026), no `src/painel/requirements.txt`.
+- Nenhum teste chama a API de verdade: os testes usam um cliente falso.
+- A avaliação com resposta (`COM_RESPOSTA=1`) gasta a conta da Luiza: rode só com o ok dela.
+- A busca e a resposta moram em `src/painel/` (`busca.py`, `perguntar.py`), porque o serviço `painel` só monta essa pasta.
+- O ato não guarda o link da publicação no DOU, porque o `materia.py` não lê o `pdfPage` do XML. A citação mostra conselho, data, id do DOU e trecho. Guardar o link é uma migração a mais, fora deste plano.
+
+---
+
+### Tarefa 10: P1 — quem não publicou em 6 e 12 meses
+
+> **Se o PR #104 (painel em abas, do Bruno) entrar antes:** os trechos do `app.py` desta tarefa vão para a estrutura dele (a `carregar()`, as funções de gráfico e as abas), com o mesmo comportamento pedido aqui. Os dois números entram no cabeçalho, ao lado da quarta métrica que ele acrescenta, e a coluna entra na tabela da aba Resposta.
+
+**Arquivos:**
+- Modificar: `dbt/models/marts/mart_vitalidade.sql`, `dbt/models/marts/marts.yml`, `src/painel/app.py`, `tests/painel/test_app.py`
+
+**Interfaces:**
+- Produz: as colunas `sem_ato_6_meses` e `sem_ato_12_meses` (booleanas) na `mart_vitalidade`. Elas são nulas quando o período coberto é menor que a janela, porque aí não dá para afirmar nada.
+
+- [ ] **Passo 1: os testes unitários, que falham.** No fim de `unit_tests:` em `dbt/models/marts/marts.yml`, acrescente:
+
+```yaml
+  - name: mart_vitalidade_sem_ato_6_e_12_meses
+    description: "P1 da E1: sem ato próprio nos últimos 6 e nos últimos 12 meses, com 12 meses cobertos (out/2025 a set/2026)."
+    model: mart_vitalidade
+    given:
+      - input: ref('fct_conselho_mes')
+        rows:
+          - {orgao_id: 1, mes: 2025-10-01, atos: 0}
+          - {orgao_id: 1, mes: 2026-09-01, atos: 2}
+          - {orgao_id: 2, mes: 2026-03-01, atos: 1}
+          - {orgao_id: 2, mes: 2026-09-01, atos: 0}
+          - {orgao_id: 3, mes: 2026-09-01, atos: 0}
+      - input: ref('dim_conselho')
+        rows:
+          - {orgao_id: 1, nome: "Um", sigla: "U", valido_de: 2000-01-01}
+          - {orgao_id: 2, nome: "Dois", sigla: "D", valido_de: 2000-01-01}
+          - {orgao_id: 3, nome: "Tres", sigla: "T", valido_de: 2000-01-01}
+      - input: ref('fct_mencao')
+        rows: []
+    expect:
+      rows:
+        - {orgao_id: 1, sem_ato_6_meses: false, sem_ato_12_meses: false}
+        - {orgao_id: 2, sem_ato_6_meses: true, sem_ato_12_meses: false}
+        - {orgao_id: 3, sem_ato_6_meses: true, sem_ato_12_meses: true}
+
+  - name: mart_vitalidade_sem_ato_cobertura_curta
+    description: "Com 3 meses cobertos, não dá para dizer quem ficou 6 ou 12 meses sem ato: as duas colunas ficam nulas."
+    model: mart_vitalidade
+    given:
+      - input: ref('fct_conselho_mes')
+        rows:
+          - {orgao_id: 1, mes: 2026-07-01, atos: 0}
+          - {orgao_id: 1, mes: 2026-09-01, atos: 0}
+      - input: ref('dim_conselho')
+        rows:
+          - {orgao_id: 1, nome: "Um", sigla: "U", valido_de: 2000-01-01}
+      - input: ref('fct_mencao')
+        rows: []
+    expect:
+      rows:
+        - {orgao_id: 1, sem_ato_6_meses: null, sem_ato_12_meses: null}
+```
+
+Rode: `make gold`. Esperado: os dois testes falham, porque as colunas não existem.
+
+- [ ] **Passo 2: as duas colunas.** Em `dbt/models/marts/mart_vitalidade.sql`, depois do `end as situacao,`, acrescente:
+
+```sql
+    -- P1 da E1: sem ato próprio nos últimos 6 e 12 meses (o último ato foi há N meses ou mais, ou nunca houve).
+    -- Nulo quando a cobertura é menor que a janela: com 3 meses de DOU não dá para dizer quem ficou 6 sem publicar.
+    case when coalesce(c.meses, 0) < 6 then null
+         else p.ultimo_mes_com_ato is null or date_diff('month', p.ultimo_mes_com_ato, c.ultimo) >= 6
+    end as sem_ato_6_meses,
+    case when coalesce(c.meses, 0) < 12 then null
+         else p.ultimo_mes_com_ato is null or date_diff('month', p.ultimo_mes_com_ato, c.ultimo) >= 12
+    end as sem_ato_12_meses,
+```
+
+Rode: `make gold`. Esperado: tudo em `PASS`.
+
+- [ ] **Passo 3: o painel, com o teste.** Em `tests/painel/test_app.py`:
+  - no `CREATE TABLE mart_vitalidade` do `_cria_tabelas_base`, acrescente as colunas `sem_ato_6_meses BOOLEAN, sem_ato_12_meses BOOLEAN` depois de `ultimo_mes_citado DATE`;
+  - acrescente `, NULL, NULL` ao fim de cada uma das quatro linhas do `INSERT INTO mart_vitalidade`;
+  - no `test_com_dados_e_freshness`, troque as duas asserções de `at.metric` por:
+
+```python
+        self.assertEqual([m.label for m in at.metric], ["Ativos", "Em silêncio", "Sem ato no período coberto", "Sem ato há 6+ meses", "Sem ato há 12+ meses"])
+        self.assertEqual([m.value for m in at.metric], ["2", "1", "1", "—", "—"])
+```
+
+Rode `make test-painel`. Esperado: falha nos rótulos.
+
+Em `src/painel/app.py`, logo depois de `col3.metric(...)`, acrescente:
+
+```python
+# P1 da E1: sem ato próprio há 6 e 12 meses. Com cobertura menor que a janela, a gold devolve nulo: o painel mostra "—".
+c6, c12 = st.columns(2)
+for col, n in ((c6, 6), (c12, 12)):
+    campo = v[f"sem_ato_{n}_meses"]
+    if campo.isna().all():
+        col.metric(f"Sem ato há {n}+ meses", "—", help=f"Precisa de pelo menos {n} meses de DOU carregados.")
+    else:
+        col.metric(f"Sem ato há {n}+ meses", int(campo.fillna(False).astype(bool).sum()))
+```
+
+No `tabela = v[[...]]`, acrescente `"sem_ato_6_meses", "sem_ato_12_meses"` depois de `"mencoes_no_periodo"`. Logo depois da linha do `eh_participativo`, acrescente:
+
+```python
+for n in (6, 12):
+    tabela[f"sem_ato_{n}_meses"] = tabela[f"sem_ato_{n}_meses"].map(lambda x: "cobertura curta" if pd.isna(x) else ("sim" if x else "não"))
+```
+
+No `rename` do `st.dataframe`, acrescente `"sem_ato_6_meses": "Sem ato há 6+ meses", "sem_ato_12_meses": "Sem ato há 12+ meses"`.
+
+Rode: `make test-painel`. Esperado: todos `OK`.
+
+- [ ] **Passo 4: um ano de DOU.** Peça o ok da Luiza antes. O download vai de outubro de 2025 a junho de 2026: 9 ZIPs da Imprensa Nacional (`in.gov.br`), de 50 MB a 530 MB cada, perto de 2 GB no total. Julho a outubro de 2026 já estão no bronze. Com o ok, rode:
+
+```bash
+make demo-backfill DE=2025-10 ATE=2026-10
+make gold
+```
+
+Esperado:
+- 13 runs com `RUN_SUCCESS`;
+- a cobertura de out/2025 a out/2026, 13 meses;
+- no painel, os dois números novos e a coluna "Sem ato há 12+ meses" preenchida.
+
+A situação muda com a cobertura longa: os conselhos "sem ato no período coberto" passam a "em silêncio". As provas da E3 continuam valendo para a janela delas. A prova nova vai para `docs/adr/medicoes/0011-disponibilizacao/`, como a de qualquer backfill da E4.
+
+- [ ] **Passo 5: stage.**
+
+```bash
+git add dbt/models/marts/mart_vitalidade.sql dbt/models/marts/marts.yml src/painel/app.py tests/painel/test_app.py docs/adr/medicoes/0011-disponibilizacao
+git diff --cached --stat
+```
+
+---
+
+### Tarefa 11: P2 — a tipologia por ano
+
+> **Se o PR #104 (painel em abas, do Bruno) entrar antes:** os trechos do `app.py` desta tarefa vão para a estrutura dele (a `carregar()`, as funções de gráfico e as abas), com o mesmo comportamento pedido aqui. Ele já mostra a tipologia da planilha por ano, conselho a conselho, calculada no painel: esse gráfico passa a ler o `tipologia_por_ano.csv`, e o geral entra na aba O que decidem.
+
+**Arquivos:**
+- Modificar: `dbt/models/metricas/metricas.yml`, `src/painel/app.py`, `tests/painel/test_app.py`
+
+**Interfaces:**
+- Consome: a métrica `atos_classificados` e a dimensão `ato__tipologia_sigla` (Tarefa 1); o `PAINEL_METRICAS` (Tarefa 5).
+- Produz: a consulta salva `tipologia_por_ano`, com as colunas `metric_time__year`, `ato__tipologia_sigla` e `atos_classificados`. Confira o cabeçalho no Passo 2.
+
+- [ ] **Passo 1: a consulta salva.** Em `dbt/models/metricas/metricas.yml`, no fim de `saved_queries:`, acrescente:
+
+```yaml
+  - name: tipologia_por_ano
+    description: "P2 da E1: atos classificados por ano e tipologia. Hoje, quase só a planilha (194 dos 215 atos são de 2003 a 2006); os do DOU entram quando forem classificados."
+    query_params:
+      metrics: [atos_classificados]
+      group_by: ["TimeDimension('metric_time', 'year')", "Dimension('ato__tipologia_sigla')"]
+```
+
+- [ ] **Passo 2: exportar e conferir.** Rode: `make metricas && head -5 data/gold/metricas/tipologia_por_ano.csv`
+
+Esperado: o cabeçalho da seção Interfaces. A soma de `atos_classificados` deve ser igual aos atos com tipologia fora de SEM e 99 na `fct_ato`. Se a coluna da tipologia tiver outro nome, troque-o no Passo 3.
+
+- [ ] **Passo 3: o gráfico, com o teste.** Em `tests/painel/test_app.py`, acrescente:
+
+```python
+    def test_tipologia_por_ano(self):
+        with duckdb.connect(self.gold_path) as con:
+            self._cria_tabelas_base(con)
+            self._cria_freshness(con)
+        pasta = os.environ["PAINEL_METRICAS"]
+        os.makedirs(pasta, exist_ok=True)
+        with open(os.path.join(pasta, "tipologia_por_ano.csv"), "w") as f:
+            f.write("metric_time__year,ato__tipologia_sigla,atos_classificados\n2003-01-01,AUTO,10\n2003-01-01,DEF,4\n2004-01-01,GEST,7\n")
+        os.environ["PAINEL_GOLD"] = self.gold_path
+        at = AppTest.from_file(APP).run(timeout=60)
+        self.assertEqual(len(at.exception), 0)
+        self.assertIn("A tipologia ao longo dos anos", [s.value for s in at.subheader])
+```
+
+Em `src/painel/app.py`, no fim do arquivo, acrescente:
+
+```python
+por_ano = os.path.join(METRICAS, "tipologia_por_ano.csv")
+if os.path.exists(por_ano):
+    t = pd.read_csv(por_ano, parse_dates=["metric_time__year"])
+    t["ano"] = t["metric_time__year"].dt.year.astype(str)
+    st.subheader("A tipologia ao longo dos anos")
+    st.caption("Atos classificados por ano (métrica atos_classificados). Hoje são quase só os atos da planilha, de 2003 a 2020: os do DOU entram quando forem classificados.")
+    st.bar_chart(t, x="ano", y="atos_classificados", color="ato__tipologia_sigla", sort=False)
+```
+
+Rode: `make test-painel`. Esperado: todos `OK`.
+
+- [ ] **Passo 4: stage.**
+
+```bash
+git add dbt/models/metricas/metricas.yml src/painel/app.py tests/painel/test_app.py
+git diff --cached --stat
+```
+
+---
+
+### Tarefa 12: RAG — busca textual dos atos
+
+**Arquivos:**
+- Criar: `sql/008_busca_dos_atos.sql`, `src/painel/busca.py`, `tests/dou_db/test_busca.py`
+- Modificar: `docker-compose.yml`, `.env.example`, `tests/db/test_acesso.sh`
+
+**Interfaces:**
+- Consome: o padrão dos papéis da Tarefa 2.
+- Produz:
+  - o papel `app_perguntas`, que só lê as colunas do `ato` que a busca usa e os nomes dos órgãos;
+  - `busca.Ato(id: int, id_dou: str | None, data: date, conselho: str, ementa: str | None, trecho: str)`;
+  - `busca.buscar(conn, pergunta: str, orgao: int | None = None, de: date | None = None, ate: date | None = None, limite: int = 8) -> list[Ato]`.
+
+- [ ] **Passo 1: o teste da busca, que falha.** Crie `tests/dou_db/test_busca.py`:
+
+```python
+"""A busca do RAG (src/painel/busca.py) no Postgres, em transação desfeita: acha pela raiz da palavra, fica com a
+versão mais recente da matéria e respeita os filtros."""
+
+import unittest
+from datetime import date
+
+import dbtest
+
+from painel.busca import buscar
+
+
+class Busca(dbtest.CasoComBanco):
+    def setUp(self):
+        super().setUp()
+        self.orgao = self.conn.execute("insert into orgao default values returning id").fetchone()[0]
+        self.conn.execute("insert into orgao_nome (orgao_id, nome, data_inicio) values (%s, 'Conselho de Teste', '2000-01-01')", (self.orgao,))
+        atos = [
+            ("BUSCA-1", 1, "2026-08-10", "<p>Aprova o licenciamento ambiental de empreendimentos de saneamento.</p>"),
+            ("BUSCA-1", 2, "2026-08-12", "<p>Aprova o licenciamento ambiental de empreendimentos de saneamento, retificado.</p>"),
+            ("BUSCA-2", 1, "2026-09-01", "<p>Altera o regimento interno do conselho.</p>"),
+        ]
+        for id_dou, versao, data, texto in atos:
+            self.conn.execute("insert into ato (origem, id_dou, versao, orgao_id, data_publicacao, conteudo) "
+                              "values ('DOU', %s, %s, %s, %s, %s)", (id_dou, versao, self.orgao, data, texto))
+
+    def test_acha_pela_raiz_e_so_a_versao_mais_recente(self):
+        achados = buscar(self.conn, "licenciar empreendimentos", orgao=self.orgao)
+        self.assertEqual([(a.id_dou, a.data) for a in achados], [("BUSCA-1", date(2026, 8, 12))])
+        self.assertEqual(achados[0].conselho, "Conselho de Teste")
+        self.assertNotIn("<p>", achados[0].trecho)
+
+    def test_filtro_de_data(self):
+        self.assertEqual(buscar(self.conn, "licenciamento", orgao=self.orgao, de=date(2026, 9, 1)), [])
+
+    def test_pergunta_so_com_palavras_vazias(self):
+        self.assertEqual(buscar(self.conn, "o que e de", orgao=self.orgao), [])
+
+
+if __name__ == "__main__":
+    unittest.main()
+```
+
+Rode: `make test-db-py`. Esperado: `ModuleNotFoundError: No module named 'painel.busca'`.
+
+- [ ] **Passo 2: o índice e o papel.** Crie `sql/008_busca_dos_atos.sql`:
+
+```sql
+-- E4 (ADR 0012): a busca do RAG, pela busca textual do próprio Postgres, em português. O parser padrão ignora as
+-- tags do HTML do DOU. A expressão é a mesma da consulta em src/painel/busca.py, para o índice ser usado.
+CREATE INDEX ix_ato_busca ON ato USING GIN (to_tsvector('portuguese', coalesce(ementa, '') || ' ' || coalesce(conteudo, '')));
+
+\getenv senha_perguntas APP_PERGUNTAS_PASSWORD
+CREATE ROLE app_perguntas LOGIN PASSWORD :'senha_perguntas';
+
+-- app_perguntas: a página Perguntar lê só o que a busca usa; nada de revisor, classificação ou alerta.
+GRANT SELECT (id, origem, id_dou, versao, orgao_id, data_publicacao, ementa, conteudo) ON ato TO app_perguntas;
+GRANT SELECT ON orgao_nome TO app_perguntas;
+```
+
+No `docker-compose.yml`, no `environment:` do `db`, acrescente `APP_PERGUNTAS_PASSWORD: ${APP_PERGUNTAS_PASSWORD:-app_perguntas}`. No `.env.example`, acrescente `APP_PERGUNTAS_PASSWORD=app_perguntas`.
+
+Rode: `docker compose up -d db && make migrate`. Esperado: `→ aplicando 008_busca_dos_atos.sql`.
+
+- [ ] **Passo 3: a busca.** Crie `src/painel/busca.py`:
+
+```python
+"""Busca do RAG (E4, ADR 0012): os atos que respondem a uma pergunta, pela busca textual do Postgres em português.
+Fica só a versão mais recente de cada matéria. As palavras da pergunta entram com OU, e a nota (ts_rank) ordena:
+com E, uma pergunta em linguagem natural quase nunca acharia nada."""
+
+from dataclasses import dataclass
+from datetime import date
+
+DOC = "to_tsvector('portuguese', coalesce(a.ementa, '') || ' ' || coalesce(a.conteudo, ''))"
+
+# shortcut: a pergunta vai para a busca como foi escrita; o Claude reescrever em termos de busca fica para quando a
+# avaliação (Tarefa 15) mostrar perguntas que não acham o ato esperado.
+BUSCA = f"""
+select a.id, a.id_dou, a.data_publicacao, coalesce(n.nome, '(sem nome vigente)'), a.ementa,
+       ts_headline('portuguese',
+                   regexp_replace(coalesce(a.ementa, '') || ' ' || coalesce(a.conteudo, ''), '<[^>]+>', ' ', 'g'),
+                   q.q, 'MaxWords=60, MinWords=25, MaxFragments=2, StartSel=**, StopSel=**')
+from ato a
+cross join (select nullif(replace(plainto_tsquery('portuguese', %(pergunta)s)::text, ' & ', ' | '), '')::tsquery as q) q
+left join orgao_nome n on n.orgao_id = a.orgao_id and n.data_fim is null
+where q.q is not null and {DOC} @@ q.q
+  and (%(orgao)s::int is null or a.orgao_id = %(orgao)s::int)
+  and (%(de)s::date is null or a.data_publicacao >= %(de)s::date)
+  and (%(ate)s::date is null or a.data_publicacao <= %(ate)s::date)
+  and not exists (select 1 from ato b where b.origem = a.origem and b.id_dou = a.id_dou and b.versao > a.versao)
+order by ts_rank({DOC}, q.q) desc, a.data_publicacao desc
+limit %(limite)s
+"""
+
+
+@dataclass(frozen=True)
+class Ato:
+    id: int
+    id_dou: str | None
+    data: date
+    conselho: str
+    ementa: str | None
+    trecho: str
+
+
+def buscar(conn, pergunta, orgao=None, de=None, ate=None, limite=8):
+    linhas = conn.execute(BUSCA, {"pergunta": pergunta, "orgao": orgao, "de": de, "ate": ate, "limite": limite}).fetchall()
+    return [Ato(*l) for l in linhas]
+```
+
+Rode: `make test-db-py`. Esperado: os testes do `dou_db` com `OK`, inclusive os 3 novos.
+
+- [ ] **Passo 4: o acesso do papel novo.** Em `tests/db/test_acesso.sh`, antes do `echo "descarte do revisor (LGPD)"`, acrescente:
+
+```bash
+echo "app_perguntas"
+pode     "busca no texto dos atos"              app_perguntas "SELECT count(id) FROM ato WHERE to_tsvector('portuguese', coalesce(ementa, '') || ' ' || coalesce(conteudo, '')) @@ plainto_tsquery('portuguese', 'conselho')"
+pode     "lê o nome dos órgãos"                 app_perguntas "SELECT count(*) FROM orgao_nome"
+nao_pode "não lê os revisores"                  app_perguntas "SELECT nome FROM revisor"
+nao_pode "não lê a classificação"               app_perguntas "SELECT count(*) FROM classificacao"
+nao_pode "não escreve no ato"                   app_perguntas "UPDATE ato SET ementa = ementa"
+```
+
+Rode: `bash tests/db/test_acesso.sh`. Esperado: todos `ok`.
+
+- [ ] **Passo 5: stage.**
+
+```bash
+git add sql/008_busca_dos_atos.sql src/painel/busca.py tests/dou_db/test_busca.py tests/db/test_acesso.sh docker-compose.yml .env.example
+git diff --cached --stat
+```
+
+---
+
+### Tarefa 13: RAG — a resposta citando o ato
+
+**Arquivos:**
+- Criar: `src/painel/perguntar.py`, `tests/painel/test_perguntar.py`
+- Modificar: `src/painel/requirements.txt`, `docker-compose.yml`, `.env.example`
+
+**Interfaces:**
+- Consome: `busca.Ato` (Tarefa 12).
+- Produz:
+  - `perguntar.MODELO`, que vem de `PERGUNTAR_MODELO`, com o padrão `claude-sonnet-5-5`;
+  - `perguntar.Resposta(texto: str, citados: list[int], tokens: int)`;
+  - `perguntar.CitacaoInvalida`;
+  - `perguntar.responder(pergunta: str, atos: list[Ato], cliente, modelo: str = MODELO) -> Resposta`.
+
+- [ ] **Passo 1: o teste, que falha.** Crie `tests/painel/test_perguntar.py`:
+
+```python
+"""A resposta do RAG (src/painel/perguntar.py) com um cliente falso: nenhum teste chama a API de verdade."""
+
+import unittest
+from datetime import date
+from types import SimpleNamespace
+
+from busca import Ato
+from perguntar import CitacaoInvalida, responder
+
+ATOS = [Ato(1, "DOU-1", date(2026, 8, 12), "Conselho Um", "Aprova o licenciamento", "o **licenciamento** ambiental"),
+        Ato(2, "DOU-2", date(2026, 9, 1), "Conselho Dois", None, "o regimento interno")]
+
+
+class Cliente:
+    def __init__(self, texto):
+        self.pedidos = []
+        self.messages = SimpleNamespace(create=self._create)
+        self.texto = texto
+
+    def _create(self, **pedido):
+        self.pedidos.append(pedido)
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text=self.texto)],
+                               usage=SimpleNamespace(input_tokens=100, output_tokens=20))
+
+
+class Responder(unittest.TestCase):
+    def test_cita_os_atos_enviados(self):
+        cliente = Cliente("O Conselho Um aprovou o licenciamento [1].")
+        r = responder("o que aprovaram sobre licenciamento?", ATOS, cliente, modelo="claude-sonnet-5-5")
+        self.assertEqual((r.citados, r.tokens), ([1], 120))
+        pedido = cliente.pedidos[0]
+        self.assertEqual(pedido["model"], "claude-sonnet-5-5")
+        self.assertIn("[1] Conselho Um, 12/08/2026, DOU DOU-1", pedido["messages"][0]["content"])
+        self.assertIn("só os atos", pedido["system"])
+
+    def test_citacao_de_ato_que_nao_foi_enviado(self):
+        with self.assertRaises(CitacaoInvalida):
+            responder("?", ATOS, Cliente("Segundo o ato [3], sim."))
+
+    def test_sem_atos_nao_chama_a_api(self):
+        cliente = Cliente("não deveria ser chamado")
+        r = responder("?", [], cliente)
+        self.assertEqual(cliente.pedidos, [])
+        self.assertIn("Não encontrei", r.texto)
+
+
+if __name__ == "__main__":
+    unittest.main()
+```
+
+Rode: `make test-painel`. Esperado: `ModuleNotFoundError: No module named 'perguntar'`. Se der `No module named 'busca'`, a Tarefa 12 ainda não está aplicada.
+
+- [ ] **Passo 2: a resposta.** Em `src/painel/requirements.txt`, acrescente `anthropic==2.3.0`. Crie `src/painel/perguntar.py`:
+
+```python
+"""Resposta do RAG (E4, ADR 0012): manda à API do Claude a pergunta e os atos que a busca achou, e devolve a resposta
+citando os atos por número. Resposta que cita um ato que não foi enviado é recusada: o assistente só afirma o que
+está nos atos. Sem ato achado, a API nem é chamada."""
+
+import os
+import re
+from dataclasses import dataclass
+
+MODELO = os.environ.get("PERGUNTAR_MODELO", "claude-sonnet-5-5")
+
+SISTEMA = (
+    "Você responde perguntas sobre atos de conselhos nacionais de participação social publicados no Diário Oficial "
+    "da União. Use só os atos fornecidos. Cite cada afirmação com o número do ato entre colchetes, como [2]. "
+    "Se os atos não respondem a pergunta, diga que não encontrou a resposta nos atos achados; não complete com o "
+    "que você sabe. Responda em português, em poucas frases."
+)
+
+
+class CitacaoInvalida(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class Resposta:
+    texto: str
+    citados: list[int]
+    tokens: int
+
+
+def contexto(pergunta, atos):
+    blocos = [f"[{i}] {a.conselho}, {a.data:%d/%m/%Y}, DOU {a.id_dou or 'planilha'}\n"
+              f"Ementa: {a.ementa or '-'}\nTrecho: {a.trecho}" for i, a in enumerate(atos, 1)]
+    return "Atos encontrados:\n\n" + "\n\n".join(blocos) + f"\n\nPergunta: {pergunta}"
+
+
+def responder(pergunta, atos, cliente, modelo=MODELO):
+    if not atos:
+        return Resposta("Não encontrei atos que respondam a essa pergunta.", [], 0)
+    msg = cliente.messages.create(model=modelo, max_tokens=1024, system=SISTEMA,
+                                  messages=[{"role": "user", "content": contexto(pergunta, atos)}])
+    texto = "".join(b.text for b in msg.content if b.type == "text")
+    citados = list(dict.fromkeys(int(n) for n in re.findall(r"\[(\d+)\]", texto)))
+    fora = [n for n in citados if not 1 <= n <= len(atos)]
+    if fora:
+        raise CitacaoInvalida(f"a resposta citou {fora}, mas só {len(atos)} atos foram enviados")
+    return Resposta(texto, citados, msg.usage.input_tokens + msg.usage.output_tokens)
+```
+
+- [ ] **Passo 3: a chave e o modelo no ambiente.** No `docker-compose.yml`, no `environment:` do `painel`, acrescente:
+
+```yaml
+      # E4 (ADR 0012): a página Perguntar lê os atos como app_perguntas e responde pela API do Claude.
+      # A chave fica só no .env da Luiza; sem ela, a página mostra os atos achados e não responde.
+      PERGUNTAS_PGUSER: app_perguntas
+      PERGUNTAS_PGPASSWORD: ${APP_PERGUNTAS_PASSWORD:-app_perguntas}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      PERGUNTAR_MODELO: ${PERGUNTAR_MODELO:-claude-sonnet-5-5}
+```
+
+No `.env.example`, acrescente:
+
+```
+# E4: a página Perguntar (RAG). Ponha a chave só no seu .env; o .env.example fica sem ela.
+ANTHROPIC_API_KEY=
+PERGUNTAR_MODELO=claude-sonnet-5-5
+```
+
+Rode: `make test-painel`. Esperado: todos `OK`.
+
+- [ ] **Passo 4: stage.**
+
+```bash
+git add src/painel/perguntar.py src/painel/requirements.txt tests/painel/test_perguntar.py docker-compose.yml .env.example
+git diff --cached --stat
+```
+
+Confira que nenhuma chave entrou: `git diff --cached | grep -c "sk-ant"` deve dar `0`.
+
+---
+
+### Tarefa 14: RAG — a página Perguntar
+
+**Arquivos:**
+- Criar: `src/painel/pages/2_Perguntar.py`
+- Modificar: `tests/painel/test_perguntar.py`
+
+**Interfaces:**
+- Consome: `busca.buscar` (Tarefa 12); `perguntar.responder`, `perguntar.MODELO` e `perguntar.CitacaoInvalida` (Tarefa 13).
+
+- [ ] **Passo 1: o teste sem banco, que falha.** Em `tests/painel/test_perguntar.py`, acrescente:
+
+```python
+import os
+from streamlit.testing.v1 import AppTest
+
+
+class Pagina(unittest.TestCase):
+    def test_sem_banco_avisa(self):
+        os.environ["PGHOST"] = "127.0.0.1"
+        os.environ["PGPORT"] = "1"
+        at = AppTest.from_file("/app/pages/2_Perguntar.py").run(timeout=30)
+        self.assertEqual(len(at.exception), 0)
+        self.assertTrue(any("make up" in e.value for e in at.error))
+```
+
+Rode: `make test-painel`. Esperado: falha, porque a página não existe.
+
+- [ ] **Passo 2: a página.** Crie `src/painel/pages/2_Perguntar.py`:
+
+```python
+"""Perguntar (E4, ADR 0012): a pesquisadora pergunta em português; a busca acha os atos no Postgres e a API do Claude
+responde citando cada um. A página entra como app_perguntas: lê o texto dos atos e o nome dos órgãos, nada mais."""
+
+import os
+
+import anthropic
+import psycopg
+import streamlit as st
+
+from busca import buscar
+from perguntar import MODELO, CitacaoInvalida, responder
+
+st.title("Perguntar aos atos")
+st.caption("A resposta usa só os atos achados no Diário Oficial e cita cada um pelo número. Se nenhum ato responde, ela diz que não achou.")
+st.caption("Não escreva dado pessoal na pergunta: ela e os trechos achados vão para a API do Claude, fora do país.")
+
+
+def conecta():
+    return psycopg.connect(host=os.environ.get("PGHOST", "db"), port=int(os.environ.get("PGPORT", 5432)),
+                           dbname=os.environ.get("PGDATABASE"), user=os.environ.get("PERGUNTAS_PGUSER"),
+                           password=os.environ.get("PERGUNTAS_PGPASSWORD"), connect_timeout=3)
+
+
+try:
+    with conecta() as conn:
+        conselhos = conn.execute("select orgao_id, nome from orgao_nome "
+                                 "where data_fim is null and nome ilike 'conselho%' order by nome").fetchall()
+except psycopg.OperationalError:
+    st.error("Sem conexão com o banco da curadoria: suba o Postgres com make up.")
+    st.stop()
+
+pergunta = st.text_input("Pergunta", placeholder="O que o CONAMA decidiu sobre licenciamento?")
+c1, c2, c3 = st.columns(3)
+conselho = c1.selectbox("Conselho", [None] + conselhos, format_func=lambda c: "todos" if c is None else c[1])
+de = c2.date_input("De", value=None)
+ate = c3.date_input("Até", value=None)
+if not st.button("Perguntar", disabled=not pergunta):
+    st.stop()
+
+with conecta() as conn:
+    atos = buscar(conn, pergunta, orgao=conselho[0] if conselho else None, de=de, ate=ate)
+
+if not os.environ.get("ANTHROPIC_API_KEY"):
+    st.info("Sem ANTHROPIC_API_KEY no .env: a busca funciona, a resposta não. Os atos achados estão abaixo.")
+else:
+    try:
+        r = responder(pergunta, atos, anthropic.Anthropic())
+        st.markdown(r.texto)
+        st.caption(f"{r.tokens} tokens · {MODELO}")
+    except CitacaoInvalida as e:
+        st.error(f"A resposta foi recusada: {e}. Tente de novo.")
+    except anthropic.APIError as e:
+        st.error(f"A API do Claude falhou: {e}. Os atos achados estão abaixo.")
+
+for i, a in enumerate(atos, 1):
+    with st.expander(f"[{i}] {a.conselho} · {a.data:%d/%m/%Y} · DOU {a.id_dou or 'planilha'}"):
+        if a.ementa:
+            st.write(a.ementa)
+        st.markdown(a.trecho)
+```
+
+Rode: `make test-painel`. Esperado: todos `OK`.
+
+- [ ] **Passo 3: de ponta a ponta, com print.** Com a chave no `.env` da Luiza, rode `make painel` e abra Perguntar. Faça duas perguntas:
+  1. uma sobre um ato que você sabe que existe no banco;
+  2. uma sobre um assunto que não está nos atos.
+
+Esperado:
+- na primeira, uma resposta com `[n]`, e os atos citados abaixo;
+- na segunda, "não encontrei" sem inventar.
+
+Salve os prints em `docs/adr/medicoes/0012-rag/perguntar-*.png`.
+
+- [ ] **Passo 4: stage.**
+
+```bash
+git add src/painel/pages/2_Perguntar.py tests/painel/test_perguntar.py docs/adr/medicoes/0012-rag
+git diff --cached --stat
+```
+
+---
+
+### Tarefa 15: RAG — avaliação com perguntas reais (HITL)
+
+**Arquivos:**
+- Criar: `docs/rag/avaliacao.csv`, `src/painel/avaliar.py`
+- Modificar: `docker-compose.yml`, `Makefile`
+
+**Interfaces:**
+- Consome: `busca.buscar` (Tarefa 12) e `perguntar.responder` (Tarefa 13).
+- Produz: `make avaliar-rag`, ou `make avaliar-rag COM_RESPOSTA=1`, que grava `docs/adr/medicoes/0012-rag/avaliacao-AAAAMMDD.txt`.
+
+- [ ] **Passo 1: as perguntas, com a pesquisadora ou a squad.** Escreva pelo menos 20 perguntas em `docs/rag/avaliacao.csv`, com o cabeçalho:
+
+```
+pergunta,orgao_id,de,ate,esperados
+```
+
+`esperados` são os `id_dou` dos atos que respondem a pergunta, separados por `;`. Para achar candidatos no banco:
+
+```bash
+docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select a.id_dou, a.data_publicacao, n.nome, left(a.ementa, 80) from ato a join orgao_nome n on n.orgao_id = a.orgao_id and n.data_fim is null where a.origem = '\''DOU'\'' order by random() limit 40"'
+```
+
+Misture os tipos:
+- perguntas com e sem filtro de conselho;
+- perguntas com e sem filtro de período;
+- pelo menos 3 sem resposta nos atos, com `esperados` vazio. Elas medem se o assistente admite que não achou.
+
+- [ ] **Passo 2: o script.** Crie `src/painel/avaliar.py`:
+
+```python
+"""python avaliar.py ARQUIVO.csv [--com-resposta]: mede a busca do RAG contra as perguntas da avaliação (ADR 0012).
+Com --com-resposta, chama a API do Claude em cada pergunta e mede se a resposta cita um ato esperado: gasta a conta
+da chave do .env."""
+
+import csv
+import os
+import sys
+import time
+
+import psycopg
+
+from busca import buscar
+
+
+def main(caminho, com_resposta):
+    with open(caminho, encoding="utf-8") as f:
+        linhas = list(csv.DictReader(f))
+    cliente = None
+    if com_resposta:
+        import anthropic
+        from perguntar import CitacaoInvalida, responder
+        cliente = anthropic.Anthropic()
+    achou_total = sem_resposta_ok = com_esperado = 0
+    with psycopg.connect(host=os.environ.get("PGHOST", "db"), dbname=os.environ["PGDATABASE"],
+                         user=os.environ["PERGUNTAS_PGUSER"], password=os.environ["PERGUNTAS_PGPASSWORD"]) as conn:
+        for l in linhas:
+            esperados = {e for e in l["esperados"].split(";") if e}
+            atos = buscar(conn, l["pergunta"], orgao=int(l["orgao_id"]) if l["orgao_id"] else None,
+                          de=l["de"] or None, ate=l["ate"] or None)
+            achados = esperados & {a.id_dou for a in atos}
+            if esperados:
+                com_esperado += 1
+                achou_total += bool(achados)
+            saida = f"{'ok   ' if achados or not esperados else 'FALHA'} {l['pergunta']} | esperados {len(esperados)}, achados {len(achados)}, atos {len(atos)}"
+            if cliente:
+                s = time.time()
+                try:
+                    r = responder(l["pergunta"], atos, cliente)
+                    cita = any(atos[n - 1].id_dou in esperados for n in r.citados)
+                    if not esperados and not r.citados:
+                        sem_resposta_ok += 1
+                    saida += f" | cita esperado: {'sim' if cita else 'não'}, {r.tokens} tokens, {time.time() - s:.1f} s"
+                except CitacaoInvalida as e:
+                    saida += f" | RECUSADA: {e}"
+            print(saida)
+    print(f"busca: {achou_total} de {com_esperado} perguntas com resposta acharam um ato esperado entre os 8 primeiros")
+    if cliente:
+        print(f"sem resposta nos atos: {sem_resposta_ok} de {len(linhas) - com_esperado} responderam sem citar ato")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1], "--com-resposta" in sys.argv)
+```
+
+No `docker-compose.yml`, nos `volumes:` do `painel`, acrescente `- ./docs/rag:/docs/rag:ro`. No `Makefile`, acrescente:
+
+```make
+avaliar-rag: .env ## E4: mede a busca do RAG contra docs/rag/avaliacao.csv; COM_RESPOSTA=1 também chama a API do Claude (gasta a conta)
+	mkdir -p docs/adr/medicoes/0012-rag
+	docker compose --progress quiet run --rm -T --entrypoint sh painel -c 'pip install -q --disable-pip-version-check --root-user-action=ignore -r requirements.txt && python avaliar.py /docs/rag/avaliacao.csv $(if $(COM_RESPOSTA),--com-resposta,)' | tee docs/adr/medicoes/0012-rag/avaliacao-$$(date +%Y%m%d).txt
+```
+
+- [ ] **Passo 3: medir.** Rode `make avaliar-rag`, só a busca, sem custo. Depois, **com o ok da Luiza**, rode `make avaliar-rag COM_RESPOSTA=1`. Esperado: as duas linhas de resumo no fim.
+
+**Se a busca achar menos de 15 das 20 perguntas com resposta, pare e leve à squad antes da defesa.** As saídas são duas:
+- o Claude reescreve a pergunta em termos de busca (o `shortcut:` do `busca.py`);
+- os filtros de conselho e período ficam obrigatórios na página.
+
+- [ ] **Passo 4: stage.**
+
+```bash
+git add docs/rag/avaliacao.csv src/painel/avaliar.py docker-compose.yml Makefile docs/adr/medicoes/0012-rag
+git diff --cached --stat
+```
+
+---
+
+### Tarefa 16: RAG — ADR 0012 e a LGPD da transferência (HITL)
+
+**Arquivos:**
+- Criar: `docs/adr/0012-responder-perguntas-com-busca-textual-e-a-api-do-claude.md`
+- Modificar: `docs/lgpd.md`, `docs/adr/README.md`, `site/.vitepress/config.mts`
+
+**Interfaces:**
+- Consome: as medições da Tarefa 15 e a análise da Tarefa 6.
+
+- [ ] **Passo 1: o ADR.** Crie `docs/adr/0012-responder-perguntas-com-busca-textual-e-a-api-do-claude.md`, no formato do 0011. Cada número sai da `avaliacao-*.txt`. Seções:
+  - **Contexto:** a pesquisadora quer perguntar em português e conferir a fonte; o texto integral só existe nos atos do DOU.
+  - **Decisão:**
+    - busca textual do Postgres (`tsvector`, em português, palavras com OU, versão mais recente);
+    - até 8 atos para a API do Claude (`claude-sonnet-5-5`, configurável);
+    - resposta recusada se citar ato não enviado;
+    - papel `app_perguntas` só com as colunas do ato.
+  - **Alternativas:**
+    - busca vetorial (pgvector com embeddings): mais um modelo e mais uma conta; a Voyage AI saiu do escopo em 18/10;
+    - modelo local (um LLM rodando na máquina): sem custo por pergunta, mas pior em português jurídico e pesado para a máquina da pesquisadora;
+    - **a opção nula:** só a busca, mostrando os atos achados, sem LLM. A página já cai nela quando não há chave.
+  - **Medições:**
+    - quantas perguntas a busca acertou;
+    - quantas respostas citaram um ato esperado;
+    - quantas perguntas sem resposta foram admitidas como tal;
+    - tokens e segundos por pergunta.
+  - **Gatilho de revisão:**
+    - a busca errar mais de 1 em 4 perguntas;
+    - o custo por mês passar do que a Luiza aceitar;
+    - a pesquisadora pedir perguntas por sentido, e não por palavra.
+
+- [ ] **Passo 2: a LGPD da transferência.** Em `docs/lgpd.md`, acrescente a seção "O assistente de perguntas":
+  - **O que sai do país:** a pergunta e até 8 trechos de atos públicos do DOU.
+  - **O que não sai:** revisores, classificações, alertas.
+  - **Base legal:** a mesma dos textos do DOU (art. 7º, § 3º).
+  - **Transferência internacional (art. 33):** a squad registra qual hipótese do art. 33 se aplica e a política de retenção da API vigente na data, com o link.
+  - **A pergunta:** a página pede para não escrever dado pessoal nela.
+
+  Tire da seção "Quando revisar esta análise" o item da aba Perguntar, que agora existe.
+
+- [ ] **Passo 3: o índice, o portfólio e o menu.**
+  - Acrescente o 0012 ao índice e ao portfólio do `docs/adr/README.md`, na linha da E4.
+  - Acrescente ao grupo "Decisões (ADRs)" da barra lateral: `{ text: '0012 · Perguntas: busca textual e API do Claude', link: '/docs/adr/0012-responder-perguntas-com-busca-textual-e-a-api-do-claude' },`.
+  - Rode o build do site. Esperado: só `build complete`.
+
+- [ ] **Passo 4: stage e aceite da squad.**
+
+```bash
+git add docs/adr/0012-*.md docs/lgpd.md docs/adr/README.md site/.vitepress/config.mts
+git diff --cached --stat
+```
+
+---
+
+### Tarefa 17: dicionário de dados
+
+**Arquivos:**
+- Criar: `sql/009_dicionario.sql`, `src/dicionario/__init__.py`, `src/dicionario/__main__.py`, `tests/dicionario/test_dicionario.py`, `site/dicionario.md`
+- Modificar:
+  - `dbt/models/marts/marts.yml`, `dbt/models/staging/staging.yml` e o YAML das fontes;
+  - `Makefile`, `site/.vitepress/config.mts`.
+
+**Interfaces:**
+- Produz:
+  - `dicionario.linhas(manifest: dict, catalog: dict, oltp: list[tuple]) -> list[tuple[str, str, str, str, str]]`, com (camada, tabela, coluna, tipo, significado);
+  - `dicionario.sem_descricao(linhas) -> list[str]`;
+  - `dicionario.markdown(linhas) -> str`;
+  - `make dicionario`, que falha se alguma coluna ficar sem descrição.
+
+**O tamanho, medido em 11/11/2026:**
+- a gold tem 90 colunas, das quais só 30 estão declaradas no YAML, e 2 descritas;
+- o OLTP tem 50 colunas, com 16 comentadas.
+
+O trabalho é escrever o significado de umas 120 colunas, onde cada uma mora. O resto é gerado.
+
+- [ ] **Passo 1: o teste do gerador, que falha.** Crie `tests/dicionario/test_dicionario.py`:
+
+```python
+"""O dicionário de dados gerado do manifest, do catalog do dbt e dos comentários do Postgres (src/dicionario)."""
+
+import unittest
+
+from dicionario import linhas, markdown, sem_descricao
+
+MANIFEST = {"nodes": {"model.p.fct_ato": {"resource_type": "model", "name": "fct_ato", "fqn": ["p", "marts", "fct_ato"],
+                                          "columns": {"ato_id": {"description": "Id do ato no OLTP."}}}},
+            "sources": {}}
+CATALOG = {"nodes": {"model.p.fct_ato": {"columns": {"ATO_ID": {"name": "ato_id", "type": "BIGINT"},
+                                                     "MES": {"name": "mes", "type": "DATE"}}}},
+           "sources": {}}
+OLTP = [("ato", "id", "bigint", "Identificador do ato."), ("ato", "ementa", "text", None)]
+
+
+class Dicionario(unittest.TestCase):
+    def test_gold_e_oltp_juntos(self):
+        l = linhas(MANIFEST, CATALOG, OLTP)
+        self.assertIn(("gold", "fct_ato", "ato_id", "BIGINT", "Id do ato no OLTP."), l)
+        self.assertIn(("oltp", "ato", "id", "bigint", "Identificador do ato."), l)
+
+    def test_coluna_sem_descricao_e_apontada(self):
+        self.assertEqual(sem_descricao(linhas(MANIFEST, CATALOG, OLTP)), ["gold.fct_ato.mes", "oltp.ato.ementa"])
+
+    def test_markdown_tem_uma_tabela_por_camada(self):
+        md = markdown(linhas(MANIFEST, CATALOG, OLTP))
+        self.assertIn("## gold", md)
+        self.assertIn("## oltp", md)
+        self.assertIn("| fct_ato | ato_id | BIGINT | Id do ato no OLTP. |", md)
+
+
+if __name__ == "__main__":
+    unittest.main()
+```
+
+Rode: `PYTHONPATH=src python3 -m unittest discover -s tests/dicionario`. Esperado: `ModuleNotFoundError: No module named 'dicionario'`.
+
+- [ ] **Passo 2: o gerador.** Crie `src/dicionario/__init__.py`:
+
+```python
+"""O dicionário de dados gerado, como a linhagem: as colunas reais vêm do catalog do dbt (gold e fontes) e do
+catálogo do Postgres (OLTP); o significado, das descrições no YAML do dbt e dos COMMENT ON. Assim o dicionário
+nunca fica atrás do banco, e coluna sem descrição aparece. Só biblioteca padrão."""
+
+INICIO = "<!-- dicionario:inicio -->"
+FIM = "<!-- dicionario:fim -->"
+
+
+def linhas(manifest, catalog, oltp):
+    """(camada, tabela, coluna, tipo, significado) de cada coluna, em ordem."""
+    out = []
+    for chave, camada_de in (("nodes", lambda n: "gold" if {"marts", "metricas"} & set(n.get("fqn", [])) else "staging"),
+                             ("sources", lambda n: f"fonte {n.get('source_name', '')}")):
+        for uid, real in catalog.get(chave, {}).items():
+            n = manifest.get(chave, {}).get(uid)
+            if not n or n.get("resource_type", "source") not in ("model", "source"):
+                continue
+            descritas = {c.lower(): v.get("description", "") for c, v in n.get("columns", {}).items()}
+            for c in real["columns"].values():
+                out.append((camada_de(n), n["name"], c["name"], c["type"], descritas.get(c["name"].lower()) or ""))
+    out += [("oltp", t, c, tipo, d or "") for t, c, tipo, d in oltp]
+    return sorted(out)
+
+
+def sem_descricao(lista):
+    return [f"{camada}.{tabela}.{coluna}" for camada, tabela, coluna, _, d in lista if not d.strip()]
+
+
+def markdown(lista):
+    partes = []
+    for camada in dict.fromkeys(l[0] for l in lista):
+        partes += [f"## {camada}", "", "| Tabela | Coluna | Tipo | Significado |", "|---|---|---|---|"]
+        partes += [f"| {t} | {c} | {tipo} | {d.replace('|', '/')} |" for cam, t, c, tipo, d in lista if cam == camada]
+        partes.append("")
+    return "\n".join(partes)
+```
+
+Crie `src/dicionario/__main__.py`:
+
+```python
+"""python -m dicionario PAGINA MANIFEST CATALOG: lê os comentários do Postgres (variáveis PG*), monta o dicionário,
+troca a página entre os marcadores e sai com 1 se alguma coluna estiver sem descrição."""
+
+import json
+import sys
+
+import psycopg
+
+from . import FIM, INICIO, linhas, markdown, sem_descricao
+
+OLTP_SQL = """select c.relname, a.attname, format_type(a.atttypid, a.atttypmod), col_description(c.oid, a.attnum)
+              from pg_attribute a join pg_class c on c.oid = a.attrelid join pg_namespace n on n.oid = c.relnamespace
+              where n.nspname = 'public' and c.relkind = 'r' and a.attnum > 0 and not a.attisdropped
+              order by 1, a.attnum"""
+
+if __name__ == "__main__":
+    pagina, manifest, catalog = sys.argv[1:4]
+    with psycopg.connect() as conn:
+        oltp = conn.execute(OLTP_SQL).fetchall()
+    with open(manifest, encoding="utf-8") as f, open(catalog, encoding="utf-8") as g:
+        lista = linhas(json.load(f), json.load(g), oltp)
+    with open(pagina, encoding="utf-8") as f:
+        texto = f.read()
+    i, j = texto.index(INICIO) + len(INICIO), texto.index(FIM)
+    with open(pagina, "w", encoding="utf-8") as f:
+        f.write(texto[:i] + "\n" + markdown(lista) + "\n" + texto[j:])
+    faltam = sem_descricao(lista)
+    if faltam:
+        print(f"{len(faltam)} coluna(s) sem descrição:\n  " + "\n  ".join(faltam), file=sys.stderr)
+        sys.exit(1)
+```
+
+Rode o teste do Passo 1. Esperado: `Ran 3 tests` e `OK`.
+
+- [ ] **Passo 3: a página e o alvo.** Crie `site/dicionario.md`:
+
+```markdown
+---
+title: Dicionário de dados
+outline: [2, 2]
+---
+
+# Dicionário de dados
+
+Toda coluna do projeto, da curadoria no Postgres (oltp) às tabelas que o painel lê (gold). Gerado pelo `make dicionario`
+a partir do banco e do dbt: o tipo é o real, e o significado vem das descrições no YAML do dbt e dos `COMMENT ON` do
+Postgres. Coluna sem significado faz o `make dicionario` falhar.
+
+<!-- dicionario:inicio -->
+<!-- dicionario:fim -->
+```
+
+Acrescente `'site/dicionario.md': 'dicionario.md'` aos `rewrites` do `site/.vitepress/config.mts`. Acrescente também `{ text: 'Dicionário de dados', link: '/dicionario' }` ao grupo "Comece aqui", depois de "Linhagem dos dados". No `Makefile`, acrescente:
+
+```make
+dicionario: .env ## E4: gera site/dicionario.md do banco e do dbt; falha se alguma coluna estiver sem descrição (rode make gold antes)
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador sh -c 'dbt docs generate --project-dir /app/dbt -q && python -m dicionario /app/site/dicionario.md /app/dbt/target/manifest.json /app/dbt/target/catalog.json'
+```
+
+O orquestrador não monta `site/`. No `docker-compose.yml`, nos `volumes:` do `orquestrador`, acrescente `- ./site:/app/site`.
+
+Rode: `make dicionario`. Esperado: a página preenchida e a saída com a lista das colunas sem descrição, perto de 120.
+
+- [ ] **Passo 4: escrever os significados até a lista zerar.**
+  - **Gold e fontes do dbt:** a `description` de cada coluna no YAML do modelo ou da fonte.
+  - **OLTP:** uma migração, `sql/009_dicionario.sql`, só com `COMMENT ON COLUMN tabela.coluna IS '...'`. Use o texto dos ADRs, sem inventar regra.
+
+Rode `make migrate && make gold && make dicionario` até sair sem a lista. Esperado: saída 0 e a página completa.
+
+**Atenção:** a `009` precisa vir depois das migrações das Tarefas 2 e 12, para comentar as colunas de `alerta` também.
+
+- [ ] **Passo 5: stage.**
+
+```bash
+git add sql/009_dicionario.sql src/dicionario tests/dicionario site/dicionario.md site/.vitepress/config.mts dbt/models Makefile docker-compose.yml
+git diff --cached --stat
+```
 
 ---
 
