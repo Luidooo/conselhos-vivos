@@ -107,9 +107,14 @@ O que não é item do checklist da disciplina, mas entrou na E4.
 |---|---|---|
 | **P2 da E1: o que os conselhos decidem, por ano** | consulta salva `tipologia_por_ano` · aba "O que decidem" do painel | [tipologia-por-ano.png](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0011-disponibilizacao/tipologia-por-ano.png): a soma do CSV dá os 209 atos classificados da gold |
 | **Dicionário de dados** | [Dicionário de dados](/dicionario) · `src/dicionario/` · `sql/009_dicionario.sql` | `make dicionario`: 158 colunas, do OLTP à gold (173 linhas: 15 aparecem também como fonte do dbt), e falha se alguma ficar sem descrição |
-| **Assistente de perguntas (RAG)** | `sql/008_busca_dos_atos.sql` · `src/painel/busca.py` · `src/painel/perguntar.py` · `src/painel/pages/2_Perguntar.py` | a página Perguntar do painel: a busca textual acha os atos no Postgres, pelo papel `app_perguntas`, e a API do Claude responde citando o ato |
+| **Assistente de perguntas (RAG)** | `sql/008_busca_dos_atos.sql` · `src/painel/busca.py` · `src/painel/perguntar.py` · `src/painel/pages/2_Perguntar.py` | a página Perguntar do painel, em formato de chat: a busca textual acha os atos no Postgres, pelo papel `app_perguntas`, a API do Claude responde citando o ato, e cada ato do DOU citado tem o link da publicação |
 
-**O assistente ainda não foi exercitado com a API de verdade.** A busca foi conferida no navegador ([perguntar-sem-chave.png](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0012-rag/perguntar-sem-chave.png)); a resposta só rodou nos testes, com um cliente falso. Faltam a avaliação com perguntas reais (#110) e o ADR 0012, com a LGPD de mandar o texto dos atos a um serviço fora do país (#111).
+**O assistente rodou com a API de verdade em 24/11/2026, em quatro perguntas avulsas**, com o DOU de julho a setembro:
+- "O que é o Renave?": respondeu citando duas resoluções do CONTRAN, e as citações conferem com os atos;
+- "O que o CONAMA decidiu sobre licenciamento?", só com atos de julho a novembro de 2026: disse que não achou, e apontou o que havia do CONAMA e do CONTRAN;
+- "quais conselhos estavam ativos mes passado", duas vezes: na primeira montou uma lista parcial, com os poucos atos que a busca trouxe; depois do ajuste na instrução, disse que quem responde isso é o painel.
+
+Quatro perguntas não são avaliação. Sem chave, a página mostra só a busca ([perguntar-sem-chave.png](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0012-rag/perguntar-sem-chave.png), da versão anterior ao chat). Faltam os prints com resposta (#109), a avaliação com perguntas reais (#110) e o ADR 0012, com a LGPD de mandar o texto dos atos a um serviço fora do país (#111).
 
 ## Limites conhecidos e pendências da squad
 

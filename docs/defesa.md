@@ -17,7 +17,7 @@ A coluna "Quem" a squad preenche no ensaio.
 
 1. `make painel` → http://127.0.0.1:8501: os três números, a tabela, o gráfico das métricas.
 2. Revisar: marcar um alerta como tratado ao vivo.
-3. Perguntar: uma pergunta com resposta citando o ato, e uma sem resposta nos atos. Pede a `ANTHROPIC_API_KEY` no `.env` e rede. **A página ainda não rodou com a API de verdade: se o ensaio não a exercitar, este passo sai,** ou fica só a busca, que funciona sem chave.
+3. Perguntar: "O que é o Renave?", que responde citando o ato e traz o link do Diário Oficial, e "Qual foi o orçamento do CNPq em 2030?", que nenhum ato responde. Deixe as datas e o conselho em branco. Pede a `ANTHROPIC_API_KEY` no `.env` e rede. A primeira já rodou com a API de verdade; **a segunda falta rodar no ensaio.** As perguntas ficam na conversa até o painel reiniciar: feitas antes, servem se a rede cair. Evite contagem e "quem está ativo", que são do painel.
 4. http://localhost:5173/conselhos-vivos/linhagem: "Percorrer a linhagem".
 5. `bash tests/db/test_acesso.sh`: os casos saem como `ok`, e a recusa em si não aparece. Para a banca ver o `permission denied`, rode também o comando abaixo, que tenta ler o e-mail como o papel do app:
 
