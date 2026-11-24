@@ -960,3 +960,19 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 
   O `make test` inteiro não rodou.
 - **Quem revisou:** pendente, no PR.
+
+### 2026-11-24 — Análise de LGPD com o dado pessoal medido (#99)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `docs/lgpd.md`, `docs/lgpd/medir.sql`, `docs/lgpd/medicoes.txt`, `site/.vitepress/config.mts`
+- **O que foi pedido:** a Tarefa 6 do plano da E4.
+- **O que foi aproveitado:** o texto da análise como está no plano, com três mudanças:
+  - a medição ganhou a linha do total de atos, porque a contagem de nomeação é sobre os 604 atos, e não só sobre os 389 do DOU;
+  - a página diz o limite da medição: ela só olha a ementa e o começo do texto;
+  - o ADR 0011 é citado sem link, porque ainda não existe (#101) e o link morto quebraria o build do site.
+- **Como foi verificado:** num banco local refeito do zero, com a planilha e o DOU de julho a setembro:
+  - a medição rodou e está em `docs/lgpd/medicoes.txt`;
+  - cada afirmação da seção de segurança foi conferida na migração 007, no `docker-compose.yml` e no `Makefile`;
+  - `bash tests/db/test_acesso.sh`: todos os casos passaram;
+  - `npm --prefix site run build`: `build complete`, sem link morto.
+- **Quem revisou:** Luiza, no PR #118. Ela conferiu os GRANTs, as portas, a `anonimizar_revisor` e os artigos, e pediu para a página dizer que o banco de trabalho tem 2 revisores humanos e 3 com e-mail; entrou.
