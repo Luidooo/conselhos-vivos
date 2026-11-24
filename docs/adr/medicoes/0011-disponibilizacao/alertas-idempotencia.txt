@@ -1,0 +1,14 @@
+$ make alertas   # 1ª rodada
+DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T orquestrador python -m alertas
+[INFO] done novos=10 atualizados=0 inalterados=0
+
+$ make alertas   # 2ª rodada
+DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose --progress quiet run --rm -T orquestrador python -m alertas
+[INFO] done novos=0 atualizados=0 inalterados=10
+
+$ psql: alertas gravados
+          tipo          | mes_referencia | alertas | tratados 
+------------------------+----------------+---------+----------
+ citado_sem_ato_proprio | 2026-09-01     |      10 |        0
+(1 row)
+
