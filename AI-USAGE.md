@@ -1106,4 +1106,5 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   Depois de editar o `marts.yml`, o dbt acusou métrica duplicada. Era o cache do parse parcial: um `dbt parse --no-partial-parse` resolveu, e o YAML tem cada métrica uma vez só.
 
   O `tests/db/test_schema.sh` falha no meu banco local em um caso, porque ele já tem a migração 008 da branch da #107, que não está nesta. O `make test` inteiro não rodou.
+- **Correção depois da review** (Claude Code, Claude Opus 5.5): o gerador passou a ler a view `classificacao_vigente` e a seed `conselhos_excluidos`, 8 colunas que ficavam de fora sem o `make dicionario` falhar; a página diz o que da silver não aparece; dois significados corrigidos (`classificacao.criado_em` e `checksum`). Página regenerada num banco descartável, só com as migrações, e 1 teste novo.
 - **Quem revisou:** pendente, no PR. **Os textos pedem leitura de quem conhece o domínio**, em especial os da `mart_vitalidade` e da `tipologia`.

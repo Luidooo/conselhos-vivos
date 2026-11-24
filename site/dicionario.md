@@ -5,7 +5,7 @@ outline: [2, 2]
 
 # Dicionário de dados
 
-Toda coluna do projeto, da curadoria no Postgres (oltp) às tabelas que o painel lê (gold). Gerado pelo `make dicionario`
+As colunas do projeto, da curadoria no Postgres (oltp) às tabelas que o painel lê (gold). A silver, em Delta, aparece pelo staging, menos quatro colunas de controle da tabela de menções, que ele não lê: `ano`, `atualizado_em`, `checksum` e `fonte`. Gerado pelo `make dicionario`
 a partir do banco e do dbt: o tipo é o real, e o significado vem das descrições no YAML do dbt e dos `COMMENT ON` do
 Postgres. Coluna sem significado faz o `make dicionario` falhar.
 
@@ -111,10 +111,16 @@ Postgres. Coluna sem significado faz o `make dicionario` falhar.
 | ato | versao | integer | Versão da publicação. Atos retificados recebem nova versão com o mesmo id_dou sem sobrescrever a original. |
 | classificacao | ato_id | bigint | Versão do ato que foi classificada. |
 | classificacao | confianca | numeric(4,3) | Score de confiança da predição (utilizado quando revisor.tipo = PIPELINE, valor entre 0 e 1). |
-| classificacao | criado_em | timestamp with time zone | Quando a classificação foi registrada. A mais recente de cada revisor é a vigente. |
+| classificacao | criado_em | timestamp with time zone | Quando a classificação foi registrada. A mais recente de cada revisor para cada ato é a vigente. |
 | classificacao | id | bigint | Identificador da classificação. A tabela só recebe linha nova (ADR 0001). |
 | classificacao | revisor_id | integer | Quem classificou. |
 | classificacao | tipologia_sigla | character varying(10) | Tipologia atribuída ao ato. |
+| classificacao_vigente | ato_id | bigint | Versão do ato que foi classificada. |
+| classificacao_vigente | confianca | numeric(4,3) | Score de confiança da predição, entre 0 e 1, quando o revisor é PIPELINE. |
+| classificacao_vigente | criado_em | timestamp with time zone | Quando a classificação vigente foi registrada. |
+| classificacao_vigente | id | bigint | Identificador da classificação vigente (classificacao.id). |
+| classificacao_vigente | revisor_id | integer | Quem classificou. Há uma linha por revisor para cada ato. |
+| classificacao_vigente | tipologia_sigla | character varying(10) | Tipologia atribuída ao ato. |
 | conselho | criado_em | timestamp with time zone | Quando a linha foi gravada no banco. |
 | conselho | descricao | text | Descrição livre do conselho. Opcional. |
 | conselho | eh_participativo | boolean | Distingue conselhos com participação da sociedade civil daqueles puramente corporativos/consultivos (ex: CFM, CFF). |
@@ -149,6 +155,13 @@ Postgres. Coluna sem significado faz o `make dicionario` falhar.
 | tipologia | nome | character varying(100) | Nome da tipologia. |
 | tipologia | sigla | character varying(10) | Sigla da tipologia, a chave. O 99 é o Fora da tipologia, da planilha (ADR 0003). |
 
+## seed
+
+| Tabela | Coluna | Tipo | Significado |
+|---|---|---|---|
+| conselhos_excluidos | motivo | VARCHAR | Por que o órgão não é um colegiado de participação social. |
+| conselhos_excluidos | nome | VARCHAR | Nome do órgão excluído, como em orgao_nome. |
+
 ## staging
 
 | Tabela | Coluna | Tipo | Significado |
@@ -156,7 +169,7 @@ Postgres. Coluna sem significado faz o `make dicionario` falhar.
 | stg_atos | ano | INTEGER | Ano da publicação. Particiona a tabela Delta (ADR 0006). |
 | stg_atos | ato_id | BIGINT | Id da versão do ato no OLTP (ato.id). |
 | stg_atos | atualizado_em | TIMESTAMP WITH TIME ZONE | Quando o lake gravou a linha na silver. |
-| stg_atos | checksum | VARCHAR | Resumo do texto, da classificação e do órgão da linha. O lake só regrava o ato quando ele muda. |
+| stg_atos | checksum | VARCHAR | Resumo do texto, da data, da referência legal, do órgão, da classificação e do tipo do revisor. O lake só regrava o ato quando ele muda. |
 | stg_atos | codigo_siorg | INTEGER | Código da unidade no SIORG, quando o nome casa com exatamente uma unidade. Vínculo externo, não identidade (ADR 0004). |
 | stg_atos | conteudo | VARCHAR | Texto da matéria: no DOU, o HTML como veio. |
 | stg_atos | data_publicacao | DATE | Data de publicação do ato, como veio da fonte. |

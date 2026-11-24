@@ -246,7 +246,10 @@ seeds:
     description: "Órgãos com \"Conselho\" no nome que não são colegiados de participação social, fora da dimensão (ADR 0010, ponto 3). Chave: o nome."
     columns:
       - name: nome
+        description: "Nome do órgão excluído, como em orgao_nome."
         data_tests: [unique, not_null]
+      - name: motivo
+        description: "Por que o órgão não é um colegiado de participação social."
 
 unit_tests:
   - name: fct_ato_casa_o_nome_da_data

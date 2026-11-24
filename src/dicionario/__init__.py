@@ -9,11 +9,11 @@ FIM = "<!-- dicionario:fim -->"
 def linhas(manifest, catalog, oltp):
     """(camada, tabela, coluna, tipo, significado) de cada coluna, em ordem."""
     out = []
-    for chave, camada_de in (("nodes", lambda n: "gold" if {"marts", "metricas"} & set(n.get("fqn", [])) else "staging"),
+    for chave, camada_de in (("nodes", lambda n: "seed" if n["resource_type"] == "seed" else "gold" if {"marts", "metricas"} & set(n.get("fqn", [])) else "staging"),
                              ("sources", lambda n: f"fonte {n.get('source_name', '')}")):
         for uid, real in catalog.get(chave, {}).items():
             n = manifest.get(chave, {}).get(uid)
-            if not n or n.get("resource_type", "source") not in ("model", "source"):
+            if not n or n.get("resource_type", "source") not in ("model", "seed", "source"):
                 continue
             descritas = {c.lower(): v.get("description", "") for c, v in n.get("columns", {}).items()}
             for c in real["columns"].values():

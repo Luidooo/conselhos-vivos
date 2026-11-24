@@ -10,7 +10,7 @@ from . import FIM, INICIO, linhas, markdown, sem_descricao
 
 OLTP_SQL = """select c.relname, a.attname, format_type(a.atttypid, a.atttypmod), col_description(c.oid, a.attnum)
               from pg_attribute a join pg_class c on c.oid = a.attrelid join pg_namespace n on n.oid = c.relnamespace
-              where n.nspname = 'public' and c.relkind = 'r' and a.attnum > 0 and not a.attisdropped
+              where n.nspname = 'public' and c.relkind in ('r', 'v') and a.attnum > 0 and not a.attisdropped
               order by 1, a.attnum"""
 
 if __name__ == "__main__":

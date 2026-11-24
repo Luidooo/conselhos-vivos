@@ -21,7 +21,14 @@ COMMENT ON COLUMN classificacao.id IS 'Identificador da classificação. A tabel
 COMMENT ON COLUMN classificacao.ato_id IS 'Versão do ato que foi classificada.';
 COMMENT ON COLUMN classificacao.tipologia_sigla IS 'Tipologia atribuída ao ato.';
 COMMENT ON COLUMN classificacao.revisor_id IS 'Quem classificou.';
-COMMENT ON COLUMN classificacao.criado_em IS 'Quando a classificação foi registrada. A mais recente de cada revisor é a vigente.';
+COMMENT ON COLUMN classificacao.criado_em IS 'Quando a classificação foi registrada. A mais recente de cada revisor para cada ato é a vigente.';
+
+COMMENT ON COLUMN classificacao_vigente.id IS 'Identificador da classificação vigente (classificacao.id).';
+COMMENT ON COLUMN classificacao_vigente.ato_id IS 'Versão do ato que foi classificada.';
+COMMENT ON COLUMN classificacao_vigente.tipologia_sigla IS 'Tipologia atribuída ao ato.';
+COMMENT ON COLUMN classificacao_vigente.revisor_id IS 'Quem classificou. Há uma linha por revisor para cada ato.';
+COMMENT ON COLUMN classificacao_vigente.confianca IS 'Score de confiança da predição, entre 0 e 1, quando o revisor é PIPELINE.';
+COMMENT ON COLUMN classificacao_vigente.criado_em IS 'Quando a classificação vigente foi registrada.';
 
 COMMENT ON COLUMN conselho.orgao_id IS 'O órgão que a pesquisadora avaliou como conselho.';
 COMMENT ON COLUMN conselho.descricao IS 'Descrição livre do conselho. Opcional.';

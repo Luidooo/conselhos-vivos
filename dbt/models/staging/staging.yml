@@ -44,7 +44,7 @@ models:
       - name: revisor_tipo
         description: "Quem deu a classificação vigente: HUMANO ou PIPELINE. Nulo sem classificação."
       - name: checksum
-        description: "Resumo do texto, da classificação e do órgão da linha. O lake só regrava o ato quando ele muda."
+        description: "Resumo do texto, da data, da referência legal, do órgão, da classificação e do tipo do revisor. O lake só regrava o ato quando ele muda."
       - name: atualizado_em
         description: "Quando o lake gravou a linha na silver."
       - name: mes
