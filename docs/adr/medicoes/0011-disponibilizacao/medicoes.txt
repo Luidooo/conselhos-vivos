@@ -1,0 +1,53 @@
+# Medições do ADR 0011, 2026-11-24 14:20 UTC
+## mf query de cada consulta salva
+atividade_por_mes: 3 linhas em 8.2 s
+   2026-07 94
+   2026-09 93
+   2026-08 56
+atividade_por_conselho: 37 linhas em 5.7 s
+## o SQL que o MetricFlow gerou para atividade_por_mes
+SELECT
+  COALESCE(subq_6.metric_time__month, subq_12.metric_time__month) AS metric_time__month
+  , MAX(subq_6.atos_publicados) AS atos_publicados
+  , MAX(subq_12.mencoes_recebidas) AS mencoes_recebidas
+FROM (
+  SELECT
+    metric_time__month
+    , SUM(atos_publicados) AS atos_publicados
+  FROM (
+    SELECT
+      DATE_TRUNC('month', data_publicacao) AS metric_time__month
+      , origem AS ato__origem
+      , 1 AS atos_publicados
+    FROM "conselhos"."main"."fct_ato" atos_src_10000
+  ) subq_2
+  WHERE ato__origem = 'DOU'
+  GROUP BY
+    metric_time__month
+) subq_6
+FULL OUTER JOIN (
+  SELECT
+    metric_time__month
+    , SUM(__mencoes_recebidas) AS mencoes_recebidas
+  FROM (
+    SELECT
+      DATE_TRUNC('month', data_publicacao) AS metric_time__month
+      , 1 AS __mencoes_recebidas
+    FROM "conselhos"."main"."fct_mencao" mencoes_src_10000
+  ) subq_10
+  GROUP BY
+    metric_time__month
+) subq_12
+ON
+  subq_6.metric_time__month = subq_12.metric_time__month
+GROUP BY
+  COALESCE(subq_6.metric_time__month, subq_12.metric_time__month)
+## opção nula: atos por mês em SQL direto na gold
+3 linhas em 0.005 s
+   2026-07 94
+   2026-08 56
+   2026-09 93
+## tamanho do que o consumo lê
+4.1M	data/gold/conselhos.duckdb
+4.0K	data/gold/metricas/atividade_por_conselho.csv
+4.0K	data/gold/metricas/atividade_por_mes.csv
