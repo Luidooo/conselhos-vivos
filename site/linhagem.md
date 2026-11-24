@@ -5,7 +5,7 @@ outline: [2, 3]
 
 # Linhagem dos dados
 
-De onde vem cada número do painel: do ZIP do Diário Oficial até a tabela que responde à pergunta da E1. A linhagem está em três níveis, do mais geral ao mais detalhado.
+De onde vem cada número do painel: do ZIP do Diário Oficial até a tabela que responde à pergunta da E1, e daí até as métricas e o alerta que volta ao Postgres. A linhagem está em três níveis, do mais geral ao mais detalhado.
 
 ## Do dado bruto ao painel
 
@@ -13,61 +13,88 @@ De onde vem cada número do painel: do ZIP do Diário Oficial até a tabela que 
 
 <p class="cv-legenda">Clique numa tabela para ver o que ela guarda, o comando que a gera e os testes que a protegem, ou percorra a linhagem passo a passo.</p>
 
-O Dagster roda os passos do ZIP até a gold num job mensal: `atos_do_mes` → `silver/atos` e `silver/mencoes` → modelos do dbt, com retry e backfill. O grafo dele, como aparece na interface, está em [grafo-dagster.jpg](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0009-gold/grafo-dagster.jpg).
+O Dagster roda os passos do ZIP até o alerta num job mensal: `atos_do_mes` → `silver/atos` e `silver/mencoes` → modelos do dbt → `metricas` → `alertas`, com retry e backfill. O grafo dele, como aparece na interface, está em [grafo-dagster.jpg](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0011-disponibilizacao/grafo-dagster.jpg).
 
 ## Dentro do dbt
 
-Gerado do `manifest.json` do dbt pelo `make gold-docs`: é sempre o projeto como está, modelo a modelo, das fontes aos marts.
+Gerado do `manifest.json` do dbt pelo `make gold-docs`: é sempre o projeto como está, modelo a modelo, das fontes às consultas salvas da camada semântica.
 
 <!-- linhagem-dbt:inicio -->
 ```mermaid
 flowchart LR
   subgraph c0["fonte oltp"]
-    n12["oltp.conselho"]
-    n13["oltp.orgao"]
-    n14["oltp.orgao_nome"]
+    n22["oltp.conselho"]
+    n23["oltp.orgao"]
+    n24["oltp.orgao_nome"]
   end
   subgraph c1["fonte silver"]
-    n15["silver.atos"]
-    n16["silver.mencoes"]
+    n25["silver.atos"]
+    n26["silver.mencoes"]
   end
   subgraph c2["seed"]
-    n11["conselhos_excluidos"]
+    n19["conselhos_excluidos"]
   end
   subgraph c3["staging"]
-    n6["stg_atos"]
-    n7["stg_conselho"]
-    n8["stg_mencoes"]
-    n9["stg_orgao"]
-    n10["stg_orgao_nome"]
+    n12["stg_atos"]
+    n13["stg_conselho"]
+    n14["stg_mencoes"]
+    n15["stg_orgao"]
+    n16["stg_orgao_nome"]
   end
   subgraph c4["marts"]
-    n0["dim_conselho"]
-    n1["fct_ato"]
-    n2["fct_conselho_mes"]
-    n3["fct_mencao"]
-    n4["freshness_vitalidade"]
-    n5["mart_vitalidade"]
+    n5["dim_conselho"]
+    n6["fct_ato"]
+    n7["fct_conselho_mes"]
+    n8["fct_mencao"]
+    n9["freshness_vitalidade"]
+    n10["mart_vitalidade"]
+    n11["metricflow_time_spine"]
   end
-  n7 --> n0
-  n9 --> n0
-  n10 --> n0
-  n11 --> n0
-  n0 --> n1
-  n6 --> n1
-  n0 --> n2
-  n1 --> n2
-  n0 --> n3
-  n8 --> n3
-  n2 --> n4
-  n0 --> n5
-  n2 --> n5
-  n3 --> n5
-  n15 --> n6
-  n12 --> n7
-  n16 --> n8
-  n13 --> n9
-  n14 --> n10
+  subgraph c5["semântica"]
+    n20["modelo semântico atos"]
+    n21["modelo semântico mencoes"]
+    n0["métrica atos_classificados"]
+    n1["métrica atos_de_autorregulacao"]
+    n2["métrica atos_publicados"]
+    n3["métrica mencoes_recebidas"]
+    n4["métrica proporcao_autorregulacao"]
+  end
+  subgraph c6["consultas salvas"]
+    n17["atividade_por_conselho"]
+    n18["atividade_por_mes"]
+  end
+  n20 --> n0
+  n20 --> n1
+  n20 --> n2
+  n21 --> n3
+  n0 --> n4
+  n1 --> n4
+  n13 --> n5
+  n15 --> n5
+  n16 --> n5
+  n19 --> n5
+  n5 --> n6
+  n12 --> n6
+  n5 --> n7
+  n6 --> n7
+  n5 --> n8
+  n14 --> n8
+  n7 --> n9
+  n5 --> n10
+  n7 --> n10
+  n8 --> n10
+  n25 --> n12
+  n22 --> n13
+  n26 --> n14
+  n23 --> n15
+  n24 --> n16
+  n2 --> n17
+  n3 --> n17
+  n4 --> n17
+  n2 --> n18
+  n3 --> n18
+  n6 --> n20
+  n8 --> n21
 ```
 <!-- linhagem-dbt:fim -->
 
