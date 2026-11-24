@@ -12,6 +12,7 @@ services:
       ETL_REVERSO_PASSWORD: ${ETL_REVERSO_PASSWORD:-etl_reverso}
       APP_CURADORIA_PASSWORD: ${APP_CURADORIA_PASSWORD:-app_curadoria}
       LEITOR_ANALITICO_PASSWORD: ${LEITOR_ANALITICO_PASSWORD:-leitor_analitico}
+      APP_PERGUNTAS_PASSWORD: ${APP_PERGUNTAS_PASSWORD:-app_perguntas}
     ports:
       # só 127.0.0.1: os containers usam db:5432, e ninguém na rede alcança o banco
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
