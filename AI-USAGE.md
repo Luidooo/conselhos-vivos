@@ -957,4 +957,4 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - cada afirmação da seção de segurança foi conferida na migração 007, no `docker-compose.yml` e no `Makefile`;
   - `bash tests/db/test_acesso.sh`: todos os casos passaram;
   - `npm --prefix site run build`: `build complete`, sem link morto.
-- **Quem revisou:** pendente, no PR.
+- **Quem revisou:** Luiza, no PR #118. Ela conferiu os GRANTs, as portas, a `anonimizar_revisor` e os artigos, e pediu para a página dizer que o banco de trabalho tem 2 revisores humanos e 3 com e-mail; entrou.

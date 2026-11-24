@@ -8,10 +8,12 @@ Esta análise é da squad, não um parecer jurídico.
 
 | Onde | Dado | Titular | Quanto há |
 |---|---|---|---|
-| `revisor` | nome e e-mail de quem classifica os atos | a pesquisadora e bolsistas | 1 revisor humano; 2 revisores com e-mail, e o outro é o pipeline |
+| `revisor` | nome e e-mail de quem classifica os atos | a pesquisadora e bolsistas | 1 revisor humano; 2 revisores com e-mail, e o outro é o pipeline. No banco de trabalho da squad são 2 humanos e 3 com e-mail |
 | `ato.conteudo` e `ato.ementa` | nomes de pessoas nomeadas, designadas ou exoneradas em atos de conselho; CPF, quando o ato traz, mascarado pela própria Imprensa Nacional | pessoas citadas no DOU | nenhum ato com CPF mascarado; 1 ato de nomeação, designação ou exoneração, entre 604 atos (389 do DOU e 215 da planilha) |
 | `data/bronze/` e `data/silver/mencoes/` | os mesmos textos, como vieram do DOU | idem | os ZIPs inteiros da Seção 1 |
 | `alerta.tratado_por` | quem tratou cada alerta | a curadoria | liga ao `revisor` |
+
+**De onde vêm os números:** do banco refeito do zero, que qualquer um reproduz com `make setup` e a carga de julho a setembro. O banco de trabalho da squad, usado na defesa, tem um revisor humano a mais, cadastrado à mão: são 2 humanos e 3 com e-mail, na contagem da Luiza em 24/11/2026. As contagens dos atos são as mesmas, porque vêm da mesma planilha e do mesmo DOU.
 
 **O limite da medição:** a contagem de nomeação procura os três verbos na ementa e nos 300 primeiros caracteres do texto. Um nome citado mais adiante, como o de quem assina o ato ou o de um conselheiro numa ata, não entra nela. O número diz que ato de pessoal é raro nos conselhos; não diz que só um ato tem nome de pessoa.
 
