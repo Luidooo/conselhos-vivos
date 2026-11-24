@@ -1018,3 +1018,21 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 
   O `make test` inteiro não rodou.
 - **Quem revisou:** pendente, no PR.
+
+### 2026-11-24 — RAG: resposta pela API do Claude citando o ato (#108)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `src/painel/perguntar.py`, `tests/painel/test_perguntar.py`, `src/painel/requirements.txt`, `docker-compose.yml`, `.env.example`
+- **O que foi pedido:** a Tarefa 13 do plano da E4.
+- **O que foi aproveitado:** o `responder()` do plano, com quatro mudanças por causa do que o Sonnet 5.5 exige:
+  - o teto de tokens passou de 1024 para 16000, porque o raciocínio do modelo sai do mesmo teto que a resposta;
+  - a chamada é `cliente.beta.messages.create`, com o modelo de reserva da própria API para o caso de recusa. O parâmetro só existe no endpoint beta do SDK 2.3.0;
+  - a recusa do modelo levanta `Recusada`, em vez de virar uma resposta vazia;
+  - a `Resposta` ganhou `cortada`, para a página avisar quando o texto bateu no teto.
+- **Como foi verificado:**
+  - `make test-painel`: 1 erro antes do módulo existir; depois, 30 testes OK, com os 6 novos;
+  - o parâmetro `fallbacks` foi conferido na assinatura do `anthropic==2.3.0` instalado num container;
+  - `git diff | grep -c "sk-ant"` deu 0.
+
+  **Nenhuma chamada de verdade à API foi feita:** a chave é da Luiza. O pedido montado só foi exercitado com o cliente falso.
+- **Quem revisou:** pendente, no PR.
