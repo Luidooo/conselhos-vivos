@@ -34,7 +34,7 @@ O que **não** existe: dado sensível (art. 5º, II), dado de criança, login de
 
 ## Segurança e acesso (art. 46)
 
-- **Privilégio mínimo:** cada serviço entra no Postgres por um papel com o mínimo que precisa (ADR 0011, migração `sql/007_alertas_e_papeis.sql`).
+- **Privilégio mínimo:** cada serviço entra no Postgres por um papel com o mínimo que precisa ([ADR 0011](/docs/adr/0011-disponibilizar-por-camada-semantica-etl-reverso-e-papeis), migração `sql/007_alertas_e_papeis.sql`).
   - O app de curadoria **não lê o e-mail** do revisor: esse é o recorte de coluna.
   - O dbt só lê os órgãos, os nomes deles e os conselhos.
   - O ETL reverso só escreve alertas.
