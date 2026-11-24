@@ -47,7 +47,7 @@ def contexto(pergunta, atos):
 def responder(pergunta, atos, cliente, modelo=MODELO):
     if not atos:
         return Resposta("Não encontrei atos que respondam a essa pergunta.", [], 0)
-    # Sem temperature nem thinking: o Sonnet 5.5 recusa os dois (400) e raciocina por conta própria.
+    # Sem temperature, que o Sonnet 5.5 recusa (400), e sem thinking: o padrão já é o adaptativo, e desligar dá 400.
     msg = cliente.beta.messages.create(model=modelo, max_tokens=MAX_TOKENS, system=SISTEMA,
                                        betas=[FALLBACK_BETA], fallbacks="default",
                                        messages=[{"role": "user", "content": contexto(pergunta, atos)}])
