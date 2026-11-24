@@ -79,6 +79,8 @@ Postgres. Coluna sem significado faz o `make dicionario` falhar.
 | mart_vitalidade | meses_sem_publicar | BIGINT | Meses entre o último mês com ato e o mês de referência. Nulo se não publicou no período coberto. |
 | mart_vitalidade | nome | VARCHAR | Nome mais recente do conselho. |
 | mart_vitalidade | orgao_id | INTEGER | Conselho. |
+| mart_vitalidade | sem_ato_12_meses | BOOLEAN | P1 da E1. Verdadeiro se o último ato próprio foi há 12 meses ou mais, ou se não houve ato no período. Nulo quando o período coberto tem menos de 12 meses. |
+| mart_vitalidade | sem_ato_6_meses | BOOLEAN | P1 da E1. Verdadeiro se o último ato próprio foi há 6 meses ou mais, ou se não houve ato no período. Nulo quando o período coberto tem menos de 6 meses. |
 | mart_vitalidade | sigla | VARCHAR | Sigla do órgão (SIORG ou a da planilha). Não é única entre conselhos. |
 | mart_vitalidade | situacao | VARCHAR | ativo: publicou há meses_ativo meses (padrão 3) ou menos. em silêncio: há mais que isso, ou nunca, com a cobertura já maior que o limite. sem ato no período coberto: nunca, com a cobertura ainda dentro do limite. |
 | mart_vitalidade | ultimo_mes_citado | DATE | Último mês em que outro órgão citou o conselho. Nulo sem menção no período. |

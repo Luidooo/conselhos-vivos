@@ -7,7 +7,7 @@ import duckdb
 from streamlit.testing.v1 import AppTest
 
 APP = "/app/app.py"
-METRICAS = ["Ativos", "Em silêncio", "Sem ato no período coberto", "Sem ato próprio, mas citados"]
+METRICAS = ["Ativos", "Em silêncio", "Sem ato no período coberto", "Sem ato próprio, mas citados", "Sem ato há 6+ meses", "Sem ato há 12+ meses"]
 
 
 def textos(at):
@@ -106,13 +106,15 @@ class TestApp(unittest.TestCase):
                 meses_sem_publicar INTEGER,
                 situacao VARCHAR,
                 mencoes_no_periodo INTEGER,
-                ultimo_mes_citado DATE
+                ultimo_mes_citado DATE,
+                sem_ato_6_meses BOOLEAN,
+                sem_ato_12_meses BOOLEAN
             );
             INSERT INTO mart_vitalidade VALUES
-                (1, 'Conselho Um', 'C1', DATE '2026-09-01', DATE '2026-09-01', 10, 0, 'ativo', 3, DATE '2026-08-01'),
-                (2, 'Conselho Dois', 'C2', DATE '2026-09-01', DATE '2026-07-01', 1, 2, 'em silêncio', 0, NULL),
-                (3, 'Conselho Três', 'C3', DATE '2026-09-01', DATE '2026-07-01', 1, 2, 'ativo', 0, NULL),
-                (4, 'Conselho Quatro', 'C4', DATE '2026-09-01', NULL, 0, NULL, 'sem ato no período coberto', 2, DATE '2026-08-01');
+                (1, 'Conselho Um', 'C1', DATE '2026-09-01', DATE '2026-09-01', 10, 0, 'ativo', 3, DATE '2026-08-01', NULL, NULL),
+                (2, 'Conselho Dois', 'C2', DATE '2026-09-01', DATE '2026-07-01', 1, 2, 'em silêncio', 0, NULL, NULL, NULL),
+                (3, 'Conselho Três', 'C3', DATE '2026-09-01', DATE '2026-07-01', 1, 2, 'ativo', 0, NULL, NULL, NULL),
+                (4, 'Conselho Quatro', 'C4', DATE '2026-09-01', NULL, 0, NULL, 'sem ato no período coberto', 2, DATE '2026-08-01', NULL, NULL);
         """)
 
     def _cria_freshness(self, con):
@@ -128,6 +130,20 @@ class TestApp(unittest.TestCase):
                 (DATE '2026-07-01', DATE '2026-09-01', DATE '2026-09-01', 0, true);
         """)
 
+    def test_sem_ato_6_e_12_meses_com_cobertura_longa(self):
+        """P1 da E1: com a cobertura maior que a janela, o cabeçalho conta os conselhos e a tabela diz sim ou não."""
+        with duckdb.connect(self.gold_path) as con:
+            self._cria_tabelas_base(con)
+            self._cria_freshness(con)
+            con.execute("UPDATE mart_vitalidade SET sem_ato_6_meses = orgao_id IN (2, 4), sem_ato_12_meses = orgao_id = 4")
+        os.environ["PAINEL_GOLD"] = self.gold_path
+        at = AppTest.from_file(APP).run(timeout=60)
+        self.assertEqual(len(at.exception), 0)
+        self.assertEqual([m.value for m in at.metric][-2:], ["2", "1"])
+        tabela = tabela_com(at, "Situação")
+        self.assertEqual(sorted(tabela["Sem ato há 6+ meses"]), ["não", "não", "sim", "sim"])
+        self.assertEqual(sorted(tabela["Sem ato há 12+ meses"]), ["não", "não", "não", "sim"])
+
     def test_com_dados_e_freshness(self):
         with duckdb.connect(self.gold_path) as con:
             self._cria_tabelas_base(con)
@@ -136,7 +152,7 @@ class TestApp(unittest.TestCase):
         at = AppTest.from_file(APP).run(timeout=60)
         self.assertEqual(len(at.exception), 0)
         self.assertEqual([m.label for m in at.metric], METRICAS)
-        self.assertEqual([m.value for m in at.metric], ["2", "1", "1", "1"])
+        self.assertEqual([m.value for m in at.metric], ["2", "1", "1", "1", "—", "—"])
         self.assertEqual(at.title[0].value, "Quais conselhos nacionais de participação social ainda estão funcionando?")
         self.assertEqual(len(tabela_com(at, "Situação")), 4)
         self.assertEqual(len(tabela_com(at, "Origem")), 3)

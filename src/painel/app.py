@@ -403,6 +403,15 @@ col3.metric("Sem ato no período coberto", n_sem, help=fatia(n_sem))
 col4.metric("Sem ato próprio, mas citados", n_citados,
             help="Conselhos que não estão ativos, mas aparecem como assunto em atos de outros órgãos no período.")
 
+# P1 da E1: sem ato próprio há 6 e 12 meses. Com cobertura menor que a janela, a gold devolve nulo e o painel mostra "—".
+for col, n in zip(st.columns(4), (6, 12)):
+    campo = v[f"sem_ato_{n}_meses"]
+    if campo.isna().all():
+        col.metric(f"Sem ato há {n}+ meses", "—", help=f"Precisa de pelo menos {n} meses de DOU carregados.")
+    else:
+        n_sem_ato = int(campo.fillna(False).astype(bool).sum())
+        col.metric(f"Sem ato há {n}+ meses", n_sem_ato, help=fatia(n_sem_ato))
+
 grafico(grafico_composicao(v))
 
 st.warning("Sem ato no DOU não prova que o conselho parou: muito conselho funciona sem publicar no DOU. O limite de meses para 'em silêncio' é provisório e aguarda a definição da pesquisadora.")
@@ -432,11 +441,13 @@ with aba_resposta:
     if so_citados:
         visiveis = visiveis[visiveis.mencoes_no_periodo > 0]
 
-    tabela = visiveis[["nome", "sigla", "situacao", "ultimo_mes_com_ato", "meses_sem_publicar", "atos_no_periodo", "mencoes_no_periodo", "eh_participativo"]].copy()
+    tabela = visiveis[["nome", "sigla", "situacao", "ultimo_mes_com_ato", "meses_sem_publicar", "atos_no_periodo", "mencoes_no_periodo", "sem_ato_6_meses", "sem_ato_12_meses", "eh_participativo"]].copy()
     tabela["ultimo_mes_com_ato"] = pd.to_datetime(tabela["ultimo_mes_com_ato"])
     tabela["eh_participativo"] = tabela["eh_participativo"].map(participacao)
+    for n in (6, 12):
+        tabela[f"sem_ato_{n}_meses"] = tabela[f"sem_ato_{n}_meses"].map(lambda x: "cobertura curta" if pd.isna(x) else ("sim" if x else "não"))
     st.dataframe(
-        tabela.rename(columns={"nome": "Conselho", "sigla": "Sigla", "situacao": "Situação", "ultimo_mes_com_ato": "Último mês com ato", "meses_sem_publicar": "Meses sem publicar", "atos_no_periodo": "Atos no período", "mencoes_no_periodo": "Citado por outros órgãos", "eh_participativo": "Participação social (pesquisadora)"}),
+        tabela.rename(columns={"nome": "Conselho", "sigla": "Sigla", "situacao": "Situação", "ultimo_mes_com_ato": "Último mês com ato", "meses_sem_publicar": "Meses sem publicar", "atos_no_periodo": "Atos no período", "mencoes_no_periodo": "Citado por outros órgãos", "sem_ato_6_meses": "Sem ato há 6+ meses", "sem_ato_12_meses": "Sem ato há 12+ meses", "eh_participativo": "Participação social (pesquisadora)"}),
         hide_index=True, width="stretch",
         column_config={
             "Último mês com ato": st.column_config.DateColumn(format="MM/YYYY"),
