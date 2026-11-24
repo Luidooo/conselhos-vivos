@@ -106,7 +106,7 @@ O que não é item do checklist da disciplina, mas entrou na E4.
 | O que | Onde está | Como conferir |
 |---|---|---|
 | **P2 da E1: o que os conselhos decidem, por ano** | consulta salva `tipologia_por_ano` · aba "O que decidem" do painel | [tipologia-por-ano.png](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0011-disponibilizacao/tipologia-por-ano.png): a soma do CSV dá os 209 atos classificados da gold |
-| **Dicionário de dados** | [Dicionário de dados](/dicionario) · `src/dicionario/` · `sql/009_dicionario.sql` | `make dicionario`: 144 colunas, do OLTP à gold, e falha se alguma ficar sem descrição |
+| **Dicionário de dados** | [Dicionário de dados](/dicionario) · `src/dicionario/` · `sql/009_dicionario.sql` | `make dicionario`: 173 colunas, do OLTP à gold, e falha se alguma ficar sem descrição |
 | **Assistente de perguntas (RAG)** | `sql/008_busca_dos_atos.sql` · `src/painel/busca.py` · `src/painel/perguntar.py` · `src/painel/pages/2_Perguntar.py` | a página Perguntar do painel: a busca textual acha os atos no Postgres, pelo papel `app_perguntas`, e a API do Claude responde citando o ato |
 
 **O assistente ainda não foi exercitado com a API de verdade.** A busca foi conferida no navegador ([perguntar-sem-chave.png](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0012-rag/perguntar-sem-chave.png)); a resposta só rodou nos testes, com um cliente falso. Faltam a avaliação com perguntas reais (#110) e o ADR 0012, com a LGPD de mandar o texto dos atos a um serviço fora do país (#111).
