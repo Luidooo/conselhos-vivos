@@ -260,6 +260,23 @@ make demo-falhas                            # falha de dado sem retry, falha de 
 
 As provas ficam em `docs/adr/medicoes/0009-gold/`. O SLA: o mês M está na gold até o dia 20 do mês M+1.
 
+## Disponibilização e governança (E4)
+
+As métricas ficam definidas uma vez, na camada semântica do MetricFlow, e o que pede ação volta ao Postgres como alerta ([ADR 0011](docs/adr/0011-disponibilizar-por-camada-semantica-etl-reverso-e-papeis.md)).
+
+```bash
+make metricas    # valida a camada semântica e exporta as consultas salvas para data/gold/metricas/
+make alertas     # ETL reverso: a situação da mart_vitalidade vira alerta no Postgres; pode rodar de novo
+make painel      # o painel lê as métricas; a página Revisar trata os alertas
+make gold-docs   # catálogo e linhagem, das fontes às consultas salvas
+```
+
+No job mensal do Dagster, `metricas` e `alertas` rodam sozinhos depois da gold.
+
+Cada serviço entra no banco por um papel com privilégio mínimo: `etl_reverso` só escreve alerta, `app_curadoria` não lê o e-mail do revisor, e `leitor_analitico` é o dbt lendo os órgãos. O `bash tests/db/test_acesso.sh` confere o que cada um pode e não pode. A análise de LGPD está em [docs/lgpd.md](docs/lgpd.md), e `make anonimizar-revisor ID=n` descarta o dado pessoal de um revisor.
+
+As provas ficam em `docs/adr/medicoes/0011-disponibilizacao/`, e o roteiro da defesa, em [docs/defesa.md](docs/defesa.md).
+
 ## Estrutura
 
 ```

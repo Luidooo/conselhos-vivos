@@ -1000,3 +1000,22 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - a saída do teste de acesso ficou guardada em `acesso.txt`.
 
   O status do ADR fica "proposto" até a squad aceitar.
+
+### 2026-11-24 — Página da E4, retrospectiva em rascunho e roteiro da defesa (#102, parte 1)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:**
+  - `site/entrega-e4.md`, `docs/diario/2026-11-24.md`, `docs/defesa.md`;
+  - `site/arquitetura.md`, `site/jornada-do-dado.md`, `site/.vitepress/theme/ArquiteturaInterativa.vue`, `site/.vitepress/config.mts`;
+  - `README.md`.
+- **O que foi pedido:** a Tarefa 9 do plano da E4, até onde dá sem a squad.
+- **O que foi aproveitado:**
+  - a página da entrega, no molde da E3, com a prova de cada item do checklist;
+  - o roteiro da defesa do plano, com uma seção "Antes de começar" e a ressalva de que o passo da página Perguntar depende da #109;
+  - a arquitetura com a E4 entregue. O texto da caixa Revisar foi corrigido: a página marca o alerta como tratado, e não reclassifica ato;
+  - a retrospectiva **como rascunho**. As colunas de fato saem dos ADRs 0001 a 0011 e do diário de 10/11; a coluna "o que faríamos diferente" é sugestão da IA, e a squad precisa confirmar ou trocar cada linha.
+- **Como foi verificado:**
+  - cada número da página e do diário vem de um arquivo de `docs/adr/medicoes/0011-disponibilizacao/` ou de `docs/lgpd/medicoes.txt`;
+  - `npm --prefix site run build`: `build complete`, sem link morto.
+- **O que não foi feito:** a conferência num clone limpo, a coluna "Quem" da defesa e a tag `e4`.
+- **Quem revisou:** pendente, no PR.

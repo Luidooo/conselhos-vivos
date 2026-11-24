@@ -97,15 +97,15 @@ erDiagram
 | Silver | Delta Lake, pela biblioteca `deltalake` | ✅ já tem | [ADR 0006](/docs/adr/0006-armazenar-a-camada-analitica-em-tabelas-delta) |
 | Motor analítico | DuckDB | ✅ já tem | lê o Delta direto, sem servidor |
 | Gold e testes de dados | dbt-core + dbt-duckdb | ✅ E3 | modelos em SQL versionados, com testes de esquema, unicidade e integridade |
-| Camada semântica | métricas definidas no dbt | 🆕 E4 | uma definição só, usada pelo painel e pelos alertas |
+| Camada semântica | MetricFlow (`dbt-metricflow`), consultas salvas exportadas em CSV | ✅ E4 | uma definição só, lida pelo painel e por quem quiser os números ([ADR 0011](/docs/adr/0011-disponibilizar-por-camada-semantica-etl-reverso-e-papeis)) |
 | Orquestração | Dagster, com a opção nula cron + `make` | ✅ E3 | partições mensais dão o backfill e o retry por configuração |
 | Enriquecimento | menções de outros órgãos no DOU (`src/mencoes`, `fct_mencao`) | ✅ E3 | automático no job mensal, sem download novo; SIORG completo, Seção 2 e Brasil Participativo ficam para depois |
-| ETL reverso | script Python, disparado pelo orquestrador | 🆕 E4 | lê a gold e grava os alertas no Postgres |
+| ETL reverso | script Python, disparado pelo orquestrador | ✅ E4 | lê a gold e grava os alertas no Postgres |
 | Busca do RAG | busca textual do Postgres (`tsvector`, em português) | 🆕 E4 | já vem no banco: sem extensão, sem modelo de embedding, sem conta a mais |
 | Respostas do RAG | API do Claude (Sonnet 5.5, configurável), pelo SDK `anthropic` | 🆕 E4 | escreve a resposta a partir dos trechos achados |
 | App da pesquisadora | Streamlit | ✅ E3 (aba Painel) | um app Python, com as três abas |
 | Catálogo e linhagem | `dbt docs`, publicado no site, e a [linhagem dos dados](/linhagem) | ✅ E3 | o grafo vai da fonte até o painel; adiantado da E4 |
-| Controle de acesso | papéis e `GRANT` do Postgres, com RLS se precisar | 🆕 E4 | o app só lê e escreve o que precisa |
+| Controle de acesso | papéis e `GRANT` do Postgres, com RLS se precisar | ✅ E4 | o app só lê e escreve o que precisa |
 | CI e documentação | GitHub Actions + VitePress | ✅ já tem | |
 
 São quatro peças novas de verdade: dbt, Dagster, Streamlit e o SDK do Claude. As três primeiras entraram na E3. O resto é configuração do que já existe.
@@ -122,7 +122,7 @@ São quatro peças novas de verdade: dbt, Dagster, Streamlit e o SDK do Claude. 
 
 Cada uma vira um ADR, com a opção nula tratada a sério e medida. O orquestrador já saiu daqui: Dagster, com cron + `make` como opção nula, no [ADR 0009](/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster).
 
-- **Camada semântica.** As métricas no próprio dbt ou uma tabela de métricas escrita à mão.
+A camada semântica também saiu daqui: MetricFlow, com as visões escritas à mão como opção nula, no [ADR 0011](/docs/adr/0011-disponibilizar-por-camada-semantica-etl-reverso-e-papeis). Não há decisão em aberto para as entregas da disciplina.
 
 ## O que cada entrega cobre
 
@@ -168,13 +168,19 @@ O que o plano de ensino pede em cada entrega, como o projeto responde e em que p
 | Catálogo e linhagem, adiantados da E4 | [linhagem dos dados](/linhagem) e o catálogo do dbt no site | Catálogo e linhagem |
 | ADR da modelagem e da ferramenta | [0009](/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster) e [0010](/docs/adr/0010-tratar-como-conselho-todo-orgao-com-conselho-no-nome), com o [0008](/docs/adr/0008-unificar-o-pipeline-em-python) | Gold e Orquestrador |
 
-### E4 · O que falta
+### E4 ✅ · Plataforma completa, governada e defendida
+
+A [página da entrega](/entrega-e4) tem a prova de cada item.
 
 | O que se pede | No projeto | Parte do desenho |
 |---|---|---|
-| Camada semântica | as métricas definidas uma vez no dbt | Gold |
-| ETL reverso para quem age | os alertas gravados no Postgres | Alertas e aba Revisar |
-| LGPD e controle de acesso por linha e coluna | papéis e `GRANT` do Postgres | Postgres |
+| Consumo duplo, com a métrica definida uma vez | cinco métricas no MetricFlow; o painel e os CSV leem as mesmas consultas salvas | Gold e aba Painel |
+| ETL reverso para quem age | os alertas gravados no Postgres pelo job mensal, tratados na página Revisar | Alertas e aba Revisar |
+| Catálogo e linhagem até o consumo | a [linhagem dos dados](/linhagem), do ZIP ao alerta | Catálogo e linhagem |
+| LGPD | a [análise](/docs/lgpd), com o dado pessoal medido no banco | Postgres |
+| Controle de acesso por coluna | três papéis com privilégio mínimo; o app não lê o e-mail do revisor | Postgres |
+| Portfólio dos ADRs | [onze ADRs](/docs/adr/), todos com gatilho de revisão | |
+| Retrospectiva e defesa | o [diário de 24/11](/docs/diario/2026-11-24) e o [roteiro](/docs/defesa) | |
 
 ### Também na E4 · o assistente de perguntas (RAG)
 
