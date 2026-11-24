@@ -131,6 +131,7 @@ export default withMermaid(defineConfig({
           { text: '0008 · Pipeline em Python, sem INLABS', link: '/docs/adr/0008-unificar-o-pipeline-em-python' },
           { text: '0009 · Gold em estrela, dbt e Dagster', link: '/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster' },
           { text: '0010 · Quem é conselho', link: '/docs/adr/0010-tratar-como-conselho-todo-orgao-com-conselho-no-nome' },
+          { text: '0011 · Camada semântica, ETL reverso e papéis', link: '/docs/adr/0011-disponibilizar-por-camada-semantica-etl-reverso-e-papeis' },
         ],
       },
       {
