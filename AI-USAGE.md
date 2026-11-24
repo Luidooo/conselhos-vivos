@@ -1021,3 +1021,26 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - a seta "Revisar", do alerta para o painel;
   - o teste novo confere as três setas da camada semântica, em vez de repetir a contagem;
   - o merge depois do #118 e do #120, para os links das caixas novas não nascerem quebrados.
+
+### 2026-11-24 — Dicionário de dados gerado do banco e do dbt (#112)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:**
+  - `src/dicionario/`, `tests/dicionario/`, `site/dicionario.md`;
+  - `sql/009_dicionario.sql`;
+  - `dbt/models/fontes.yml`, `dbt/models/staging/staging.yml`, `dbt/models/marts/marts.yml`, `dbt/models/metricas/metricas.yml`;
+  - `Makefile`, `docker-compose.yml`, `site/.vitepress/config.mts`.
+- **O que foi pedido:** a Tarefa 17 do plano da E4.
+- **O que foi aproveitado:**
+  - o gerador e o alvo `make dicionario` do plano, sem mudança;
+  - o significado de 144 colunas, escrito pela IA a partir do SQL de cada modelo, da consulta do lake, dos comentários que já existiam e dos ADRs 0001, 0003, 0004, 0006 e 0011. Nenhuma regra nova: cada texto descreve o que o código faz.
+- **Como foi verificado:**
+  - o teste do gerador falhou antes do módulo existir e depois deu 3 testes OK; ele entrou no `make test`;
+  - `make dicionario` listou 144 colunas sem descrição na primeira rodada e saiu com 0 na última;
+  - `make gold`: 79 em PASS e 1 aviso, o do SLA; `make metricas`: a camada semântica valida sem erro;
+  - `npm --prefix site run build`: `build complete`, sem link morto.
+
+  Depois de editar o `marts.yml`, o dbt acusou métrica duplicada. Era o cache do parse parcial: um `dbt parse --no-partial-parse` resolveu, e o YAML tem cada métrica uma vez só.
+
+  O `tests/db/test_schema.sh` falha no meu banco local em um caso, porque ele já tem a migração 008 da branch da #107, que não está nesta. O `make test` inteiro não rodou.
+- **Quem revisou:** pendente, no PR. **Os textos pedem leitura de quem conhece o domínio**, em especial os da `mart_vitalidade` e da `tipologia`.

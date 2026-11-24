@@ -17,6 +17,39 @@ sources:
     schema: public
     tables:
       - name: orgao
+        columns:
+          - name: id
+            description: "Identificador do órgão."
+          - name: parent_id
+            description: "Órgão pai na hierarquia administrativa."
+          - name: sigla
+            description: "Sigla do órgão (SIORG ou a da planilha). Não é única entre conselhos."
+          - name: codigo_siorg
+            description: "Código da unidade no SIORG, quando o nome casa com exatamente uma unidade. Vínculo externo, não identidade (ADR 0004)."
+          - name: criado_em
+            description: "Quando a linha foi gravada no banco."
       - name: orgao_nome
         description: "Histórico de nomes de cada órgão, com início e fim de vigência. É a origem da dimensão de variação lenta."
+        columns:
+          - name: id
+            description: "Identificador da linha de nome."
+          - name: orgao_id
+            description: "Órgão que teve esse nome."
+          - name: nome
+            description: "Nome oficial do órgão nesse período."
+          - name: data_inicio
+            description: "Início da vigência do nome: a data do ato legal que o deu. Nulo é data não verificada (ADR 0004)."
+          - name: data_fim
+            description: "Fim da vigência do nome. Nulo é o nome em uso."
+          - name: criado_em
+            description: "Quando a linha foi gravada no banco."
       - name: conselho
+        columns:
+          - name: orgao_id
+            description: "O órgão que a pesquisadora avaliou como conselho."
+          - name: eh_participativo
+            description: "Marca da pesquisadora: o conselho tem participação da sociedade civil."
+          - name: descricao
+            description: "Descrição livre do conselho. Opcional."
+          - name: criado_em
+            description: "Quando a linha foi gravada no banco."

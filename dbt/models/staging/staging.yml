@@ -5,47 +5,114 @@ models:
     description: "Granularidade: uma linha por matéria publicada, na versão mais recente."
     columns:
       - name: materia
+        description: "Chave da matéria: DOU: mais o id do DOU, ou PLANILHA: mais o id do ato. As versões de uma retificação têm a mesma."
         data_tests: [unique, not_null]
       - name: ato_id
+        description: "Id da versão do ato no OLTP (ato.id)."
         data_tests: [unique, not_null]
       - name: data_publicacao
+        description: "Data de publicação do ato, como veio da fonte."
         data_tests: [not_null]
       - name: origem
+        description: "DOU: matéria lida do Diário Oficial. PLANILHA: ato da carga inicial da pesquisadora."
         data_tests:
           - accepted_values:
               arguments:
                 values: ['DOU', 'PLANILHA']
+      - name: id_origem
+        description: "Id da matéria na fonte: o id do DOU, ou o ID_VERSAO da planilha."
+      - name: versao
+        description: "Versão da publicação. Fica só a mais recente de cada matéria."
+      - name: ano
+        description: "Ano da publicação. Particiona a tabela Delta (ADR 0006)."
+      - name: orgao_id
+        description: "Órgão que publicou o ato."
+      - name: orgao_nome
+        description: "Nome do órgão na data da publicação. Sem nome para a data, o nome vigente."
+      - name: orgao_sigla
+        description: "Sigla do órgão (SIORG ou a da planilha). Não é única entre conselhos."
+      - name: codigo_siorg
+        description: "Código da unidade no SIORG, quando o nome casa com exatamente uma unidade. Vínculo externo, não identidade (ADR 0004)."
+      - name: ref_legal
+        description: "Referência legal como aparece na fonte. Informativa: não é única."
+      - name: ementa
+        description: "Ementa da matéria. Nos atos da planilha, o resumo escrito pela pesquisadora."
+      - name: conteudo
+        description: "Texto da matéria: no DOU, o HTML como veio."
+      - name: tipologia_sigla
+        description: "Tipologia da classificação vigente. A de revisor humano vence a do pipeline. Nulo sem classificação."
+      - name: revisor_tipo
+        description: "Quem deu a classificação vigente: HUMANO ou PIPELINE. Nulo sem classificação."
+      - name: checksum
+        description: "Resumo do texto, da classificação e do órgão da linha. O lake só regrava o ato quando ele muda."
+      - name: atualizado_em
+        description: "Quando o lake gravou a linha na silver."
+      - name: mes
+        description: "Primeiro dia do mês da publicação."
 
   - name: stg_orgao_nome
     columns:
       - name: orgao_nome_id
+        description: "Identificador da linha de nome no OLTP (orgao_nome.id)."
         data_tests: [unique, not_null]
+      - name: orgao_id
+        description: "Identificador do órgão no OLTP (orgao.id)."
+      - name: nome
+        description: "Nome oficial do órgão nesse período."
+      - name: data_inicio
+        description: "Início da vigência do nome: a data do ato legal que o deu. Nulo é data não verificada (ADR 0004)."
+      - name: data_fim
+        description: "Fim da vigência do nome. Nulo é o nome em uso."
 
   - name: stg_orgao
     columns:
       - name: orgao_id
+        description: "Identificador do órgão no OLTP (orgao.id)."
         data_tests: [unique, not_null]
+      - name: sigla
+        description: "Sigla do órgão (SIORG ou a da planilha). Não é única entre conselhos."
+      - name: codigo_siorg
+        description: "Código da unidade no SIORG, quando o nome casa com exatamente uma unidade. Vínculo externo, não identidade (ADR 0004)."
 
   - name: stg_conselho
     description: "Os conselhos que a pesquisadora avaliou, com a marca eh_participativo."
     columns:
       - name: orgao_id
+        description: "O órgão que a pesquisadora avaliou como conselho."
         data_tests: [unique, not_null]
+      - name: eh_participativo
+        description: "Marca da pesquisadora: o conselho tem participação da sociedade civil."
 
   - name: stg_mencoes
     description: "Uma linha por matéria de outro órgão × órgão citado nela, como a silver grava."
     columns:
       - name: id_dou
+        description: "Identificador da matéria do outro órgão, emitido pela Imprensa Nacional."
         data_tests: [not_null]
       - name: orgao_id
+        description: "Conselho citado na matéria."
         data_tests: [not_null]
       - name: data_publicacao
+        description: "Data de publicação da matéria que cita o conselho."
         data_tests: [not_null]
       - name: assunto
+        description: "Do que a matéria trata em relação ao conselho: extinção, criação, estrutura, regimento, homologação, composição ou outro."
         data_tests:
           - accepted_values:
               arguments:
                 values: ['extinção', 'criação', 'estrutura', 'regimento', 'homologação', 'composição', 'outro']
+      - name: nome_citado
+        description: "O nome do conselho como apareceu na matéria."
+      - name: mes
+        description: "Primeiro dia do mês da publicação."
+      - name: tipo_ato
+        description: "Tipo do ato, como veio no XML do DOU."
+      - name: publicador
+        description: "Órgão que publicou a matéria, com a hierarquia separada por barra."
+      - name: titulo
+        description: "Título da matéria que cita o conselho."
+      - name: ementa
+        description: "Ementa da matéria que cita o conselho."
 
 unit_tests:
   - name: stg_atos_fica_com_a_versao_mais_recente_de_cada_materia

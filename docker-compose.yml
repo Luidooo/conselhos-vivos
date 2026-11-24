@@ -215,6 +215,7 @@ services:
       - ./src:/app/src:ro
       - ./dbt:/app/dbt
       - ./docs:/app/docs
+      - ./site:/app/site
       - ./data/bronze:/data/bronze
       - ./data/dagster:/data/dagster
       - ./dagster:/app/dagster:ro

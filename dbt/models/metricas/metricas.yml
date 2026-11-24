@@ -7,6 +7,7 @@ models:
       standard_granularity_column: date_day
     columns:
       - name: date_day
+        description: "Um dia por linha, de 2002 a 2030. É a espinha de tempo que o MetricFlow exige."
         granularity: day
         data_tests: [unique, not_null]
 

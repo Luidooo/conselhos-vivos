@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help docs setup up down migrate carga siorg extract persist fetch-mensal persist-mensal ingest-mensal test test-py-dou test-db-py vet-py reset pgadmin-reset psql anonimizar-revisor logs lake cdc cdc-demo cdc-drop cdc-chaos gold orquestrador demo-retry demo-backfill demo-falhas test-orquestracao painel test-painel gold-docs mencoes test-mencoes alertas test-alertas
+.PHONY: help docs setup up down migrate carga siorg extract persist fetch-mensal persist-mensal ingest-mensal test test-py-dou test-db-py vet-py reset pgadmin-reset psql anonimizar-revisor logs lake cdc cdc-demo cdc-drop cdc-chaos gold orquestrador demo-retry demo-backfill demo-falhas test-orquestracao painel test-painel gold-docs mencoes test-mencoes alertas test-alertas dicionario
 
 help: ## lista os comandos
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -114,6 +114,7 @@ test: .env test-py-dou test-orquestracao test-painel test-mencoes test-metricas 
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/planilha
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/conselhos
 	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/linhagem
+	docker compose --progress quiet run --rm -T --entrypoint python carga -m unittest discover -s tests/dicionario
 	bash tests/db/test_carga.sh
 	bash tests/lake/test_lake.sh
 	bash tests/lake/test_atrasado.sh
@@ -197,6 +198,9 @@ demo-backfill: .env ## E3: reprocessa um intervalo de meses (DE=AAAA-MM ATE=AAAA
 
 demo-falhas: .env ## E3: mês não publicado, ZIP inválido, lake e dbt falhando; prova em docs/adr/medicoes/0009-gold (não baixa nem grava nada)
 	bash scripts/demo_falhas.sh
+
+dicionario: .env ## E4: gera site/dicionario.md do banco e do dbt; falha se alguma coluna estiver sem descrição (rode make gold antes)
+	DOCKER_UID=$$(id -u) DOCKER_GID=$$(id -g) docker compose --progress quiet run --rm -T orquestrador sh -c 'dbt docs generate --project-dir /app/dbt -q && python -m dicionario /app/site/dicionario.md /app/dbt/target/manifest.json /app/dbt/target/catalog.json'
 
 alertas: .env ## E4: ETL reverso, grava no Postgres os alertas da mart_vitalidade (rode make gold antes)
 	@test -f data/gold/conselhos.duckdb || { echo "falta a gold: rode make gold antes"; exit 1; }
