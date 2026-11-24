@@ -1,4 +1,4 @@
-"""Orquestração da E3: ingestão do mês, silver e gold, num grafo mensal com retry e backfill."""
+"""Orquestração da E3 e da E4: ingestão do mês, silver, gold, métricas e alertas, num grafo mensal com retry e backfill."""
 
 import os
 from datetime import datetime
@@ -58,6 +58,22 @@ def gold(context: dg.AssetExecutionContext, dbt: DbtCliResource):
     yield from dbt.cli(["build"], context=context).stream()
 
 
+# E4 (ADR 0011): as consultas salvas da camada semântica viram CSV depois da gold. O mf abre o DuckDB para
+# escrita, por isso roda aqui, no mesmo job e em sequência, e não no painel.
+@dg.asset(deps=[gold], partitions_def=MENSAL, retry_policy=RETRY, group_name="consumo")
+def metricas(context: dg.AssetExecutionContext) -> None:
+    """Exporta as consultas salvas do MetricFlow para /data/gold/metricas/."""
+    roda(context, "sh", "-c", "cd /app/dbt && dbt parse -q && python -m metricas /data/gold/metricas")
+
+
+# E4: o ETL reverso. A situação tratada na gold volta ao Postgres como alerta para a curadoria.
+# Depois das métricas, e não ao lado: o mf segura o DuckDB para escrita, e o alertas não abriria nem para ler.
+@dg.asset(deps=[metricas], partitions_def=MENSAL, retry_policy=RETRY, group_name="consumo")
+def alertas(context: dg.AssetExecutionContext) -> None:
+    """Grava no Postgres, como etl_reverso, os alertas da mart_vitalidade."""
+    roda(context, "python", "-m", "alertas")
+
+
 mensal = dg.define_asset_job("mensal", selection="*", partitions_def=MENSAL)
 
 
@@ -76,7 +92,7 @@ def mensal_schedule(context: dg.ScheduleEvaluationContext):
     return dg.RunRequest(run_key=f"{mes}@{quando:%Y-%m-%d}", partition_key=mes)
 
 defs = dg.Definitions(
-    assets=[atos_do_mes, silver_atos, silver_mencoes, gold],
+    assets=[atos_do_mes, silver_atos, silver_mencoes, gold, metricas, alertas],
     jobs=[mensal],
     schedules=[mensal_schedule],
     resources={"dbt": DbtCliResource(project_dir=DBT)},
