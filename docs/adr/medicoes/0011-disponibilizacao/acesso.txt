@@ -1,0 +1,21 @@
+# Controle de acesso (ADR 0011), 2026-11-24 14:55 UTC: bash tests/db/test_acesso.sh, num banco refeito do zero.
+etl_reverso
+  ok    insere alerta
+  ok    atualiza o detalhe
+  ok    não marca alerta como tratado
+  ok    não lê os atos
+  ok    não lê os revisores
+app_curadoria
+  ok    lê alerta e nome do conselho
+  ok    lê id, nome e tipo do revisor
+  ok    não lê o e-mail do revisor
+  ok    não insere alerta
+  ok    não apaga alerta
+leitor_analitico
+  ok    lê órgãos, nomes e conselhos
+  ok    não lê os atos
+  ok    não escreve
+descarte do revisor (LGPD)
+  ok    anonimiza e mantém a classificação
+
+acesso: todos os casos passaram

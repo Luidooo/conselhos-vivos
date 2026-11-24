@@ -30,3 +30,15 @@ Levantadas na fase de entendimento do domínio, ainda sem ADR escrito:
 | [0008](0008-unificar-o-pipeline-em-python.md) | Unificar o pipeline em Python e descontinuar o cliente do INLABS sem portar | aceito |
 | [0009](0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster.md) | Modelar a gold em estrela com dbt sobre DuckDB e orquestrar com Dagster | aceito |
 | [0010](0010-tratar-como-conselho-todo-orgao-com-conselho-no-nome.md) | É conselho todo órgão que já teve um nome começando com "Conselho", menos uma lista curta de exclusões; a marca de participação social fica à parte | aceito |
+| [0011](0011-disponibilizar-por-camada-semantica-etl-reverso-e-papeis.md) | Disponibilizar as métricas por camada semântica no MetricFlow, alertas ao Postgres por push e papéis com privilégio mínimo | proposto |
+
+## Portfólio
+
+O que cada ADR cobre no projeto da disciplina. Todo ADR tem a seção "Gatilho de revisão": o que, se acontecer, reabre a decisão.
+
+| Item | ADRs |
+|---|---|
+| Modelagem do sistema de origem (E1) | [0001](0001-adotar-sistema-de-curadoria-insert-only-como-oltp.md), [0002](0002-manter-postgresql-como-motor-do-oltp.md), [0003](0003-carregar-a-planilha-como-rotulo-da-curadoria.md), [0004](0004-resolver-identidade-dos-conselhos-por-chave-e-decisao-registrada.md) |
+| Mecanismo de ingestão, com a opção nula (E2) | [0005](0005-ingerir-dou-no-oltp-e-propagar-ao-delta-via-cdc.md), [0006](0006-armazenar-a-camada-analitica-em-tabelas-delta.md), [0007](0007-propagar-mudancas-por-slot-de-replicacao-logica.md) |
+| Modelagem analítica e ferramenta (E3) | [0008](0008-unificar-o-pipeline-em-python.md), [0009](0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster.md), [0010](0010-tratar-como-conselho-todo-orgao-com-conselho-no-nome.md) |
+| Como o dado é disponibilizado (E4) | [0011](0011-disponibilizar-por-camada-semantica-etl-reverso-e-papeis.md) |
