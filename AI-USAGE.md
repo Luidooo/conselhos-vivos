@@ -943,6 +943,40 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - os prints `painel-metricas.png` e `revisar.png`.
 - **Quem revisou:** pendente, no PR.
 
+### 2026-11-24 — Métricas e alertas no job mensal do Dagster (#97)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `src/orquestracao/__init__.py`, `docs/adr/medicoes/0011-disponibilizacao/`
+- **O que foi pedido:** atualizar o clone, levantar o que falta da E4 e começar pelas tarefas livres; a primeira foi a Tarefa 4 do plano.
+- **O que foi aproveitado:** os dois assets entraram como estão no plano, no grupo `consumo`:
+  - `metricas`, depois da gold, que exporta as consultas salvas do MetricFlow;
+  - `alertas`, depois das métricas, que roda o ETL reverso.
+- **Como foi verificado:** num banco local criado do zero (`make up`, `make migrate`, `make carga`), com a porta 5433 só na sessão, porque a 5432 estava ocupada na máquina:
+  - `dagster definitions validate -m orquestracao`: `Validation successful`;
+  - `make test-orquestracao`: 9 testes OK;
+  - `make demo-backfill DE=2026-09 ATE=2026-09`: `STEP_SUCCESS` nos seis passos e `RUN_SUCCESS`. A prova está em `backfill-2026-09-a-2026-09-20261124T130938Z.txt`;
+  - os dois CSV saíram em `data/gold/metricas/`, e a tabela `alerta` ficou com 7 linhas. São 7, e não os 10 do banco de trabalho, porque este banco só tem setembro;
+  - o print `grafo-dagster.jpg` é a linhagem a montante do asset `alertas`, tirado com o Chrome sem janela.
+
+  O `make test` inteiro não rodou.
+- **Quem revisou:** pendente, no PR.
+
+### 2026-11-24 — Análise de LGPD com o dado pessoal medido (#99)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `docs/lgpd.md`, `docs/lgpd/medir.sql`, `docs/lgpd/medicoes.txt`, `site/.vitepress/config.mts`
+- **O que foi pedido:** a Tarefa 6 do plano da E4.
+- **O que foi aproveitado:** o texto da análise como está no plano, com três mudanças:
+  - a medição ganhou a linha do total de atos, porque a contagem de nomeação é sobre os 604 atos, e não só sobre os 389 do DOU;
+  - a página diz o limite da medição: ela só olha a ementa e o começo do texto;
+  - o ADR 0011 é citado sem link, porque ainda não existe (#101) e o link morto quebraria o build do site.
+- **Como foi verificado:** num banco local refeito do zero, com a planilha e o DOU de julho a setembro:
+  - a medição rodou e está em `docs/lgpd/medicoes.txt`;
+  - cada afirmação da seção de segurança foi conferida na migração 007, no `docker-compose.yml` e no `Makefile`;
+  - `bash tests/db/test_acesso.sh`: todos os casos passaram;
+  - `npm --prefix site run build`: `build complete`, sem link morto.
+- **Quem revisou:** Luiza, no PR #118. Ela conferiu os GRANTs, as portas, a `anonimizar_revisor` e os artigos, e pediu para a página dizer que o banco de trabalho tem 2 revisores humanos e 3 com e-mail; entrou.
+
 ### 2026-11-24 — ADR 0011 e o portfólio dos ADRs (#101)
 
 - **Ferramenta:** Claude Code (Claude Fable 5.2)
