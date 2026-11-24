@@ -1001,6 +1001,35 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 
   O status do ADR fica "proposto" até a squad aceitar.
 
+### 2026-11-24 — Linhagem e catálogo até o consumo (#100)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `src/linhagem/__init__.py`, `tests/linhagem/test_linhagem.py`, `site/.vitepress/theme/LinhagemInterativa.vue`, `site/linhagem.md`, `public/linhagem/catalogo-dbt.html`
+- **O que foi pedido:** a Tarefa 7 do plano da E4.
+- **O que foi aproveitado:** o código do plano, com duas mudanças:
+  - o rótulo da seta das métricas para o painel virou "CSV", porque "consultas salvas" ficava cortado atrás da caixa da `mart_vitalidade`;
+  - o texto da página de linhagem passou a citar as métricas, o alerta e o print do grafo da E4.
+- **Como foi verificado:**
+  - o teste novo falhou antes do gerador mudar (2 falhas) e depois deu 5 testes OK;
+  - `make gold-docs` regerou o catálogo e o diagrama, com as camadas "semântica" e "consultas salvas";
+  - `grep -c "password=" public/linhagem/catalogo-dbt.html` deu 0;
+  - `npm --prefix site run build`: `build complete`, sem link morto;
+  - a linhagem interativa foi aberta no site construído e capturada com o Chrome sem janela: a seta "ETL reverso" não cruza caixa.
+
+  Os links para o ADR 0011 e para a página de LGPD, nas caixas novas, só funcionam depois do #101 e do #99.
+- **Quem revisou:** Luiza, no PR #119. Da revisão entraram:
+  - a seta "Revisar", do alerta para o painel;
+  - o teste novo confere as três setas da camada semântica, em vez de repetir a contagem;
+  - o merge depois do #118 e do #120, para os links das caixas novas não nascerem quebrados.
+
+### 2026-11-24 — Correção das contagens de atos na análise de LGPD (#99)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `docs/lgpd.md`, `docs/lgpd/medicoes.txt`
+- **O que foi pedido:** corrigir a frase que dizia que o banco de trabalho tem as mesmas contagens de atos do banco limpo.
+- **O que foi aproveitado:** a frase corrigida e a segunda medição, no banco de trabalho, que tem outubro carregado.
+- **Como foi verificado:** `docs/lgpd/medir.sql` rodado no banco de trabalho: 519 atos do DOU e 734 no total.
+
 ### 2026-11-24 — Página da E4, retrospectiva em rascunho e roteiro da defesa (#102, parte 1)
 
 - **Ferramenta:** Claude Code (Claude Fable 5.2)
