@@ -1022,6 +1022,15 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - o teste novo confere as três setas da camada semântica, em vez de repetir a contagem;
   - o merge depois do #118 e do #120, para os links das caixas novas não nascerem quebrados.
 
+### 2026-11-24 — Correção das contagens de atos na análise de LGPD (#99)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `docs/lgpd.md`, `docs/lgpd/medicoes.txt`
+- **O que foi pedido:** corrigir a frase que dizia que o banco de trabalho tem as mesmas contagens de atos do banco limpo.
+- **O que foi aproveitado:** a frase corrigida e a segunda medição, no banco de trabalho, que tem outubro carregado.
+- **Como foi verificado:** `docs/lgpd/medir.sql` rodado no banco de trabalho: 519 atos do DOU e 734 no total.
+- **Quem revisou:** pendente, no PR.
+
 ### 2026-11-24 — RAG: busca textual dos atos no Postgres (#107)
 
 - **Ferramenta:** Claude Code (Claude Fable 5.2)
