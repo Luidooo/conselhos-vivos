@@ -28,7 +28,7 @@ A coluna "Quem" a squad preenche no ensaio.
 ## Antes de começar
 
 - O banco de trabalho no ar e a gold feita: `make up`, `make gold`, `make metricas`, `make alertas`. O banco de trabalho tem outubro no OLTP, ainda fora da silver: os números do painel são os de julho a setembro, e vale ter isso na ponta da língua se a banca abrir o banco.
-- Pelo menos um alerta aberto, para o passo 2. Um alerta marcado no ensaio não volta a abrir sozinho.
+- Pelo menos um alerta aberto, para o passo 2. Depois de um backfill, a página Revisar mostra também os alertas dos meses anteriores (24 no clone limpo, com julho a setembro). Um alerta marcado no ensaio não volta a abrir sozinho.
 - O site local no ar (`make docs`), para o passo 4.
 
 ## Plano B

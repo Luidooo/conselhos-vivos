@@ -17,12 +17,12 @@ make test                                   # inclui o teste de acesso de cada p
 make demo-backfill DE=2026-07 ATE=2026-09   # três meses pelo Dagster, até as métricas e os alertas
 make gold                                   # a gold, com os testes do dbt
 make metricas                               # valida a camada semântica e exporta as consultas salvas
-make alertas                                # o ETL reverso: novos=10 na primeira rodada
+make alertas                                # o ETL reverso: inalterados=10, porque o job do backfill já gravou os alertas
 make painel                                 # http://127.0.0.1:8501, com a página Revisar
 ```
 Pré-requisitos: Docker com Compose v2, `make` e `sqlite3`. O backfill baixa os ZIPs dos dados abertos.
 
-**A conferência num clone limpo do `main` ainda não foi feita para a E4.** Ela é o último passo antes da tag `e4`.
+**Conferido num clone limpo do `main` em 24/11/2026**, no commit `33fc836`: todos os passos acima passaram, mais o `make dicionario` e o `make demo-retry`. O resumo está em [clone-limpo-20261124.txt](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0011-disponibilizacao/clone-limpo-20261124.txt). O `make painel` não entrou na conferência.
 :::
 
 ## Entregáveis
@@ -31,7 +31,7 @@ Pré-requisitos: Docker com Compose v2, `make` e `sqlite3`. O backfill baixa os 
 |---|---|---|
 | **Camada semântica** | `dbt/models/marts/marts.yml` · `dbt/models/metricas/` · `src/metricas/` | `make metricas`: cinco métricas e três consultas salvas, em CSV |
 | **Painel lendo a camada semântica** | `src/painel/app.py` | `make painel`: os atos por mês e a autorregulação vêm dos CSV |
-| **ETL reverso** | `src/alertas/` · tabela `alerta` (`sql/007`) | `make alertas`: `novos=10`, depois `inalterados=10` |
+| **ETL reverso** | `src/alertas/` · tabela `alerta` (`sql/007`) | `make alertas`: `novos=10` com a tabela vazia, depois `inalterados=10` |
 | **Página Revisar** | `src/painel/pages/1_Revisar.py` | a pesquisadora marca o alerta como tratado |
 | **Métricas e alertas no job mensal** | `src/orquestracao/` · assets `metricas` e `alertas` | `make demo-backfill`: seis passos em `STEP_SUCCESS` |
 | **Papéis com privilégio mínimo** | `sql/007_alertas_e_papeis.sql` | `bash tests/db/test_acesso.sh`: 14 casos |
@@ -65,7 +65,9 @@ As métricas `atos_publicados`, `atos_classificados`, `atos_de_autorregulacao`, 
 
 Depois da gold, o job grava na tabela `alerta` a situação que pede ação: o conselho em silêncio, ou sem ato próprio mas citado por outros órgãos. A gravação é idempotente e não reescreve alerta já tratado. A pesquisadora trata o alerta na página Revisar do painel, que entra no Postgres como `app_curadoria`.
 
-**Medido:** com julho a setembro, a primeira rodada dá `novos=10` e a segunda, `inalterados=10`. Os dez são do tipo "citado, sem ato próprio".
+**Medido:** com julho a setembro e a tabela vazia, a primeira rodada dá `novos=10` e a segunda, `inalterados=10`. Os dez são do tipo "citado, sem ato próprio".
+
+**No clone limpo**, o backfill roda mês a mês e cada mês grava os alertas do seu mês de referência: a tabela termina com 24 alertas abertos, 7 de julho, 7 de agosto e 10 de setembro, e o `make alertas` seguinte dá `inalterados=10`.
 
 ## 3. Catálogo e linhagem até o consumo
 
@@ -111,8 +113,8 @@ O que não é item do checklist da disciplina, mas entrou na E4.
 ## Limites conhecidos e pendências da squad
 
 - **ADR 0011:** está como "proposto", à espera do aceite da squad.
-- **Clone limpo e tag `e4`:** ainda não feitos.
-- **Alerta que deixou de valer não fecha sozinho.** Se a gold muda e a regra para de apontar um conselho, o alerta aberto fica até a curadoria fechá-lo.
+- **Tag `e4`:** ainda não criada.
+- **Alerta que deixou de valer não fecha sozinho.** Se a gold muda e a regra para de apontar um conselho, o alerta aberto fica até a curadoria fechá-lo. O mesmo vale para o alerta de um mês de referência antigo: depois de um backfill de três meses, a página Revisar mostra os 24, e não só os 10 do último mês.
 - **A página Revisar não tem login.** Ela só roda em `127.0.0.1`, e quem marca o alerta escolhe o próprio nome numa lista.
 - **O superusuário ainda roda a carga, o lake e o CDC.** Os papéis novos cobrem o consumo, não a ingestão.
 - **Assistente de perguntas:** sem avaliação e sem ADR, como dito acima (#110 e #111). Sem `ANTHROPIC_API_KEY` no `.env`, a página mostra os atos achados e avisa que não responde.

@@ -1143,7 +1143,7 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:**
   - cada número da página e do diário vem de um arquivo de `docs/adr/medicoes/0011-disponibilizacao/` ou de `docs/lgpd/medicoes.txt`;
   - `npm --prefix site run build`: `build complete`, sem link morto.
-- **O que não foi feito:** a conferência num clone limpo, a coluna "Quem" da defesa e a tag `e4`.
+- **O que não foi feito:** a coluna "Quem" da defesa e a tag `e4`.
 - **Quem revisou:** Luiza, no PR #122. Da revisão entraram:
   - o diário diz de qual banco é cada contagem da LGPD;
   - o roteiro diz que o banco de trabalho tem outubro no OLTP, ainda fora da silver;
@@ -1151,3 +1151,4 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 
   A coluna "o que faríamos diferente", a coluna "Quem" e quem trabalhou no diário continuam com a squad.
 - **Atualização depois dos merges de #106 a #109 e #112:** a página ganhou a seção "Além do checklist" (P2, dicionário e assistente de perguntas), o diário lista o que entrou, e o roteiro deixa de condicionar o passo Perguntar à #109. Os três dizem que o assistente ainda não rodou com a API de verdade.
+- **Clone limpo (24/11):** a IA rodou a sequência do plano num clone do `main` (`33fc836`), com projeto compose e volume próprios, e extraiu o resumo `clone-limpo-20261124.txt` do log. Tudo passou. A conferência mostrou duas diferenças do que a página dizia, já corrigidas: o `make alertas` depois do backfill dá `inalterados=10`, e a tabela fica com 24 alertas abertos.
