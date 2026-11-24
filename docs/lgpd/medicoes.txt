@@ -1,0 +1,11 @@
+# Medição do dado pessoal no OLTP, 2026-11-24, banco local refeito do zero: a planilha e o DOU de julho a setembro de 2026.
+                   o_que                    | count 
+--------------------------------------------+-------
+ revisores humanos                          |     1
+ revisores com e-mail                       |     2
+ atos com CPF mascarado no texto            |     0
+ atos de nomeação, designação ou exoneração |     1
+ atos do DOU                                |   389
+ atos no total (DOU e planilha)             |   604
+(6 rows)
+
