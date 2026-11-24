@@ -1085,6 +1085,23 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Correção depois da review** (Claude Code, Claude Opus 5.5): a página avisa quando a resposta não cita nenhum ato, com 2 testes novos.
 - **Quem revisou:** pendente, no PR.
 
+### 2026-11-24 — P2: a tipologia por ano na camada semântica e no painel (#106)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `dbt/models/metricas/metricas.yml`, `src/painel/app.py`, `tests/painel/test_app.py`, `docs/adr/medicoes/0011-disponibilizacao/tipologia-por-ano.png`
+- **O que foi pedido:** a Tarefa 11 do plano da E4.
+- **O que foi aproveitado:**
+  - a consulta salva `tipologia_por_ano` do plano;
+  - o gráfico, reescrito na estrutura que o painel ganhou depois do plano: uma função em Altair, na aba "O que decidem", com as cores e a ordem das tipologias que o painel já usa. O eixo mostra todos os anos do intervalo, para o ano sem ato aparecer como buraco.
+- **Como foi verificado:**
+  - `make metricas`: o CSV tem o cabeçalho que o plano espera, e a soma dá 209, igual aos atos classificados da `fct_ato`, de 2003 a 2020;
+  - `make gold`: 79 em PASS e 1 aviso, o do SLA;
+  - `make test-painel`: 26 testes OK, com dois novos: com o CSV, e sem ele, para quem ainda não rodou o `make metricas` de novo;
+  - no navegador: o gráfico aparece na aba, com 2003 e 2004 concentrando os atos. O print está em `tipologia-por-ano.png`.
+
+  O `make test` inteiro não rodou.
+- **Quem revisou:** pendente, no PR.
+
 ### 2026-11-24 — Dicionário de dados gerado do banco e do dbt (#112)
 
 - **Ferramenta:** Claude Code (Claude Fable 5.2)
