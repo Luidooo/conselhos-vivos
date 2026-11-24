@@ -9,3 +9,13 @@
  atos no total (DOU e planilha)             |   604
 (6 rows)
 
+# A mesma medição no banco de trabalho da squad, 2026-11-24: a planilha e o DOU de julho a outubro de 2026.
+                   o_que                    | count 
+--------------------------------------------+-------
+ revisores humanos                          |     2
+ revisores com e-mail                       |     3
+ atos com CPF mascarado no texto            |     0
+ atos de nomeação, designação ou exoneração |     1
+ atos do DOU                                |   519
+ atos no total (DOU e planilha)             |   734
+(6 rows)
