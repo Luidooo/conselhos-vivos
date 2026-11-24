@@ -1137,6 +1137,7 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - no painel, os dois números numa segunda linha do cabeçalho e as duas colunas na tabela da aba Resposta, na estrutura em abas que o painel ganhou depois do plano;
   - um teste do painel além dos do plano, com a cobertura longa: os números e o "sim" ou "não" na tabela;
   - a descrição das duas colunas, que o `make dicionario` exige.
+- **Correção depois da revisão** (Claude Code, Claude Opus 5.5): com uma gold gerada antes da P1, o painel caía com `KeyError`. Agora ele pede o `make gold`, com um teste que falhou antes da correção.
 - **Como foi verificado:**
   - `make test-painel` falhou nos rótulos antes do código e passou depois: 38 testes OK;
   - `make gold`: 81 em PASS e 1 aviso, o do SLA; os dois testes unitários novos passam;
