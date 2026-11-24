@@ -22,7 +22,7 @@ make painel                                 # http://127.0.0.1:8501, com a pági
 ```
 Pré-requisitos: Docker com Compose v2, `make` e `sqlite3`. O backfill baixa os ZIPs dos dados abertos.
 
-**Conferido num clone limpo do `main` em 24/11/2026**, no commit `e08632d`, já com a P1, o chat e os links: todos os passos acima passaram, mais o `make dicionario` e o `make demo-retry`, e o painel abriu com 26 ativos e 33 sem ato. O resumo está em [clone-limpo-20261124-e08632d.txt](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0011-disponibilizacao/clone-limpo-20261124-e08632d.txt). A primeira conferência, no `33fc836`, é a [clone-limpo-20261124.txt](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0011-disponibilizacao/clone-limpo-20261124.txt).
+**Conferido num clone limpo do `main` em 24/11/2026**, no commit `e08632d`, já com a P1, o chat e os links: todos os passos acima passaram, mais o `make dicionario` e o `make demo-retry`, e o painel abriu com 26 ativos e 33 sem ato. O resumo está em [clone-limpo-20261124-e08632d.txt](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0011-disponibilizacao/clone-limpo-20261124-e08632d.txt). O histórico do `main` foi refeito depois, só para incluir coautores, com os mesmos arquivos: o `e08632d` é hoje o `d43e7f0`, e o `33fc836`, o `804a67c`. A primeira conferência, no `33fc836`, é a [clone-limpo-20261124.txt](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0011-disponibilizacao/clone-limpo-20261124.txt).
 :::
 
 ## Entregáveis
@@ -97,7 +97,7 @@ O [diário de 24/11](/docs/diario/2026-11-24) percorre os cinco estágios, da ge
 
 ## 8. Defesa
 
-O [roteiro](/docs/defesa) divide os 20 minutos entre a gestão e a banca técnica, com a ordem da demonstração e o plano B.
+O [roteiro](/docs/defesa) divide os 20 minutos entre a gestão, a banca técnica e a arguição, com a ordem da demonstração e o plano B.
 
 ## Além do checklist
 
@@ -109,12 +109,13 @@ O que não é item do checklist da disciplina, mas entrou na E4.
 | **Dicionário de dados** | [Dicionário de dados](/dicionario) · `src/dicionario/` · `sql/009_dicionario.sql` | `make dicionario`: 158 colunas, do OLTP à gold (173 linhas: 15 aparecem também como fonte do dbt), e falha se alguma ficar sem descrição |
 | **Assistente de perguntas (RAG)** | `sql/008_busca_dos_atos.sql` · `src/painel/busca.py` · `src/painel/perguntar.py` · `src/painel/pages/2_Perguntar.py` | a página Perguntar do painel, em formato de chat: a busca textual acha os atos no Postgres, pelo papel `app_perguntas`, a API do Claude responde citando o ato, e cada ato do DOU citado tem o link da publicação |
 
-**O assistente rodou com a API de verdade em 24/11/2026, em quatro perguntas avulsas**, com o DOU de julho a setembro:
-- "O que é o Renave?": respondeu citando duas resoluções do CONTRAN, e as citações conferem com os atos;
+**O assistente rodou com a API de verdade em 24/11/2026, em seis perguntas avulsas**, com o DOU de julho a setembro:
+- "O que é o Renave?", duas vezes: respondeu citando duas resoluções do CONTRAN, e as citações conferem com os atos ([perguntar-com-resposta.png](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0012-rag/perguntar-com-resposta.png));
+- "O que foi o orçamento do CNPq em 2023?": disse que não achou, e nenhum dos oito atos traz esse orçamento ([perguntar-sem-resposta.png](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0012-rag/perguntar-sem-resposta.png));
 - "O que o CONAMA decidiu sobre licenciamento?", só com atos de julho a novembro de 2026: disse que não achou, e apontou o que havia do CONAMA e do CONTRAN;
 - "quais conselhos estavam ativos mes passado", duas vezes: na primeira montou uma lista parcial, com os poucos atos que a busca trouxe; depois do ajuste na instrução, disse que quem responde isso é o painel.
 
-Quatro perguntas não são avaliação. Sem chave, a página mostra só a busca ([perguntar-sem-chave.png](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0012-rag/perguntar-sem-chave.png), da versão anterior ao chat). Faltam os prints com resposta (#109), a avaliação com perguntas reais (#110) e o ADR 0012, com a LGPD de mandar o texto dos atos a um serviço fora do país (#111).
+Seis perguntas não são avaliação. Os prints mostram um limite da busca: o "é" da pergunta conta como palavra. Para o Renave, seis dos oito atos achados não o citam, e dois que o citam ficaram de fora; com "Renave" sozinho, eles aparecem. A resposta citou só os dois atos certos. Sem chave, a página mostra só a busca ([perguntar-sem-chave.png](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0012-rag/perguntar-sem-chave.png), da versão anterior ao chat). Faltam a avaliação com perguntas reais (#110) e o ADR 0012, com a LGPD de mandar o texto dos atos a um serviço fora do país (#111).
 
 ## Limites conhecidos e pendências da squad
 
