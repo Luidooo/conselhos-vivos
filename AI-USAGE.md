@@ -942,3 +942,16 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - no banco de trabalho, a página mostrou os 10 alertas; um foi marcado como tratado, com a nota "conferido para a demonstração da E4", e o banco ficou com 9 abertos;
   - os prints `painel-metricas.png` e `revisar.png`.
 - **Quem revisou:** pendente, no PR.
+
+### 2026-11-24 — Métricas e alertas no job mensal do Dagster (#97)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `src/orquestracao/__init__.py`, `docs/adr/medicoes/0011-disponibilizacao/`.
+- **O que foi pedido:** a Tarefa 4 do plano da E4.
+- **O que foi aproveitado:** os assets `metricas`, que depende da gold, e `alertas`, que depende das métricas, no grupo `consumo` do job `mensal`.
+- **Como foi verificado:**
+  - `dagster definitions validate` sem erro;
+  - `make test-orquestracao` com 9 testes OK;
+  - `make demo-backfill DE=2026-09 ATE=2026-09` com `STEP_SUCCESS` nos seis passos e `RUN_SUCCESS`;
+  - o print do grafo em `grafo-dagster.jpg`.
+- **Quem revisou:** pendente, no PR.
