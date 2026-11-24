@@ -17,7 +17,7 @@ A coluna "Quem" a squad preenche no ensaio.
 
 1. `make painel` → http://127.0.0.1:8501: os três números, a tabela, o gráfico das métricas.
 2. Revisar: marcar um alerta como tratado ao vivo.
-3. Perguntar: uma pergunta com resposta citando o ato, e uma sem resposta nos atos. **Só se a página Perguntar (#109) entrar até a defesa;** senão, este passo sai.
+3. Perguntar: uma pergunta com resposta citando o ato, e uma sem resposta nos atos. Pede a `ANTHROPIC_API_KEY` no `.env` e rede. **A página ainda não rodou com a API de verdade: se o ensaio não a exercitar, este passo sai,** ou fica só a busca, que funciona sem chave.
 4. http://localhost:5173/conselhos-vivos/linhagem: "Percorrer a linhagem".
 5. `bash tests/db/test_acesso.sh`: os casos saem como `ok`, e a recusa em si não aparece. Para a banca ver o `permission denied`, rode também o comando abaixo, que tenta ler o e-mail como o papel do app:
 
@@ -33,4 +33,4 @@ A coluna "Quem" a squad preenche no ensaio.
 
 ## Plano B
 
-Se a rede ou o Docker falharem: os prints em `docs/adr/medicoes/0011-disponibilizacao/` (`painel-metricas.png`, `revisar.png`, `grafo-dagster.jpg`) e o site publicado.
+Se a rede ou o Docker falharem: os prints em `docs/adr/medicoes/0011-disponibilizacao/` (`painel-metricas.png`, `revisar.png`, `tipologia-por-ano.png`, `grafo-dagster.jpg`), o de `docs/adr/medicoes/0012-rag/` (`perguntar-sem-chave.png`) e o site publicado.

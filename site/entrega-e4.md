@@ -29,7 +29,7 @@ Pré-requisitos: Docker com Compose v2, `make` e `sqlite3`. O backfill baixa os 
 
 | O que | Onde está | Como conferir |
 |---|---|---|
-| **Camada semântica** | `dbt/models/marts/marts.yml` · `dbt/models/metricas/` · `src/metricas/` | `make metricas`: cinco métricas e duas consultas salvas, em CSV |
+| **Camada semântica** | `dbt/models/marts/marts.yml` · `dbt/models/metricas/` · `src/metricas/` | `make metricas`: cinco métricas e três consultas salvas, em CSV |
 | **Painel lendo a camada semântica** | `src/painel/app.py` | `make painel`: os atos por mês e a autorregulação vêm dos CSV |
 | **ETL reverso** | `src/alertas/` · tabela `alerta` (`sql/007`) | `make alertas`: `novos=10`, depois `inalterados=10` |
 | **Página Revisar** | `src/painel/pages/1_Revisar.py` | a pesquisadora marca o alerta como tratado |
@@ -57,7 +57,7 @@ Cada item do [checklist da E4](https://unb-bd2.github.io/PlanoEnsino/projeto/e4/
 
 ## 1. Consumo duplo: o painel e a camada semântica
 
-As métricas `atos_publicados`, `atos_classificados`, `atos_de_autorregulacao`, `proporcao_autorregulacao` e `mencoes_recebidas` ficam definidas uma vez, no YAML do dbt, e o MetricFlow as valida. As consultas salvas `atividade_por_mes` e `atividade_por_conselho` viram CSV em `data/gold/metricas/` depois da gold. O painel lê esses arquivos, e quem quiser os números fora dele abre os mesmos.
+As métricas `atos_publicados`, `atos_classificados`, `atos_de_autorregulacao`, `proporcao_autorregulacao` e `mencoes_recebidas` ficam definidas uma vez, no YAML do dbt, e o MetricFlow as valida. As consultas salvas `atividade_por_mes`, `atividade_por_conselho` e `tipologia_por_ano` viram CSV em `data/gold/metricas/` depois da gold. O painel lê esses arquivos, e quem quiser os números fora dele abre os mesmos.
 
 **Medido:** o MetricFlow e o SQL direto na gold dão os mesmos atos por mês, 94 em julho, 56 em agosto e 93 em setembro. O `mf query` leva 8,2 s, contra 0,005 s do SQL direto; esse tempo é pago uma vez por mês, no job.
 
@@ -96,6 +96,18 @@ O [diário de 24/11](/docs/diario/2026-11-24) percorre os cinco estágios, da ge
 
 O [roteiro](/docs/defesa) divide os 20 minutos entre a gestão e a banca técnica, com a ordem da demonstração e o plano B.
 
+## Além do checklist
+
+O que não é item do checklist da disciplina, mas entrou na E4.
+
+| O que | Onde está | Como conferir |
+|---|---|---|
+| **P2 da E1: o que os conselhos decidem, por ano** | consulta salva `tipologia_por_ano` · aba "O que decidem" do painel | [tipologia-por-ano.png](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0011-disponibilizacao/tipologia-por-ano.png): a soma do CSV dá os 209 atos classificados da gold |
+| **Dicionário de dados** | [Dicionário de dados](/dicionario) · `src/dicionario/` · `sql/009_dicionario.sql` | `make dicionario`: 144 colunas, do OLTP à gold, e falha se alguma ficar sem descrição |
+| **Assistente de perguntas (RAG)** | `sql/008_busca_dos_atos.sql` · `src/painel/busca.py` · `src/painel/perguntar.py` · `src/painel/pages/2_Perguntar.py` | a página Perguntar do painel: a busca textual acha os atos no Postgres, pelo papel `app_perguntas`, e a API do Claude responde citando o ato |
+
+**O assistente ainda não foi exercitado com a API de verdade.** A busca foi conferida no navegador ([perguntar-sem-chave.png](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0012-rag/perguntar-sem-chave.png)); a resposta só rodou nos testes, com um cliente falso. Faltam a avaliação com perguntas reais (#110) e o ADR 0012, com a LGPD de mandar o texto dos atos a um serviço fora do país (#111).
+
 ## Limites conhecidos e pendências da squad
 
 - **ADR 0011:** está como "proposto", à espera do aceite da squad.
@@ -103,5 +115,7 @@ O [roteiro](/docs/defesa) divide os 20 minutos entre a gestão e a banca técnic
 - **Alerta que deixou de valer não fecha sozinho.** Se a gold muda e a regra para de apontar um conselho, o alerta aberto fica até a curadoria fechá-lo.
 - **A página Revisar não tem login.** Ela só roda em `127.0.0.1`, e quem marca o alerta escolhe o próprio nome numa lista.
 - **O superusuário ainda roda a carga, o lake e o CDC.** Os papéis novos cobrem o consumo, não a ingestão.
-- **Além do checklist:** as perguntas P1 e P2 da E1, o assistente de perguntas (RAG) e o dicionário de dados estão nas issues #105 a #112, ainda abertas.
+- **Assistente de perguntas:** sem avaliação e sem ADR, como dito acima (#110 e #111). Sem `ANTHROPIC_API_KEY` no `.env`, a página mostra os atos achados e avisa que não responde.
+- **P1 da E1** (conselhos sem ato próprio há 6 e 12 meses) pede um ano de DOU carregado, e segue aberta na #105.
+- **Os textos do dicionário** saíram do SQL e dos ADRs, e aguardam a leitura de quem conhece o domínio.
 - **O limite de 3 meses da vitalidade** continua provisório, à espera da pesquisadora.

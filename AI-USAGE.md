@@ -1150,3 +1150,4 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - o passo 5 da demonstração ganhou o comando que mostra o `permission denied`, conferido no banco local.
 
   A coluna "o que faríamos diferente", a coluna "Quem" e quem trabalhou no diário continuam com a squad.
+- **Atualização depois dos merges de #106 a #109 e #112:** a página ganhou a seção "Além do checklist" (P2, dicionário e assistente de perguntas), o diário lista o que entrou, e o roteiro deixa de condicionar o passo Perguntar à #109. Os três dizem que o assistente ainda não rodou com a API de verdade.
