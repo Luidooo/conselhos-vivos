@@ -36,6 +36,14 @@ select
         when date_diff('month', p.ultimo_mes_com_ato, c.ultimo) <= {{ var('meses_ativo', 3) }} then 'ativo'
         else 'em silêncio'
     end as situacao,
+    -- P1 da E1: sem ato próprio nos últimos 6 e 12 meses (o último ato foi há N meses ou mais, ou nunca houve).
+    -- Nulo quando a cobertura é menor que a janela: com 3 meses de DOU não dá para dizer quem ficou 6 sem publicar.
+    case when coalesce(c.meses, 0) < 6 then null
+         else p.ultimo_mes_com_ato is null or date_diff('month', p.ultimo_mes_com_ato, c.ultimo) >= 6
+    end as sem_ato_6_meses,
+    case when coalesce(c.meses, 0) < 12 then null
+         else p.ultimo_mes_com_ato is null or date_diff('month', p.ultimo_mes_com_ato, c.ultimo) >= 12
+    end as sem_ato_12_meses,
     coalesce(m.mencoes_no_periodo, 0) as mencoes_no_periodo,
     m.ultimo_mes_citado
 from nome_recente d
