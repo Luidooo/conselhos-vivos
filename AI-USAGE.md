@@ -924,3 +924,21 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 
   O `make test` inteiro não rodou, porque outra frente usava o pgAdmin ao mesmo tempo; fica para o CI.
 - **Quem revisou:** pendente, no PR.
+
+### 2026-11-24 — Linhagem e catálogo até o consumo (#100)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `src/linhagem/__init__.py`, `tests/linhagem/test_linhagem.py`, `site/.vitepress/theme/LinhagemInterativa.vue`, `site/linhagem.md`, `public/linhagem/catalogo-dbt.html`
+- **O que foi pedido:** a Tarefa 7 do plano da E4.
+- **O que foi aproveitado:** o código do plano, com duas mudanças:
+  - o rótulo da seta das métricas para o painel virou "CSV", porque "consultas salvas" ficava cortado atrás da caixa da `mart_vitalidade`;
+  - o texto da página de linhagem passou a citar as métricas, o alerta e o print do grafo da E4.
+- **Como foi verificado:**
+  - o teste novo falhou antes do gerador mudar (2 falhas) e depois deu 5 testes OK;
+  - `make gold-docs` regerou o catálogo e o diagrama, com as camadas "semântica" e "consultas salvas";
+  - `grep -c "password=" public/linhagem/catalogo-dbt.html` deu 0;
+  - `npm --prefix site run build`: `build complete`, sem link morto;
+  - a linhagem interativa foi aberta no site construído e capturada com o Chrome sem janela: a seta "ETL reverso" não cruza caixa.
+
+  Os links para o ADR 0011 e para a página de LGPD, nas caixas novas, só funcionam depois do #101 e do #99.
+- **Quem revisou:** pendente, no PR.

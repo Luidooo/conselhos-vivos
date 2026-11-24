@@ -19,7 +19,7 @@ interface No {
   links?: [string, string][]
 }
 
-const COLUNAS = ['Fontes', 'Bronze e OLTP', 'Silver · Delta', 'Gold · dbt', 'Consumo', 'Resposta']
+const COLUNAS = ['Fontes', 'Bronze e OLTP', 'Silver · Delta', 'Gold · dbt', 'Consumo', 'Resposta e ação']
 const X0 = 20, PASSO_X = 250, W = 160, H = 70
 
 const GH = 'https://github.com/Luidooo/conselhos-vivos/blob/main/'
@@ -80,9 +80,17 @@ const NOS: No[] = [
   { id: 'freshness', col: 4, y: 330, cor: 'gray', titulo: 'freshness_vitalidade', sub: 'SLA: dia 20 do mês seguinte', onde: 'gold · dbt (view)',
     texto: 'O último mês coberto, o mês que o SLA espera hoje e o atraso. É uma view, para o "hoje" valer na leitura. O teste sla_vitalidade avisa sem travar o build.',
     gera: 'make gold', testes: 'sla_vitalidade (warn), três testes unitários da fronteira do dia 20' },
+  { id: 'metricas', col: 4, y: 60, cor: 'teal', titulo: 'Métricas', sub: 'camada semântica', onde: 'MetricFlow · data/gold/metricas/',
+    texto: 'Cada métrica definida uma vez, em YAML: atos publicados, menções recebidas e a proporção de autorregulação. As consultas salvas viram CSV depois da gold, lido pelo painel e por quem quiser os números.',
+    gera: 'make metricas, ou o asset metricas', testes: 'mf validate-configs; tests/metricas',
+    links: [['ADR 0011', '/docs/adr/0011-disponibilizar-por-camada-semantica-etl-reverso-e-papeis']] },
+  { id: 'alerta', col: 5, y: 410, cor: 'purple', titulo: 'alerta', sub: 'ETL reverso', onde: 'Postgres · OLTP',
+    texto: 'A situação tratada na gold volta ao Postgres: o conselho em silêncio, ou sem ato próprio mas citado. A pesquisadora trata o alerta na página Revisar.',
+    gera: 'make alertas, ou o asset alertas', testes: 'tests/alertas, tests/dou_db/test_alertas.py, tests/db/test_acesso.sh',
+    links: [['ADR 0011', '/docs/adr/0011-disponibilizar-por-camada-semantica-etl-reverso-e-papeis'], ['LGPD', '/docs/lgpd']] },
 
   { id: 'painel', col: 5, y: 250, cor: 'purple', titulo: 'Painel', sub: 'a pergunta da E1', onde: 'make painel · 127.0.0.1:8501',
-    texto: 'Lê só a gold, em modo só leitura, e fecha a conexão a cada carga: o make gold passa com ele aberto. Mostra a situação, as menções, a marca da pesquisadora, os atos por mês e as tipologias.',
+    texto: 'Lê a gold em modo só leitura e as métricas da camada semântica. A página Revisar mostra os alertas e marca o que a pesquisadora conferiu, entrando no Postgres como app_curadoria.',
     gera: 'make painel', testes: 'tests/painel, no make test' },
 ]
 
@@ -108,6 +116,10 @@ const LIGACOES: [string, string, string?][] = [
   ['mart', 'painel'],
   ['freshness', 'painel'],
   ['fct_ato', 'painel', 'tipologias'],
+  ['fct_ato', 'metricas'],
+  ['fct_mencao', 'metricas'],
+  ['metricas', 'painel', 'CSV'], // rótulo curto: "consultas salvas" ficava atrás da caixa da mart
+  ['mart', 'alerta', 'ETL reverso'],
 ]
 
 const PASSOS = [
@@ -115,7 +127,7 @@ const PASSOS = [
   { titulo: '2. OLTP', texto: 'O persist grava no Postgres as matérias dos conselhos; a planilha e o SIORG trazem a tipologia e os nomes com vigência.', ids: ['zip', 'ato', 'planilha', 'classificacao', 'siorg', 'orgao_nome'] },
   { titulo: '3. Silver', texto: 'O lake consolida os atos em Delta, e o CDC leva as reclassificações. Do mesmo ZIP, as menções de outros órgãos vão para a sua própria tabela.', ids: ['ato', 'classificacao', 'silver_atos', 'zip', 'silver_mencoes'] },
   { titulo: '4. Gold', texto: 'O dbt monta a estrela: a dimensão com os nomes na época e os três fatos, cada um com seus testes.', ids: ['silver_atos', 'silver_mencoes', 'orgao_nome', 'dim_conselho', 'fct_ato', 'fct_conselho_mes', 'fct_mencao'] },
-  { titulo: '5. Resposta', texto: 'A mart responde quais conselhos funcionam, o freshness vigia o SLA, e o painel mostra os dois.', ids: ['fct_conselho_mes', 'fct_mencao', 'dim_conselho', 'mart', 'freshness', 'painel'] },
+  { titulo: '5. Resposta e ação', texto: 'A mart responde quais conselhos funcionam, a camada semântica define as métricas que o painel lê, e o ETL reverso leva o que pede ação ao Postgres, onde a pesquisadora trata o alerta.', ids: ['mart', 'freshness', 'metricas', 'painel', 'alerta'] },
 ]
 
 const porId = Object.fromEntries(NOS.map((n) => [n.id, n]))

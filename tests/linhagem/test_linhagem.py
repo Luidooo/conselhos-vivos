@@ -18,6 +18,15 @@ MANIFEST = {
         "test.p.unique_fct_ato": {"resource_type": "test", "name": "unique_fct_ato", "fqn": ["p", "unique_fct_ato"],
                                   "depends_on": {"nodes": ["model.p.fct_ato"]}},
     },
+    "semantic_models": {
+        "semantic_model.p.atos": {"name": "atos", "depends_on": {"nodes": ["model.p.fct_ato"]}},
+    },
+    "metrics": {
+        "metric.p.atos_publicados": {"name": "atos_publicados", "depends_on": {"nodes": ["semantic_model.p.atos"]}},
+    },
+    "saved_queries": {
+        "saved_query.p.atividade_por_mes": {"name": "atividade_por_mes", "depends_on": {"nodes": ["metric.p.atos_publicados"]}},
+    },
 }
 
 
@@ -28,7 +37,14 @@ class Mermaid(unittest.TestCase):
         self.assertIn('["silver.atos"]', d)
         self.assertIn('subgraph c1["staging"]', d)
         self.assertIn('subgraph c2["marts"]', d)
-        self.assertEqual(d.count("-->"), 2, "a dependência repetida vira uma seta só")
+        self.assertEqual(d.count("-->"), 5, "a dependência repetida vira uma seta só")
+
+    def test_camada_semantica_ate_a_consulta_salva(self):
+        d = mermaid(MANIFEST)
+        self.assertIn('subgraph c3["semântica"]', d)
+        self.assertIn('subgraph c4["consultas salvas"]', d)
+        self.assertIn('["métrica atos_publicados"]', d)
+        self.assertEqual(d.count("-->"), 5, "fonte → stg → fct → modelo semântico → métrica → consulta")
 
     def test_teste_do_dbt_nao_entra(self):
         self.assertNotIn("unique_fct_ato", mermaid(MANIFEST))
