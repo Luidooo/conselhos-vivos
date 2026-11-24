@@ -47,6 +47,8 @@ else:
         with st.spinner("Lendo os atos achados..."):
             r = responder(pergunta, atos, anthropic.Anthropic())
         st.markdown(r.texto)
+        if atos and not r.citados:
+            st.warning("A resposta não cita nenhum ato. Se ela afirma algo, confira nos atos abaixo.")
         if r.cortada:
             st.warning("A resposta bateu no limite de tamanho e pode ter parado no meio.")
         st.caption(f"{r.tokens} tokens · {MODELO}")

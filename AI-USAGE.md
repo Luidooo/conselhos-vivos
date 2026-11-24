@@ -1082,4 +1082,5 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - no navegador, com o painel no ar e **sem** a chave da API: a pergunta "O que foi decidido sobre saúde indígena?" mostrou o aviso da chave e 8 atos, com o CNS e o CNPI no topo. O print está em `perguntar-sem-chave.png`.
 
   **O Passo 3 do plano não foi feito:** as duas perguntas com resposta, e os prints delas, precisam da chave da Luiza.
+- **Correção depois da review** (Claude Code, Claude Opus 5.5): a página avisa quando a resposta não cita nenhum ato, com 2 testes novos.
 - **Quem revisou:** pendente, no PR.
