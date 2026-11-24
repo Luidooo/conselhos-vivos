@@ -73,7 +73,7 @@ A [linhagem interativa](/linhagem) vai do ZIP do DOU até as métricas e o alert
 
 ## 4. Análise de LGPD
 
-A [análise](/docs/lgpd) mede o dado pessoal que está no banco, em vez de descrevê-lo de forma genérica: os revisores com nome e e-mail, e os atos de pessoal entre os 604 atos. Ela dá a base legal de cada dado, a retenção e o descarte. O descarte do revisor é um comando, `make anonimizar-revisor ID=n`, coberto por teste.
+A [análise](/docs/lgpd) mede o dado pessoal que está no banco, em vez de descrevê-lo de forma genérica: os revisores com nome e e-mail, e os atos de pessoal entre os atos carregados, no banco refeito do zero e no de trabalho. Ela dá a base legal de cada dado, a retenção e o descarte. O descarte do revisor é um comando, `make anonimizar-revisor ID=n`, coberto por teste.
 
 ## 5. Controle de acesso com privilégio mínimo
 

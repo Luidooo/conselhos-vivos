@@ -19,11 +19,15 @@ A coluna "Quem" a squad preenche no ensaio.
 2. Revisar: marcar um alerta como tratado ao vivo.
 3. Perguntar: uma pergunta com resposta citando o ato, e uma sem resposta nos atos. **Só se a página Perguntar (#109) entrar até a defesa;** senão, este passo sai.
 4. http://localhost:5173/conselhos-vivos/linhagem: "Percorrer a linhagem".
-5. `bash tests/db/test_acesso.sh`: o `permission denied` do e-mail.
+5. `bash tests/db/test_acesso.sh`: os casos saem como `ok`, e a recusa em si não aparece. Para a banca ver o `permission denied`, rode também o comando abaixo, que tenta ler o e-mail como o papel do app:
+
+   ```bash
+   docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SET ROLE app_curadoria; SELECT email FROM revisor"'
+   ```
 
 ## Antes de começar
 
-- O banco de trabalho no ar, com julho a setembro carregados, e a gold feita: `make up`, `make gold`, `make metricas`, `make alertas`.
+- O banco de trabalho no ar e a gold feita: `make up`, `make gold`, `make metricas`, `make alertas`. O banco de trabalho tem outubro no OLTP, ainda fora da silver: os números do painel são os de julho a setembro, e vale ter isso na ponta da língua se a banca abrir o banco.
 - Pelo menos um alerta aberto, para o passo 2. Um alerta marcado no ensaio não volta a abrir sozinho.
 - O site local no ar (`make docs`), para o passo 4.
 

@@ -1047,4 +1047,9 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - cada número da página e do diário vem de um arquivo de `docs/adr/medicoes/0011-disponibilizacao/` ou de `docs/lgpd/medicoes.txt`;
   - `npm --prefix site run build`: `build complete`, sem link morto.
 - **O que não foi feito:** a conferência num clone limpo, a coluna "Quem" da defesa e a tag `e4`.
-- **Quem revisou:** pendente, no PR.
+- **Quem revisou:** Luiza, no PR #122. Da revisão entraram:
+  - o diário diz de qual banco é cada contagem da LGPD;
+  - o roteiro diz que o banco de trabalho tem outubro no OLTP, ainda fora da silver;
+  - o passo 5 da demonstração ganhou o comando que mostra o `permission denied`, conferido no banco local.
+
+  A coluna "o que faríamos diferente", a coluna "Quem" e quem trabalhou no diário continuam com a squad.
