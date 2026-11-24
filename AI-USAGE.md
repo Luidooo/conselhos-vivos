@@ -1031,6 +1031,60 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **Como foi verificado:** `docs/lgpd/medir.sql` rodado no banco de trabalho: 519 atos do DOU e 734 no total.
 - **Quem revisou:** pendente, no PR.
 
+### 2026-11-24 — RAG: busca textual dos atos no Postgres (#107)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `sql/008_busca_dos_atos.sql`, `src/painel/busca.py`, `tests/dou_db/test_busca.py`, `tests/db/test_acesso.sh`, `docker-compose.yml`, `.env.example`
+- **O que foi pedido:** a Tarefa 12 do plano da E4.
+- **O que foi aproveitado:** o código do plano, sem mudança:
+  - o índice GIN sobre a ementa e o texto do ato, em português;
+  - o papel `app_perguntas`, que só lê as colunas do ato que a busca usa e os nomes dos órgãos;
+  - `buscar()`, que junta as palavras da pergunta com OU, ordena pela nota e fica com a versão mais recente da matéria.
+- **Como foi verificado:** num banco local com a planilha e o DOU de julho a setembro:
+  - `make test-db-py`: 1 erro antes do módulo existir; depois, 29 testes OK, com os 3 novos;
+  - `bash tests/db/test_acesso.sh`: os 5 casos do `app_perguntas` em `ok`;
+  - `bash tests/db/test_schema.sh`: OK;
+  - três buscas de verdade, entrando como `app_perguntas`: "saúde indígena" achou duas resoluções do CNPI em 0,2 s; uma pergunta em frase inteira levou 1,0 s; uma palavra inexistente não achou nada.
+
+  O `make test` inteiro não rodou.
+- **Quem revisou:** pendente, no PR.
+
+### 2026-11-24 — RAG: resposta pela API do Claude citando o ato (#108)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `src/painel/perguntar.py`, `tests/painel/test_perguntar.py`, `src/painel/requirements.txt`, `docker-compose.yml`, `.env.example`
+- **O que foi pedido:** a Tarefa 13 do plano da E4.
+- **O que foi aproveitado:** o `responder()` do plano, com quatro mudanças por causa do que o Sonnet 5.5 exige:
+  - o teto de tokens passou de 1024 para 16000, porque o raciocínio do modelo sai do mesmo teto que a resposta;
+  - a chamada é `cliente.beta.messages.create`, com o modelo de reserva da própria API para o caso de recusa. O parâmetro só existe no endpoint beta do SDK 2.3.0;
+  - a recusa do modelo levanta `Recusada`, em vez de virar uma resposta vazia;
+  - a `Resposta` ganhou `cortada`, para a página avisar quando o texto bateu no teto.
+- **Como foi verificado:**
+  - `make test-painel`: 1 erro antes do módulo existir; depois, 30 testes OK, com os 6 novos;
+  - o parâmetro `fallbacks` foi conferido na assinatura do `anthropic==2.3.0` instalado num container;
+  - `git diff | grep -c "sk-ant"` deu 0.
+
+  **Nenhuma chamada de verdade à API foi feita:** a chave é da Luiza. O pedido montado só foi exercitado com o cliente falso.
+- **Correção depois da review** (Claude Code, Claude Opus 5.5): a validação só via um número sozinho no colchete, e `[1, 9]` e `[1-9]` passavam. Ela passou a ler todos os números do colchete, com 2 testes novos.
+- **Quem revisou:** pendente, no PR.
+
+### 2026-11-24 — RAG: página Perguntar no painel (#109)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `src/painel/pages/2_Perguntar.py`, `tests/painel/test_perguntar.py`, `docs/adr/medicoes/0012-rag/perguntar-sem-chave.png`
+- **O que foi pedido:** a Tarefa 14 do plano da E4.
+- **O que foi aproveitado:** a página do plano, com três mudanças:
+  - trata a recusa do modelo e a resposta cortada, que entraram no `responder` na #108;
+  - separa as falhas da API por tipo (chave recusada, limite de uso, sem rede, outro erro), cada uma com o que fazer;
+  - diz "nenhum ato achado" quando a busca volta vazia, em vez de mostrar a página em branco.
+- **Como foi verificado:**
+  - `make test-painel`: 1 erro antes da página existir; depois, 31 testes OK;
+  - no navegador, com o painel no ar e **sem** a chave da API: a pergunta "O que foi decidido sobre saúde indígena?" mostrou o aviso da chave e 8 atos, com o CNS e o CNPI no topo. O print está em `perguntar-sem-chave.png`.
+
+  **O Passo 3 do plano não foi feito:** as duas perguntas com resposta, e os prints delas, precisam da chave da Luiza.
+- **Correção depois da review** (Claude Code, Claude Opus 5.5): a página avisa quando a resposta não cita nenhum ato, com 2 testes novos.
+- **Quem revisou:** pendente, no PR.
+
 ### 2026-11-24 — P2: a tipologia por ano na camada semântica e no painel (#106)
 
 - **Ferramenta:** Claude Code (Claude Fable 5.2)
