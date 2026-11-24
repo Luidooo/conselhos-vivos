@@ -1125,3 +1125,22 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   O `tests/db/test_schema.sh` falha no meu banco local em um caso, porque ele já tem a migração 008 da branch da #107, que não está nesta. O `make test` inteiro não rodou.
 - **Correção depois da review** (Claude Code, Claude Opus 5.5): o gerador passou a ler a view `classificacao_vigente` e a seed `conselhos_excluidos`, 8 colunas que ficavam de fora sem o `make dicionario` falhar; a página diz o que da silver não aparece; dois significados corrigidos (`classificacao.criado_em` e `checksum`). Página regenerada num banco descartável, só com as migrações, e 1 teste novo.
 - **Quem revisou:** pendente, no PR. **Os textos pedem leitura de quem conhece o domínio**, em especial os da `mart_vitalidade` e da `tipologia`.
+
+### 2026-11-24 — P1: sem ato próprio há 6 e 12 meses, o código (#105, parte 1)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `dbt/models/marts/mart_vitalidade.sql`, `dbt/models/marts/marts.yml`, `src/painel/app.py`, `tests/painel/test_app.py`, `site/dicionario.md`
+- **O que foi pedido:** a Tarefa 10 do plano da E4, até onde dá sem baixar um ano de DOU (passos 1 a 3).
+- **O que foi aproveitado:**
+  - as colunas `sem_ato_6_meses` e `sem_ato_12_meses` do plano, nulas quando a cobertura é menor que a janela;
+  - os dois testes unitários do plano, com um caso a mais: o conselho cujo último ato foi há 5 meses não entra nos 6;
+  - no painel, os dois números numa segunda linha do cabeçalho e as duas colunas na tabela da aba Resposta, na estrutura em abas que o painel ganhou depois do plano;
+  - um teste do painel além dos do plano, com a cobertura longa: os números e o "sim" ou "não" na tabela;
+  - a descrição das duas colunas, que o `make dicionario` exige.
+- **Como foi verificado:**
+  - `make test-painel` falhou nos rótulos antes do código e passou depois: 38 testes OK;
+  - `make gold`: 81 em PASS e 1 aviso, o do SLA; os dois testes unitários novos passam;
+  - `make dicionario`: sai 0, e a página ganha só as duas linhas novas.
+
+  Com os três meses carregados, as duas colunas são nulas e o painel mostra "—": **o número de verdade da P1 não foi medido.** Ele depende do passo 4, o download de outubro de 2025 a junho de 2026, que espera o ok da squad. O painel não foi aberto no navegador, e o `make test` inteiro não rodou.
+- **Quem revisou:** pendente, no PR.

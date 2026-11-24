@@ -164,6 +164,10 @@ models:
         description: "Matérias de outros órgãos que citam o conselho, no período coberto. Não muda a situação."
       - name: ultimo_mes_citado
         description: "Último mês em que outro órgão citou o conselho. Nulo sem menção no período."
+      - name: sem_ato_6_meses
+        description: "P1 da E1. Verdadeiro se o último ato próprio foi há 6 meses ou mais, ou se não houve ato no período. Nulo quando o período coberto tem menos de 6 meses."
+      - name: sem_ato_12_meses
+        description: "P1 da E1. Verdadeiro se o último ato próprio foi há 12 meses ou mais, ou se não houve ato no período. Nulo quando o período coberto tem menos de 12 meses."
 
   - name: fct_mencao
     description: >
@@ -471,3 +475,48 @@ unit_tests:
     expect:
       rows:
         - {mencao_id: "900-1", orgao_id: 1}
+
+  - name: mart_vitalidade_sem_ato_6_e_12_meses
+    description: "P1 da E1: sem ato próprio nos últimos 6 e nos últimos 12 meses, com 12 meses cobertos (out/2025 a set/2026)."
+    model: mart_vitalidade
+    given:
+      - input: ref('fct_conselho_mes')
+        rows:
+          - {orgao_id: 1, mes: 2025-10-01, atos: 0}
+          - {orgao_id: 1, mes: 2026-09-01, atos: 2}
+          - {orgao_id: 2, mes: 2026-03-01, atos: 1}
+          - {orgao_id: 2, mes: 2026-09-01, atos: 0}
+          - {orgao_id: 3, mes: 2026-09-01, atos: 0}
+          - {orgao_id: 4, mes: 2026-04-01, atos: 1}
+          - {orgao_id: 4, mes: 2026-09-01, atos: 0}
+      - input: ref('dim_conselho')
+        rows:
+          - {orgao_id: 1, nome: "Um", sigla: "U", valido_de: 2000-01-01}
+          - {orgao_id: 2, nome: "Dois", sigla: "D", valido_de: 2000-01-01}
+          - {orgao_id: 3, nome: "Tres", sigla: "T", valido_de: 2000-01-01}
+          - {orgao_id: 4, nome: "Quatro", sigla: "Q", valido_de: 2000-01-01}
+      - input: ref('fct_mencao')
+        rows: []
+    expect:
+      rows:
+        - {orgao_id: 1, sem_ato_6_meses: false, sem_ato_12_meses: false}
+        - {orgao_id: 2, sem_ato_6_meses: true, sem_ato_12_meses: false}
+        - {orgao_id: 3, sem_ato_6_meses: true, sem_ato_12_meses: true}
+        - {orgao_id: 4, sem_ato_6_meses: false, sem_ato_12_meses: false}
+
+  - name: mart_vitalidade_sem_ato_cobertura_curta
+    description: "Com 3 meses cobertos, não dá para dizer quem ficou 6 ou 12 meses sem ato: as duas colunas ficam nulas."
+    model: mart_vitalidade
+    given:
+      - input: ref('fct_conselho_mes')
+        rows:
+          - {orgao_id: 1, mes: 2026-07-01, atos: 0}
+          - {orgao_id: 1, mes: 2026-09-01, atos: 0}
+      - input: ref('dim_conselho')
+        rows:
+          - {orgao_id: 1, nome: "Um", sigla: "U", valido_de: 2000-01-01}
+      - input: ref('fct_mencao')
+        rows: []
+    expect:
+      rows:
+        - {orgao_id: 1, sem_ato_6_meses: null, sem_ato_12_meses: null}
