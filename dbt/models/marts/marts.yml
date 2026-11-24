@@ -8,8 +8,10 @@ models:
       já teve "Conselho" no início do nome (ADR 0010), menos os da seed conselhos_excluidos.
     columns:
       - name: conselho_sk
+        description: "Chave substituta: o id da linha de nome no OLTP (orgao_nome.id). O conselho tem uma por nome que teve."
         data_tests: [unique, not_null]
       - name: orgao_id
+        description: "Identificador do conselho no OLTP. É o mesmo em todos os nomes do conselho."
         data_tests: [not_null]
       # valido_de nunca é nulo (coalesce); o que importa é onde cabe o início aberto,
       # e isso o teste dim_inicio_aberto_so_no_nome_mais_antigo confere.
@@ -17,6 +19,18 @@ models:
         description: "Marca da pesquisadora. Nulo significa não avaliado, não falso."
       - name: inicio_nao_verificado
         description: "Verdadeiro quando o OLTP não tem a data de início do nome (ADR 0004, ponto 4). Nesse caso valido_de é 0001-01-01, um limite aberto, não uma data real."
+      - name: nome
+        description: "Nome do conselho nesse período."
+      - name: sigla
+        description: "Sigla do órgão (SIORG ou a da planilha). Não é única entre conselhos."
+      - name: codigo_siorg
+        description: "Código da unidade no SIORG, quando o nome casa com exatamente uma unidade. Vínculo externo, não identidade (ADR 0004)."
+      - name: valido_de
+        description: "Início da vigência do nome. É 0001-01-01 quando a data não foi verificada (inicio_nao_verificado)."
+      - name: valido_ate
+        description: "Fim da vigência do nome. É 9999-12-31 no nome sem fim."
+      - name: atual
+        description: "Verdadeiro no nome sem data de fim. Conselho extinto não tem nome atual."
 
   - name: fct_ato
     description: >
@@ -30,18 +44,24 @@ models:
     agg_time_dimension: data_publicacao
     columns:
       - name: ato_id
+        description: "Id da versão mais recente da matéria no OLTP (ato.id)."
         entity: {type: primary, name: ato}
         data_tests: [unique, not_null]
       - name: materia
+        description: "Chave da matéria: DOU: mais o id do DOU, ou PLANILHA: mais o id do ato. As versões de uma retificação têm a mesma."
         data_tests: [unique, not_null]
       - name: orgao_id
+        description: "Conselho que publicou o ato."
         entity: {type: foreign, name: conselho}
       - name: data_publicacao
+        description: "Data de publicação do ato, como veio da fonte."
         granularity: day
         dimension: {type: time}
       - name: origem
+        description: "DOU: matéria lida do Diário Oficial. PLANILHA: ato da carga inicial da pesquisadora."
         dimension: {type: categorical}
       - name: conselho_sk
+        description: "O nome que o conselho tinha na data da publicação (dim_conselho)."
         data_tests:
           - not_null
           - relationships:
@@ -49,11 +69,18 @@ models:
                 to: ref('dim_conselho')
                 field: conselho_sk
       - name: tipologia_sigla
+        description: "Tipologia da classificação vigente. SEM quando o ato não foi classificado."
         dimension: {type: categorical}
         data_tests:
           - accepted_values:
               arguments:
                 values: ['99', 'AUTO', 'DEF', 'FISC', 'GEST', 'IP', 'SEM']
+      - name: mes
+        description: "Primeiro dia do mês da publicação."
+      - name: nome_aproximado
+        description: "Verdadeiro quando a data cai fora da vigência do nome escolhido."
+      - name: revisor_tipo
+        description: "Quem deu a classificação vigente: HUMANO ou PIPELINE. Nulo sem classificação."
     metrics:
       - name: atos_publicados
         label: Atos publicados no DOU
@@ -95,6 +122,7 @@ models:
             column_name: "orgao_id || '-' || mes"
     columns:
       - name: orgao_id
+        description: "Conselho."
         data_tests:
           - not_null
           - relationships:
@@ -102,20 +130,40 @@ models:
                 to: ref('dim_conselho')
                 field: orgao_id
       - name: mes
+        description: "Primeiro dia do mês, dentro do período coberto pelo DOU."
         data_tests: [not_null]
       - name: atos
+        description: "Matérias do DOU publicadas pelo conselho no mês. Zero é o mês de silêncio."
         data_tests: [not_null]
 
   - name: mart_vitalidade
     description: "Consumo. Granularidade: uma linha por conselho. Responde quais conselhos ainda estão funcionando. meses_ativo (padrão 3) é o limite provisório entre ativo e em silêncio. mes_referencia é o último mês coberto pela ingestão, não a data de hoje. mencoes_no_periodo e ultimo_mes_citado contam as menções de outros órgãos (fct_mencao) na mesma janela do DOU: um segundo sinal, que não muda a situação."
     columns:
       - name: orgao_id
+        description: "Conselho."
         data_tests: [unique, not_null]
       - name: situacao
+        description: "ativo: publicou há meses_ativo meses (padrão 3) ou menos. em silêncio: há mais que isso, ou nunca, com a cobertura já maior que o limite. sem ato no período coberto: nunca, com a cobertura ainda dentro do limite."
         data_tests:
           - accepted_values:
               arguments:
                 values: ['ativo', 'em silêncio', 'sem ato no período coberto']
+      - name: nome
+        description: "Nome mais recente do conselho."
+      - name: sigla
+        description: "Sigla do órgão (SIORG ou a da planilha). Não é única entre conselhos."
+      - name: mes_referencia
+        description: "Último mês coberto pelo DOU. A situação vale para esse mês, não para hoje."
+      - name: ultimo_mes_com_ato
+        description: "Último mês em que o conselho publicou. Nulo se não publicou no período coberto."
+      - name: atos_no_periodo
+        description: "Matérias do DOU publicadas pelo conselho no período coberto."
+      - name: meses_sem_publicar
+        description: "Meses entre o último mês com ato e o mês de referência. Nulo se não publicou no período coberto."
+      - name: mencoes_no_periodo
+        description: "Matérias de outros órgãos que citam o conselho, no período coberto. Não muda a situação."
+      - name: ultimo_mes_citado
+        description: "Último mês em que outro órgão citou o conselho. Nulo sem menção no período."
 
   - name: fct_mencao
     description: >
@@ -128,9 +176,11 @@ models:
     agg_time_dimension: data_publicacao
     columns:
       - name: mencao_id
+        description: "Chave da menção: o id da matéria no DOU, um hífen e o id do conselho citado."
         entity: {type: primary, name: mencao}
         data_tests: [unique, not_null]
       - name: orgao_id
+        description: "Conselho citado na matéria."
         entity: {type: foreign, name: conselho}
         data_tests:
           - not_null
@@ -139,15 +189,31 @@ models:
                 to: ref('dim_conselho')
                 field: orgao_id
       - name: data_publicacao
+        description: "Data de publicação da matéria que cita o conselho."
         granularity: day
         dimension: {type: time}
         data_tests: [not_null]
       - name: assunto
+        description: "Do que a matéria trata em relação ao conselho: extinção, criação, estrutura, regimento, homologação, composição ou outro."
         dimension: {type: categorical}
         data_tests:
           - accepted_values:
               arguments:
                 values: ['extinção', 'criação', 'estrutura', 'regimento', 'homologação', 'composição', 'outro']
+      - name: id_dou
+        description: "Identificador da matéria do outro órgão, emitido pela Imprensa Nacional."
+      - name: nome_citado
+        description: "O nome do conselho como apareceu na matéria."
+      - name: mes
+        description: "Primeiro dia do mês da publicação."
+      - name: tipo_ato
+        description: "Tipo do ato, como veio no XML do DOU."
+      - name: publicador
+        description: "Órgão que publicou a matéria, com a hierarquia separada por barra."
+      - name: titulo
+        description: "Título da matéria que cita o conselho."
+      - name: ementa
+        description: "Ementa da matéria que cita o conselho."
     metrics:
       - name: mencoes_recebidas
         label: Menções de outros órgãos
@@ -163,16 +229,27 @@ models:
       está dentro do SLA. Sem nenhum mês carregado, está fora. O teste sla_vitalidade avisa, sem travar o build.
     columns:
       - name: mes_esperado
+        description: "O mês que o SLA espera hoje: o mês M tem de estar na gold até o dia 20 do mês M+1."
         data_tests: [not_null]
       - name: dentro_do_sla
+        description: "Verdadeiro quando o atraso é zero ou menos. Falso também com o DOU vazio."
         data_tests: [not_null]
+      - name: primeiro_mes_coberto
+        description: "Primeiro mês com DOU na gold."
+      - name: ultimo_mes_coberto
+        description: "Último mês com DOU na gold."
+      - name: atraso_meses
+        description: "Meses entre o último mês coberto e o esperado. Zero ou negativo é em dia."
 
 seeds:
   - name: conselhos_excluidos
     description: "Órgãos com \"Conselho\" no nome que não são colegiados de participação social, fora da dimensão (ADR 0010, ponto 3). Chave: o nome."
     columns:
       - name: nome
+        description: "Nome do órgão excluído, como em orgao_nome."
         data_tests: [unique, not_null]
+      - name: motivo
+        description: "Por que o órgão não é um colegiado de participação social."
 
 unit_tests:
   - name: fct_ato_casa_o_nome_da_data
