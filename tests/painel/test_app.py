@@ -282,6 +282,18 @@ class TestApp(unittest.TestCase):
         self.assertGreater(len(erros), 0)
         self.assertIn("make gold", erros[0])
 
+    def test_gold_de_antes_da_p1_pede_make_gold(self):
+        with duckdb.connect(self.gold_path) as con:
+            self._cria_tabelas_base(con)
+            self._cria_freshness(con)
+            con.execute("ALTER TABLE mart_vitalidade DROP COLUMN sem_ato_6_meses")
+        os.environ["PAINEL_GOLD"] = self.gold_path
+        at = AppTest.from_file(APP).run(timeout=60)
+        self.assertEqual(len(at.exception), 0)
+        erros = [e.value for e in at.error]
+        self.assertGreater(len(erros), 0)
+        self.assertIn("make gold", erros[0])
+
     def test_gold_ocupada_pede_nova_tentativa(self):
         with duckdb.connect(self.gold_path) as con:
             self._cria_tabelas_base(con)

@@ -358,6 +358,8 @@ if not os.path.exists(GOLD):
 erro = None
 try:
     dados = carregar(GOLD)
+    if not {"sem_ato_6_meses", "sem_ato_12_meses"} <= set(dados["v"].columns):
+        erro = "A gold é de uma versão anterior, sem as colunas da P1: rode make gold."
 except duckdb.CatalogException:
     erro = "A gold não tem as tabelas do painel: rode make gold."
 except duckdb.IOException:
