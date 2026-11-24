@@ -23,3 +23,8 @@ saved_queries:
     query_params:
       metrics: [atos_publicados, mencoes_recebidas, proporcao_autorregulacao]
       group_by: ["Entity('conselho')"]
+  - name: tipologia_por_ano
+    description: "P2 da E1: atos classificados por ano e tipologia. Hoje, quase só a planilha (2003 a 2020); os do DOU entram quando forem classificados."
+    query_params:
+      metrics: [atos_classificados]
+      group_by: ["TimeDimension('metric_time', 'year')", "Dimension('ato__tipologia_sigla')"]
