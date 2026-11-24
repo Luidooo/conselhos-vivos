@@ -1000,3 +1000,21 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - a saída do teste de acesso ficou guardada em `acesso.txt`.
 
   O status do ADR fica "proposto" até a squad aceitar.
+
+### 2026-11-24 — RAG: busca textual dos atos no Postgres (#107)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `sql/008_busca_dos_atos.sql`, `src/painel/busca.py`, `tests/dou_db/test_busca.py`, `tests/db/test_acesso.sh`, `docker-compose.yml`, `.env.example`
+- **O que foi pedido:** a Tarefa 12 do plano da E4.
+- **O que foi aproveitado:** o código do plano, sem mudança:
+  - o índice GIN sobre a ementa e o texto do ato, em português;
+  - o papel `app_perguntas`, que só lê as colunas do ato que a busca usa e os nomes dos órgãos;
+  - `buscar()`, que junta as palavras da pergunta com OU, ordena pela nota e fica com a versão mais recente da matéria.
+- **Como foi verificado:** num banco local com a planilha e o DOU de julho a setembro:
+  - `make test-db-py`: 1 erro antes do módulo existir; depois, 29 testes OK, com os 3 novos;
+  - `bash tests/db/test_acesso.sh`: os 5 casos do `app_perguntas` em `ok`;
+  - `bash tests/db/test_schema.sh`: OK;
+  - três buscas de verdade, entrando como `app_perguntas`: "saúde indígena" achou duas resoluções do CNPI em 0,2 s; uma pergunta em frase inteira levou 1,0 s; uma palavra inexistente não achou nada.
+
+  O `make test` inteiro não rodou.
+- **Quem revisou:** pendente, no PR.

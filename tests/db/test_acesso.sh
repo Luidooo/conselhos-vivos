@@ -48,6 +48,13 @@ pode     "lê órgãos, nomes e conselhos"         leitor_analitico "SELECT coun
 nao_pode "não lê os atos"                       leitor_analitico "SELECT count(*) FROM ato"
 nao_pode "não escreve"                          leitor_analitico "UPDATE conselho SET descricao = descricao"
 
+echo "app_perguntas"
+pode     "busca no texto dos atos"              app_perguntas "SELECT count(id) FROM ato WHERE to_tsvector('portuguese', coalesce(ementa, '') || ' ' || coalesce(conteudo, '')) @@ plainto_tsquery('portuguese', 'conselho')"
+pode     "lê o nome dos órgãos"                 app_perguntas "SELECT count(*) FROM orgao_nome"
+nao_pode "não lê os revisores"                  app_perguntas "SELECT nome FROM revisor"
+nao_pode "não lê a classificação"               app_perguntas "SELECT count(*) FROM classificacao"
+nao_pode "não escreve no ato"                   app_perguntas "UPDATE ato SET ementa = ementa"
+
 echo "descarte do revisor (LGPD)"
 anon=$(psql_db "BEGIN; $BASE;
   INSERT INTO revisor (nome, tipo, email) VALUES ('Fulana', 'HUMANO', 'fulana@exemplo.org');
