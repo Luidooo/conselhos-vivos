@@ -1065,4 +1065,5 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - `git diff | grep -c "sk-ant"` deu 0.
 
   **Nenhuma chamada de verdade à API foi feita:** a chave é da Luiza. O pedido montado só foi exercitado com o cliente falso.
+- **Correção depois da review** (Claude Code, Claude Opus 5.5): a validação só via um número sozinho no colchete, e `[1, 9]` e `[1-9]` passavam. Ela passou a ler todos os números do colchete, com 2 testes novos.
 - **Quem revisou:** pendente, no PR.
