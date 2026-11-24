@@ -1,11 +1,15 @@
 """A resposta do RAG (src/painel/perguntar.py) com um cliente falso: nenhum teste chama a API de verdade."""
 
+import os
 import unittest
 from datetime import date
 from types import SimpleNamespace
+from unittest import mock
+
+from streamlit.testing.v1 import AppTest
 
 from busca import Ato
-from perguntar import CitacaoInvalida, Recusada, responder
+from perguntar import CitacaoInvalida, Recusada, Resposta, responder
 
 ATOS = [Ato(1, "DOU-1", date(2026, 8, 12), "Conselho Um", "Aprova o licenciamento", "o **licenciamento** ambiental"),
         Ato(2, "DOU-2", date(2026, 9, 1), "Conselho Dois", None, "o regimento interno")]
@@ -72,6 +76,34 @@ class Responder(unittest.TestCase):
         for proibido in ("temperature", "top_p", "top_k", "tool_choice"):
             self.assertNotIn(proibido, pedido)
         self.assertNotIn("thinking", pedido, "no Sonnet 5.5, thinking desligado dá 400: o padrão é o adaptativo")
+
+
+class Pagina(unittest.TestCase):
+    def test_sem_banco_avisa(self):
+        # Uma porta em que ninguém escuta: a conexão é recusada na hora, sem depender do banco de verdade.
+        with mock.patch.dict(os.environ, {"PGHOST": "127.0.0.1", "PGPORT": "1"}):
+            at = AppTest.from_file("/app/pages/2_Perguntar.py").run(timeout=30)
+        self.assertEqual(len(at.exception), 0)
+        self.assertTrue(any("make up" in e.value for e in at.error))
+
+    def _pergunta(self, resposta):
+        """A página com o banco, a busca e a resposta falsos: só a tela é exercitada."""
+        conn = mock.MagicMock()
+        conn.__enter__.return_value.execute.return_value.fetchall.return_value = [(1, "Conselho Um")]
+        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "falsa"}), mock.patch("psycopg.connect", return_value=conn), \
+                mock.patch("busca.buscar", return_value=ATOS), mock.patch("perguntar.responder", return_value=resposta):
+            at = AppTest.from_file("/app/pages/2_Perguntar.py").run(timeout=30)
+            at.text_input[0].set_value("o que aprovaram?").run()
+            at.button[0].click().run()
+        self.assertEqual(len(at.exception), 0)
+        return at
+
+    def test_resposta_sem_citacao_avisa(self):
+        at = self._pergunta(Resposta("Sim, aprovou.", [], 120))
+        self.assertTrue(any("não cita nenhum ato" in w.value for w in at.warning))
+
+    def test_resposta_com_citacao_nao_avisa(self):
+        self.assertEqual(len(self._pergunta(Resposta("Sim [1].", [1], 120)).warning), 0)
 
 
 if __name__ == "__main__":
