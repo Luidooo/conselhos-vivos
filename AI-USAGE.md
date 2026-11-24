@@ -977,6 +977,30 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - `npm --prefix site run build`: `build complete`, sem link morto.
 - **Quem revisou:** Luiza, no PR #118. Ela conferiu os GRANTs, as portas, a `anonimizar_revisor` e os artigos, e pediu para a página dizer que o banco de trabalho tem 2 revisores humanos e 3 com e-mail; entrou.
 
+### 2026-11-24 — ADR 0011 e o portfólio dos ADRs (#101)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `docs/adr/0011-disponibilizar-por-camada-semantica-etl-reverso-e-papeis.md`, `docs/adr/medicoes/0011-disponibilizacao/`, `docs/adr/README.md`, `site/.vitepress/config.mts`
+- **O que foi pedido:** a Tarefa 8 do plano da E4.
+- **O que foi aproveitado:** o texto do ADR e o portfólio como estão no plano, com os números medidos e três mudanças:
+  - o `medir.py` imprime só o SQL do `--explain`, sem o aviso de versão e a animação de espera do `mf`;
+  - o ADR diz que os 8 s do `mf query` incluem a subida do MetricFlow e são pagos uma vez por mês;
+  - entrou uma consequência a mais: alerta que deixou de valer não fecha sozinho. Ela apareceu na medição, quando a gold mudou de um para três meses e um alerta antigo ficou na tabela.
+- **Como foi verificado:** num banco local refeito do zero, com a planilha e o DOU de julho a setembro:
+  - `medir.sh`: os atos por mês do MetricFlow e do SQL direto batem (94, 56 e 93);
+  - `make alertas` duas vezes, com a tabela vazia: `novos=10`, depois `inalterados=10`;
+  - `bash tests/db/test_acesso.sh`: 14 casos em `ok`;
+  - os onze ADRs têm a seção "Gatilho de revisão";
+  - `npm --prefix site run build`: `build complete`, sem link morto.
+
+  A página Revisar, que o ADR cita, ainda está no PR #114.
+- **Quem revisou:** Luiza, no PR #120. Da revisão entraram:
+  - a prova de idempotência do ETL reverso é a da main, medida por ela no banco de trabalho, e o ADR diz isso;
+  - o ADR aponta para a análise de LGPD, e a análise aponta para o ADR;
+  - a saída do teste de acesso ficou guardada em `acesso.txt`.
+
+  O status do ADR fica "proposto" até a squad aceitar.
+
 ### 2026-11-24 — Linhagem e catálogo até o consumo (#100)
 
 - **Ferramenta:** Claude Code (Claude Fable 5.2)
