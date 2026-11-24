@@ -6,6 +6,7 @@ from datetime import date
 from types import SimpleNamespace
 from unittest import mock
 
+import streamlit as st
 from streamlit.testing.v1 import AppTest
 
 from busca import Ato, link_dou
@@ -98,6 +99,10 @@ class Responder(unittest.TestCase):
 
 
 class Pagina(unittest.TestCase):
+    def setUp(self):
+        # o histórico mora na memória do processo, que é um só para todos os testes
+        st.cache_resource.clear()
+
     def test_sem_banco_avisa(self):
         # Uma porta em que ninguém escuta: a conexão é recusada na hora, sem depender do banco de verdade.
         with mock.patch.dict(os.environ, {"PGHOST": "127.0.0.1", "PGPORT": "1"}):
@@ -105,15 +110,14 @@ class Pagina(unittest.TestCase):
         self.assertEqual(len(at.exception), 0)
         self.assertTrue(any("make up" in e.value for e in at.error))
 
-    def _pergunta(self, resposta):
+    def _pergunta(self, resposta, chave="falsa"):
         """A página com o banco, a busca e a resposta falsos: só a tela é exercitada."""
         conn = mock.MagicMock()
         conn.__enter__.return_value.execute.return_value.fetchall.return_value = [(1, "Conselho Um")]
-        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "falsa"}), mock.patch("psycopg.connect", return_value=conn), \
+        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": chave}), mock.patch("psycopg.connect", return_value=conn), \
                 mock.patch("busca.buscar", return_value=ATOS), mock.patch("perguntar.responder", return_value=resposta):
             at = AppTest.from_file("/app/pages/2_Perguntar.py").run(timeout=30)
-            at.text_input[0].set_value("o que aprovaram?").run()
-            at.button[0].click().run()
+            at.chat_input[0].set_value("o que aprovaram?").run()
         self.assertEqual(len(at.exception), 0)
         return at
 
@@ -126,10 +130,34 @@ class Pagina(unittest.TestCase):
 
     def test_resposta_traz_o_link_de_cada_ato_citado(self):
         at = self._pergunta(Resposta("Sim [2].", [2], 120))
-        links = [m.value for m in at.markdown if "in.gov.br" in m.value]
+        links = [m.value for m in at.markdown if "[ato " in m.value]
         self.assertEqual(len(links), 1)
         self.assertIn("[ato 2](https://www.in.gov.br/leiturajornal?data=01-09-2026)", links[0])
         self.assertNotIn("[ato 1]", links[0])
+
+    def test_conversa_guarda_as_perguntas_em_outra_aba(self):
+        self._pergunta(Resposta("Primeira [1].", [1], 120))
+        at = self._pergunta(Resposta("Segunda [2].", [2], 120))
+        self.assertEqual([m.avatar for m in at.chat_message], ["user", "assistant"] * 2)
+        textos = [m.value for m in at.markdown]
+        self.assertIn("Primeira [1].", textos)
+        self.assertIn("Segunda [2].", textos)
+
+    def test_limpar_conversa(self):
+        at = self._pergunta(Resposta("Sim [1].", [1], 120))
+        conn = mock.MagicMock()
+        conn.__enter__.return_value.execute.return_value.fetchall.return_value = [(1, "Conselho Um")]
+        with mock.patch("psycopg.connect", return_value=conn):
+            at.button[0].click().run()
+        self.assertEqual(len(at.exception), 0)
+        self.assertEqual(len(at.chat_message), 0)
+
+    def test_sem_chave_mostra_os_atos(self):
+        with mock.patch("perguntar.responder") as responder_falso:
+            at = self._pergunta(None, chave="")
+            responder_falso.assert_not_called()
+        self.assertTrue(any("Sem ANTHROPIC_API_KEY" in i.value for i in at.info))
+        self.assertTrue(any("Conselho Um" in m.value for m in at.markdown))
 
 
 if __name__ == "__main__":

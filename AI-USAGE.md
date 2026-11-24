@@ -1158,3 +1158,12 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - os links da Resolução CONAMA nº 516 e da Resolução CNAS/MDS nº 246 dão um resultado só, o ato certo, e o da edição de 10/07/2026 abre. Os demais não foram abertos um a um;
   - a página conferida no navegador, sem chave de API. O `make test` inteiro não rodou.
 - **Quem revisou:** pendente.
+
+### 2026-11-24 — Página Perguntar em formato de chat, com as últimas perguntas (#109)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `src/painel/pages/2_Perguntar.py`, `tests/painel/test_perguntar.py`
+- **O que foi pedido:** pela Luiza: guardar as últimas perguntas e deixar a página como um chat.
+- **O que foi aproveitado:** a conversa com `st.chat_input` e `st.chat_message`, as últimas 20 perguntas na memória do painel e o botão "Limpar conversa". Cada pergunta segue independente: a conversa anterior não vai para a API.
+- **Como foi verificado:** 46 testes do painel OK, três deles novos; no navegador, sem chave: duas perguntas seguidas continuam na tela depois de recarregar a página. O `make test` inteiro não rodou.
+- **Quem revisou:** pendente.
