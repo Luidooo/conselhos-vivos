@@ -1036,3 +1036,19 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 
   **Nenhuma chamada de verdade à API foi feita:** a chave é da Luiza. O pedido montado só foi exercitado com o cliente falso.
 - **Quem revisou:** pendente, no PR.
+
+### 2026-11-24 — RAG: página Perguntar no painel (#109)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `src/painel/pages/2_Perguntar.py`, `tests/painel/test_perguntar.py`, `docs/adr/medicoes/0012-rag/perguntar-sem-chave.png`
+- **O que foi pedido:** a Tarefa 14 do plano da E4.
+- **O que foi aproveitado:** a página do plano, com três mudanças:
+  - trata a recusa do modelo e a resposta cortada, que entraram no `responder` na #108;
+  - separa as falhas da API por tipo (chave recusada, limite de uso, sem rede, outro erro), cada uma com o que fazer;
+  - diz "nenhum ato achado" quando a busca volta vazia, em vez de mostrar a página em branco.
+- **Como foi verificado:**
+  - `make test-painel`: 1 erro antes da página existir; depois, 31 testes OK;
+  - no navegador, com o painel no ar e **sem** a chave da API: a pergunta "O que foi decidido sobre saúde indígena?" mostrou o aviso da chave e 8 atos, com o CNS e o CNPI no topo. O print está em `perguntar-sem-chave.png`.
+
+  **O Passo 3 do plano não foi feito:** as duas perguntas com resposta, e os prints delas, precisam da chave da Luiza.
+- **Quem revisou:** pendente, no PR.

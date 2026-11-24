@@ -1,8 +1,12 @@
 """A resposta do RAG (src/painel/perguntar.py) com um cliente falso: nenhum teste chama a API de verdade."""
 
+import os
 import unittest
 from datetime import date
 from types import SimpleNamespace
+from unittest import mock
+
+from streamlit.testing.v1 import AppTest
 
 from busca import Ato
 from perguntar import CitacaoInvalida, Recusada, responder
@@ -64,6 +68,15 @@ class Responder(unittest.TestCase):
         for proibido in ("temperature", "top_p", "top_k", "tool_choice"):
             self.assertNotIn(proibido, pedido)
         self.assertNotIn("thinking", pedido, "no Sonnet 5.5, thinking desligado dá 400: o padrão é o adaptativo")
+
+
+class Pagina(unittest.TestCase):
+    def test_sem_banco_avisa(self):
+        # Uma porta em que ninguém escuta: a conexão é recusada na hora, sem depender do banco de verdade.
+        with mock.patch.dict(os.environ, {"PGHOST": "127.0.0.1", "PGPORT": "1"}):
+            at = AppTest.from_file("/app/pages/2_Perguntar.py").run(timeout=30)
+        self.assertEqual(len(at.exception), 0)
+        self.assertTrue(any("make up" in e.value for e in at.error))
 
 
 if __name__ == "__main__":
