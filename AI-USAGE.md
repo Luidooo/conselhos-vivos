@@ -925,6 +925,24 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   O `make test` inteiro não rodou, porque outra frente usava o pgAdmin ao mesmo tempo; fica para o CI.
 - **Quem revisou:** pendente, no PR.
 
+### 2026-11-24 — O painel lê a camada semântica, e a página Revisar (#98)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:**
+  - `src/painel/app.py`, `src/painel/pages/1_Revisar.py`, `src/painel/requirements.txt`;
+  - `tests/painel/test_app.py`, `tests/painel/test_revisar.py`;
+  - `docker-compose.yml`, `docs/adr/medicoes/0011-disponibilizacao/`.
+- **O que foi pedido:** a Tarefa 5 do plano da E4, adaptada ao painel em abas do PR #104.
+- **O que foi aproveitado:**
+  - o gráfico de atos por mês lido do `atividade_por_mes.csv`, cortado no último mês coberto pelo DOU;
+  - a tabela de autorregulação, lida do `atividade_por_conselho.csv`;
+  - a página Revisar, que entra como `app_curadoria`, lista os alertas abertos e marca um como tratado.
+- **Como foi verificado:**
+  - `make test-painel` com 24 testes OK;
+  - no banco de trabalho, a página mostrou os 10 alertas; um foi marcado como tratado, com a nota "conferido para a demonstração da E4", e o banco ficou com 9 abertos;
+  - os prints `painel-metricas.png` e `revisar.png`.
+- **Quem revisou:** pendente, no PR.
+
 ### 2026-11-24 — Linhagem e catálogo até o consumo (#100)
 
 - **Ferramenta:** Claude Code (Claude Fable 5.2)
