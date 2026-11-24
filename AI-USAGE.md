@@ -1198,3 +1198,4 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - os casos do `test_acesso.sh` passam de 14 para 19, com os do `app_perguntas`, e o `acesso.txt` foi refeito num banco criado do zero com o `make setup`;
   - o roteiro ganhou `make migrate` e as portas, e a `docs/lgpd.md` deixa de dizer que o banco de trabalho é o da defesa.
 - **Atualização depois do #129 e do #130** (Claude Code, Claude Opus 5.5): a página, o roteiro e o diário dizem o que o assistente respondeu com a API de verdade, em quatro perguntas, e o que ele não mostra ainda (prints, avaliação e ADR 0012). Três das perguntas foram feitas pela Luiza, e uma pela IA, com o ok dela.
+- **Segunda conferência em clone limpo** (Claude Code, Claude Opus 5.5): a mesma sequência no `e08632d`, com portas próprias. Tudo passou; o resumo é o `clone-limpo-20261124-e08632d.txt`, extraído do log.

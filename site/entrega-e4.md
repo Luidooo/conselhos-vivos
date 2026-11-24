@@ -22,7 +22,7 @@ make painel                                 # http://127.0.0.1:8501, com a pági
 ```
 Pré-requisitos: Docker com Compose v2, `make` e `sqlite3`. O backfill baixa os ZIPs dos dados abertos.
 
-**Conferido num clone limpo do `main` em 24/11/2026**, no commit `33fc836`: todos os passos acima passaram, mais o `make dicionario` e o `make demo-retry`. O resumo está em [clone-limpo-20261124.txt](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0011-disponibilizacao/clone-limpo-20261124.txt). O `make painel` não entrou na conferência.
+**Conferido num clone limpo do `main` em 24/11/2026**, no commit `e08632d`, já com a P1, o chat e os links: todos os passos acima passaram, mais o `make dicionario` e o `make demo-retry`, e o painel abriu com 26 ativos e 33 sem ato. O resumo está em [clone-limpo-20261124-e08632d.txt](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0011-disponibilizacao/clone-limpo-20261124-e08632d.txt). A primeira conferência, no `33fc836`, é a [clone-limpo-20261124.txt](https://github.com/Luidooo/conselhos-vivos/blob/main/docs/adr/medicoes/0011-disponibilizacao/clone-limpo-20261124.txt).
 :::
 
 ## Entregáveis
