@@ -13,7 +13,7 @@ Esta análise é da squad, não um parecer jurídico.
 | `data/bronze/` e `data/silver/mencoes/` | os mesmos textos, como vieram do DOU | idem | os ZIPs inteiros da Seção 1 |
 | `alerta.tratado_por` | quem tratou cada alerta | a curadoria | liga ao `revisor` |
 
-**De onde vêm os números:** do banco refeito do zero, que qualquer um reproduz com `make setup` e a carga de julho a setembro. O banco de trabalho da squad, usado na defesa, tem um revisor humano a mais, cadastrado à mão: são 2 humanos e 3 com e-mail, na contagem da Luiza em 24/11/2026. Ele também tem outubro carregado: são 519 atos do DOU, e não 389, e 734 no total, e não 604. As outras duas contagens não mudam: 1 ato de nomeação, designação ou exoneração e nenhum com CPF mascarado.
+**De onde vêm os números:** do banco refeito do zero, que qualquer um reproduz com `make setup` e a carga de julho a setembro. O banco de trabalho da squad tem um revisor humano a mais, cadastrado à mão: são 2 humanos e 3 com e-mail, na contagem da Luiza em 24/11/2026. Ele também tem outubro carregado: são 519 atos do DOU, e não 389, e 734 no total, e não 604. As outras duas contagens não mudam: 1 ato de nomeação, designação ou exoneração e nenhum com CPF mascarado.
 
 **O limite da medição:** a contagem de nomeação procura os três verbos na ementa e nos 300 primeiros caracteres do texto. Um nome citado mais adiante, como o de quem assina o ato ou o de um conselheiro numa ata, não entra nela. O número diz que ato de pessoal é raro nos conselhos; não diz que só um ato tem nome de pessoa.
 

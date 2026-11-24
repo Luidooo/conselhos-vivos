@@ -1152,3 +1152,7 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   A coluna "o que faríamos diferente", a coluna "Quem" e quem trabalhou no diário continuam com a squad.
 - **Atualização depois dos merges de #106 a #109 e #112:** a página ganhou a seção "Além do checklist" (P2, dicionário e assistente de perguntas), o diário lista o que entrou, e o roteiro deixa de condicionar o passo Perguntar à #109. Os três dizem que o assistente ainda não rodou com a API de verdade.
 - **Clone limpo (24/11):** a IA rodou a sequência do plano num clone do `main` (`33fc836`), com projeto compose e volume próprios, e extraiu o resumo `clone-limpo-20261124.txt` do log. Tudo passou. A conferência mostrou duas diferenças do que a página dizia, já corrigidas: o `make alertas` depois do backfill dá `inalterados=10`, e a tabela fica com 24 alertas abertos.
+- **Correção depois da segunda review** (Claude Code, Claude Opus 5.5):
+  - o roteiro dizia que outubro estava fora da silver no banco de trabalho. O dado veio de uma review feita pela IA e estava errado: o `demo-backfill` de setembro da #97 sincroniza o OLTP inteiro e levou outubro junto. A defesa passa a usar um clone limpo, de julho a setembro;
+  - os casos do `test_acesso.sh` passam de 14 para 19, com os do `app_perguntas`, e o `acesso.txt` foi refeito num banco criado do zero com o `make setup`;
+  - o roteiro ganhou `make migrate` e as portas, e a `docs/lgpd.md` deixa de dizer que o banco de trabalho é o da defesa.

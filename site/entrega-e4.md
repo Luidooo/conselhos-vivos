@@ -34,7 +34,7 @@ Pré-requisitos: Docker com Compose v2, `make` e `sqlite3`. O backfill baixa os 
 | **ETL reverso** | `src/alertas/` · tabela `alerta` (`sql/007`) | `make alertas`: `novos=10` com a tabela vazia, depois `inalterados=10` |
 | **Página Revisar** | `src/painel/pages/1_Revisar.py` | a pesquisadora marca o alerta como tratado |
 | **Métricas e alertas no job mensal** | `src/orquestracao/` · assets `metricas` e `alertas` | `make demo-backfill`: seis passos em `STEP_SUCCESS` |
-| **Papéis com privilégio mínimo** | `sql/007_alertas_e_papeis.sql` | `bash tests/db/test_acesso.sh`: 14 casos |
+| **Papéis com privilégio mínimo** | `sql/007_alertas_e_papeis.sql` · `sql/008_busca_dos_atos.sql` | `bash tests/db/test_acesso.sh`: 19 casos |
 | **Análise de LGPD** | [LGPD](/docs/lgpd) · `docs/lgpd/` | a medição do dado pessoal no banco |
 | **Linhagem até o consumo** | [Linhagem dos dados](/linhagem) · `make gold-docs` | do ZIP do DOU ao alerta |
 | **ADR 0011 e portfólio** | [ADR 0011](/docs/adr/0011-disponibilizar-por-camada-semantica-etl-reverso-e-papeis) · [índice dos ADRs](/docs/adr/) | onze ADRs, todos com gatilho de revisão |
@@ -82,9 +82,10 @@ A [análise](/docs/lgpd) mede o dado pessoal que está no banco, em vez de descr
 Cada serviço entra no Postgres por um papel:
 - `etl_reverso` só escreve alerta;
 - `app_curadoria` lê o alerta e o nome do revisor, **nunca o e-mail**, e só marca o alerta como tratado. Esse é o recorte de coluna;
-- `leitor_analitico` é o dbt lendo os órgãos.
+- `leitor_analitico` é o dbt lendo os órgãos;
+- `app_perguntas` lê o texto dos atos e o nome dos órgãos, e não lê revisor nem classificação.
 
-**Medido:** o `tests/db/test_acesso.sh` tem 14 casos, do que cada papel pode e do que não pode, e roda no `make test`.
+**Medido:** o `tests/db/test_acesso.sh` tem 19 casos, do que cada papel pode e do que não pode, e roda no `make test`.
 
 ## 6. Portfólio dos ADRs
 

@@ -52,7 +52,7 @@ De 24/11/2026, num banco refeito do zero com a planilha e o DOU de julho a setem
 | SQL direto, opção nula | os mesmos números (94, 56 e 93 atos em julho, agosto e setembro), em 0,005 s | `medicoes.txt` |
 | ETL reverso, duas rodadas, no banco de trabalho | `novos=10`, depois `inalterados=10`; no banco refeito do zero deu o mesmo | `alertas-idempotencia.txt` |
 | Job mensal com os dois passos novos | `RUN_SUCCESS` | `backfill-*.txt`, `grafo-dagster.jpg` |
-| Controle de acesso | 14 casos em `ok` | `acesso.txt`, a saída do `bash tests/db/test_acesso.sh` |
+| Controle de acesso | 19 casos em `ok`, com os 5 do `app_perguntas` (#107) | `acesso.txt`, a saída do `bash tests/db/test_acesso.sh` |
 
 ## Gatilho de revisão
 

@@ -27,7 +27,9 @@ A coluna "Quem" a squad preenche no ensaio.
 
 ## Antes de começar
 
-- O banco de trabalho no ar e a gold feita: `make up`, `make gold`, `make metricas`, `make alertas`. O banco de trabalho tem outubro no OLTP, ainda fora da silver: os números do painel são os de julho a setembro, e vale ter isso na ponta da língua se a banca abrir o banco.
+- O ambiente da demonstração é um clone limpo do `main`, à parte do banco de trabalho, com julho a setembro: o mesmo recorte das provas. A sequência é a da página da entrega da E4: `make setup`, `make test-orquestracao` (gera o manifesto do dbt que o backfill pede), `make demo-backfill DE=2026-07 ATE=2026-09`, `make gold`, `make metricas`, `make alertas`, `make painel`. O banco de trabalho já tem outubro na silver e na gold, e o painel dele mostra outros números.
+- As migrações em dia. O `make setup` já as aplica; num banco que já existia, rode `make migrate`. Sem a 008, a página Perguntar e os casos do `app_perguntas` no passo 5 falham.
+- As portas livres. O banco (`POSTGRES_PORT` no `.env`, 5432 por padrão) e o painel (8501) do clone disputam as do ambiente de trabalho: pare um deles ou mude a porta.
 - Pelo menos um alerta aberto, para o passo 2. Depois de um backfill, a página Revisar mostra também os alertas dos meses anteriores (24 no clone limpo, com julho a setembro). Um alerta marcado no ensaio não volta a abrir sozinho.
 - O site local no ar (`make docs`), para o passo 4.
 

@@ -1,4 +1,4 @@
-# Controle de acesso (ADR 0011), 2026-11-24 14:55 UTC: bash tests/db/test_acesso.sh, num banco refeito do zero.
+# Controle de acesso (ADR 0011), 2026-11-24 17:52 UTC: bash tests/db/test_acesso.sh, num banco refeito do zero com make setup, no commit 33fc836.
 etl_reverso
   ok    insere alerta
   ok    atualiza o detalhe
@@ -15,6 +15,12 @@ leitor_analitico
   ok    lê órgãos, nomes e conselhos
   ok    não lê os atos
   ok    não escreve
+app_perguntas
+  ok    busca no texto dos atos
+  ok    lê o nome dos órgãos
+  ok    não lê os revisores
+  ok    não lê a classificação
+  ok    não escreve no ato
 descarte do revisor (LGPD)
   ok    anonimiza e mantém a classificação
 
