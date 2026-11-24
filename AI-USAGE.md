@@ -942,3 +942,21 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - no banco de trabalho, a página mostrou os 10 alertas; um foi marcado como tratado, com a nota "conferido para a demonstração da E4", e o banco ficou com 9 abertos;
   - os prints `painel-metricas.png` e `revisar.png`.
 - **Quem revisou:** pendente, no PR.
+
+### 2026-11-24 — Métricas e alertas no job mensal do Dagster (#97)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:** `src/orquestracao/__init__.py`, `docs/adr/medicoes/0011-disponibilizacao/`
+- **O que foi pedido:** atualizar o clone, levantar o que falta da E4 e começar pelas tarefas livres; a primeira foi a Tarefa 4 do plano.
+- **O que foi aproveitado:** os dois assets entraram como estão no plano, no grupo `consumo`:
+  - `metricas`, depois da gold, que exporta as consultas salvas do MetricFlow;
+  - `alertas`, depois das métricas, que roda o ETL reverso.
+- **Como foi verificado:** num banco local criado do zero (`make up`, `make migrate`, `make carga`), com a porta 5433 só na sessão, porque a 5432 estava ocupada na máquina:
+  - `dagster definitions validate -m orquestracao`: `Validation successful`;
+  - `make test-orquestracao`: 9 testes OK;
+  - `make demo-backfill DE=2026-09 ATE=2026-09`: `STEP_SUCCESS` nos seis passos e `RUN_SUCCESS`. A prova está em `backfill-2026-09-a-2026-09-20261124T130938Z.txt`;
+  - os dois CSV saíram em `data/gold/metricas/`, e a tabela `alerta` ficou com 7 linhas. São 7, e não os 10 do banco de trabalho, porque este banco só tem setembro;
+  - o print `grafo-dagster.jpg` é a linhagem a montante do asset `alertas`, tirado com o Chrome sem janela.
+
+  O `make test` inteiro não rodou.
+- **Quem revisou:** pendente, no PR.
