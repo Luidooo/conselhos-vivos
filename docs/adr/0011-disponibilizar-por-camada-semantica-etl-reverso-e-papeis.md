@@ -24,6 +24,8 @@ Até a E3, o painel calculava "atos por mês" no próprio código, e esse númer
    - `app_curadoria` lê o alerta e o nome do revisor, nunca o e-mail (o recorte de coluna), e só marca o alerta como tratado;
    - `leitor_analitico` é o dbt lendo os órgãos.
 
+   O dado pessoal que esses papéis protegem, com a base legal, a retenção e o descarte, está na [análise de LGPD](../lgpd.md).
+
 ## Alternativas consideradas
 
 - **Visões materializadas escritas à mão, a opção nula da camada semântica:** um modelo `metricas` no dbt, com a definição na descrição de cada coluna. Não pede dependência nova e lê igual. Perde a validação da definição (`mf validate-configs`), as métricas de razão sem SQL novo e a consulta por dimensão sob demanda. Medido: o mesmo "atos por mês" em SQL direto levou 0,005 s, contra 8,2 s do `mf query`, que inclui a subida do MetricFlow (`medicoes.txt`). Os 8 s são pagos uma vez por mês, no job, e não por quem abre o painel.
@@ -42,15 +44,15 @@ Até a E3, o painel calculava "atos por mês" no próprio código, e esse númer
 
 ## Medições
 
-De 24/11/2026, num banco refeito do zero com a planilha e o DOU de julho a setembro de 2026. As provas estão em [`medicoes/0011-disponibilizacao/`](https://github.com/Luidooo/conselhos-vivos/tree/main/docs/adr/medicoes/0011-disponibilizacao).
+De 24/11/2026, num banco refeito do zero com a planilha e o DOU de julho a setembro de 2026, menos a linha do ETL reverso, que é do banco de trabalho da squad, com os mesmos três meses. As provas estão em [`medicoes/0011-disponibilizacao/`](https://github.com/Luidooo/conselhos-vivos/tree/main/docs/adr/medicoes/0011-disponibilizacao).
 
 | O que | Resultado | Prova |
 |---|---|---|
 | `mf query` das consultas salvas | 3 linhas em 8,2 s (`atividade_por_mes`) e 37 linhas em 5,7 s (`atividade_por_conselho`) | `medicoes.txt` |
 | SQL direto, opção nula | os mesmos números (94, 56 e 93 atos em julho, agosto e setembro), em 0,005 s | `medicoes.txt` |
-| ETL reverso, duas rodadas | `novos=10`, depois `inalterados=10` | `alertas-idempotencia.txt` |
+| ETL reverso, duas rodadas, no banco de trabalho | `novos=10`, depois `inalterados=10`; no banco refeito do zero deu o mesmo | `alertas-idempotencia.txt` |
 | Job mensal com os dois passos novos | `RUN_SUCCESS` | `backfill-*.txt`, `grafo-dagster.jpg` |
-| Controle de acesso | 14 casos em `ok` | `bash tests/db/test_acesso.sh` |
+| Controle de acesso | 14 casos em `ok` | `acesso.txt`, a saída do `bash tests/db/test_acesso.sh` |
 
 ## Gatilho de revisão
 

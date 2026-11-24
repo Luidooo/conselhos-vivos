@@ -960,4 +960,9 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - `npm --prefix site run build`: `build complete`, sem link morto.
 
   A página Revisar, que o ADR cita, ainda está no PR #114.
-- **Quem revisou:** pendente, no PR. O status do ADR fica "proposto" até a squad aceitar.
+- **Quem revisou:** Luiza, no PR #120. Da revisão entraram:
+  - a prova de idempotência do ETL reverso é a da main, medida por ela no banco de trabalho, e o ADR diz isso;
+  - o ADR aponta para a análise de LGPD, e a análise aponta para o ADR;
+  - a saída do teste de acesso ficou guardada em `acesso.txt`.
+
+  O status do ADR fica "proposto" até a squad aceitar.
