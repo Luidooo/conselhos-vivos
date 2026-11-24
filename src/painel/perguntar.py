@@ -55,7 +55,8 @@ def responder(pergunta, atos, cliente, modelo=MODELO):
         raise Recusada("o modelo recusou responder a essa pergunta")
     # Antes do texto vêm blocos de raciocínio, vazios: só os de texto são a resposta.
     texto = "".join(b.text for b in msg.content if b.type == "text")
-    citados = list(dict.fromkeys(int(n) for n in re.findall(r"\[(\d+)\]", texto)))
+    # Todo número do colchete conta: o modelo também escreve [1, 9] e [1-9].
+    citados = list(dict.fromkeys(int(n) for grupo in re.findall(r"\[([\d\s,;e–-]+)\]", texto) for n in re.findall(r"\d+", grupo)))
     fora = [n for n in citados if not 1 <= n <= len(atos)]
     if fora:
         raise CitacaoInvalida(f"a resposta citou {fora}, mas só {len(atos)} atos foram enviados")

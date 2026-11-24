@@ -42,6 +42,14 @@ class Responder(unittest.TestCase):
         with self.assertRaises(CitacaoInvalida):
             responder("?", ATOS, Cliente("Segundo o ato [3], sim."))
 
+    def test_lista_e_intervalo_com_ato_que_nao_foi_enviado(self):
+        for texto in ("Sim [1, 9].", "Sim [1-9].", "Sim [1–9].", "Sim [1; 9].", "Sim [1 e 9]."):
+            with self.subTest(texto), self.assertRaises(CitacaoInvalida):
+                responder("?", ATOS, Cliente(texto))
+
+    def test_lista_de_atos_enviados(self):
+        self.assertEqual(responder("?", ATOS, Cliente("Sim [1, 2]. E de novo [2].")).citados, [1, 2])
+
     def test_sem_atos_nao_chama_a_api(self):
         cliente = Cliente("não deveria ser chamado")
         r = responder("?", [], cliente)
