@@ -8,6 +8,9 @@ st.set_page_config(page_title="Conselhos Vivos", layout="wide")
 
 DOCS = "https://luidooo.github.io/conselhos-vivos/"
 GOLD = os.environ.get("PAINEL_GOLD", "/data/gold/conselhos.duckdb")
+# As métricas da camada semântica (ADR 0011), exportadas pelo make metricas ou pelo job mensal: o painel não
+# recalcula o que o MetricFlow define.
+METRICAS = os.environ.get("PAINEL_METRICAS", "/data/gold/metricas")
 
 # O modo que o Streamlit escolheu (o do sistema, ou o que a pessoa trocou no menu). Sem navegador, como no AppTest,
 # não há tema: vale o claro.
@@ -239,6 +242,21 @@ def heatmap(serie, v):
                  alt.Tooltip("atos:Q", title="Atos"), alt.Tooltip("situacao:N", title="Situação")],
     ).properties(height=max(120, 24 * len(v)))
 
+def metrica(consulta):
+    """O CSV de uma consulta salva da camada semântica, ou None se o make metricas ainda não rodou."""
+    caminho = os.path.join(METRICAS, f"{consulta}.csv")
+    return pd.read_csv(caminho) if os.path.exists(caminho) else None
+
+def atividade_por_mes(ultimo):
+    """A métrica atos_publicados por mês, em ordem (o MetricFlow não ordena) e só até o último mês coberto pelo DOU:
+    a silver das menções vai além, e o mês a mais pareceria um silêncio. A mart_vitalidade faz o mesmo corte."""
+    m = metrica("atividade_por_mes")
+    if m is None:
+        return None
+    m["mes"] = pd.to_datetime(m["metric_time__month"])
+    m = m[m["mes"] <= pd.Timestamp(ultimo)].sort_values("mes")
+    return m.rename(columns={"atos_publicados": "atos"}).fillna({"atos": 0})[["mes", "atos"]]
+
 def grafico_mensal(serie):
     total = serie.groupby("mes", as_index=False)["atos"].sum()
     total["mes_txt"] = total["mes"].map(mes)
@@ -411,7 +429,12 @@ with aba_resposta:
     if serie.empty:
         st.caption("O DOU ainda não foi carregado.")
     else:
-        grafico(grafico_mensal(serie))
+        mensal = atividade_por_mes(periodo["ultimo"])
+        if mensal is None:
+            st.info("As métricas da camada semântica ainda não foram exportadas: rode make metricas.")
+        else:
+            grafico(grafico_mensal(mensal))
+            st.caption("Métrica atos_publicados da camada semântica: atos do próprio conselho no DOU, na versão mais recente.")
         st.markdown("**Conselho a conselho, mês a mês.** Cada célula é um mês: quanto mais forte o azul, mais atos. A célula cinza é o mês sem ato.")
         # só os conselhos com algum ato no período: uma linha toda cinza não diz nada que a tabela acima já não diga
         com_ato = set(serie.loc[serie.atos > 0, "orgao_id"])
@@ -441,6 +464,13 @@ with aba_decidem:
         grafico(grafico_tipologia(tipologia))
         st.caption(" · ".join(f"{s}: {NOME_TIPOLOGIA[s]}" for s in TIPOLOGIAS[:5]))
     st.dataframe(tipologia.rename(columns={"nome": "Conselho", "origem": "Origem", "tipologia_sigla": "Tipologia", "atos": "Atos"}), hide_index=True, width="stretch")
+    por_conselho = metrica("atividade_por_conselho")
+    if por_conselho is not None:
+        p = v[["orgao_id", "nome"]].merge(por_conselho.rename(columns={"conselho": "orgao_id"}), on="orgao_id")
+        p = p.dropna(subset=["proporcao_autorregulacao"])
+        st.subheader("Autorregulação")
+        st.caption("Atos AUTO sobre os atos já classificados (métrica proporcao_autorregulacao). Perto de 1, o conselho cuida mais de si que da política pública.")
+        st.dataframe(p[["nome", "proporcao_autorregulacao"]].rename(columns={"nome": "Conselho", "proporcao_autorregulacao": "Autorregulação"}), hide_index=True, width="stretch")
 
 with aba_ler:
     # As regras de negócio por extenso, para quem lê o painel sem ter lido os ADRs. O 3 repete o meses_ativo da mart.

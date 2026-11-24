@@ -25,12 +25,19 @@ class TestApp(unittest.TestCase):
         self.tmpdir = tempfile.mkdtemp()
         self.gold_path = os.path.join(self.tmpdir, "conselhos.duckdb")
         self.orig_gold = os.environ.get("PAINEL_GOLD")
+        # o serviço monta o data/gold de verdade: sem isto, o teste leria as métricas exportadas pelo make metricas
+        self.orig_metricas = os.environ.get("PAINEL_METRICAS")
+        os.environ["PAINEL_METRICAS"] = os.path.join(self.tmpdir, "metricas")
 
     def tearDown(self):
         if self.orig_gold is not None:
             os.environ["PAINEL_GOLD"] = self.orig_gold
         else:
             os.environ.pop("PAINEL_GOLD", None)
+        if self.orig_metricas is not None:
+            os.environ["PAINEL_METRICAS"] = self.orig_metricas
+        else:
+            os.environ.pop("PAINEL_METRICAS", None)
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def _cria_tabelas_base(self, con):
@@ -325,6 +332,7 @@ class TestApp(unittest.TestCase):
         self.assertFalse(any("sem atos classificados" in i.value for i in at.info))
 
     def test_graficos_altair(self):
+        self._grava_metricas()  # o "atos por mês" vem da camada semântica
         at = self._abre()
         # composição, atos por mês, heatmap, mensal do detalhe, tipologia por ano do detalhe e tipologia por conselho
         self.assertGreaterEqual(len(at.get("vega_lite_chart")), 5)
@@ -366,6 +374,39 @@ class TestApp(unittest.TestCase):
             con.execute("CREATE TABLE sonda (x INTEGER)")
             con.execute("DROP TABLE sonda")
 
+
+    def _grava_metricas(self):
+        pasta = os.environ["PAINEL_METRICAS"]
+        os.makedirs(pasta, exist_ok=True)
+        # fora de ordem, como o MetricFlow devolve, e com outubro só de menções, depois do último mês coberto
+        with open(os.path.join(pasta, "atividade_por_mes.csv"), "w") as f:
+            f.write("metric_time__month,atos_publicados,mencoes_recebidas\n2026-09-01 00:00:00,5,1\n2026-10-01 00:00:00,,5\n2026-07-01 00:00:00,2,1\n")
+        with open(os.path.join(pasta, "atividade_por_conselho.csv"), "w") as f:
+            f.write("conselho,atos_publicados,mencoes_recebidas,proporcao_autorregulacao\n1,4,1,0.25\n2,0,2,\n")
+
+    def test_atividade_vem_da_camada_semantica(self):
+        with duckdb.connect(self.gold_path) as con:
+            self._cria_tabelas_base(con)
+            self._cria_freshness(con)
+        self._grava_metricas()
+        os.environ["PAINEL_GOLD"] = self.gold_path
+        at = AppTest.from_file(APP).run(timeout=60)
+        self.assertEqual(len(at.exception), 0)
+        self.assertFalse(any("make metricas" in i.value for i in at.info))
+        self.assertTrue(any("atos_publicados" in c.value for c in at.caption))
+        autorregulacao = [d.value for d in at.dataframe if "Autorregulação" in d.value.columns]
+        self.assertEqual(len(autorregulacao), 1)
+        self.assertEqual(list(autorregulacao[0]["Conselho"]), ["Conselho Um"])
+        self.assertEqual(list(autorregulacao[0]["Autorregulação"]), [0.25])
+
+    def test_sem_metricas_pede_make_metricas(self):
+        with duckdb.connect(self.gold_path) as con:
+            self._cria_tabelas_base(con)
+            self._cria_freshness(con)
+        os.environ["PAINEL_GOLD"] = self.gold_path
+        at = AppTest.from_file(APP).run(timeout=60)
+        self.assertEqual(len(at.exception), 0)
+        self.assertTrue(any("make metricas" in i.value for i in at.info))
 
 if __name__ == "__main__":
     unittest.main()
