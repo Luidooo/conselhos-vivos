@@ -42,3 +42,7 @@ chartSequentialColors = ["#1c1c1e", "#0d366b", "#104281", "#184f95", "#1c5cab", 
 
 [browser]
 gatherUsageStats = false
+
+# Sem o botão Deploy do Streamlit: o painel depende do banco local e não tem login.
+[client]
+toolbarMode = "viewer"

@@ -1137,6 +1137,7 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - no painel, os dois números numa segunda linha do cabeçalho e as duas colunas na tabela da aba Resposta, na estrutura em abas que o painel ganhou depois do plano;
   - um teste do painel além dos do plano, com a cobertura longa: os números e o "sim" ou "não" na tabela;
   - a descrição das duas colunas, que o `make dicionario` exige.
+- **Correção depois da revisão** (Claude Code, Claude Opus 5.5): com uma gold gerada antes da P1, o painel caía com `KeyError`. Agora ele pede o `make gold`, com um teste que falhou antes da correção.
 - **Como foi verificado:**
   - `make test-painel` falhou nos rótulos antes do código e passou depois: 38 testes OK;
   - `make gold`: 81 em PASS e 1 aviso, o do SLA; os dois testes unitários novos passam;
@@ -1144,6 +1145,28 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 
   Com os três meses carregados, as duas colunas são nulas e o painel mostra "—": **o número de verdade da P1 não foi medido.** Ele depende do passo 4, o download de outubro de 2025 a junho de 2026, que espera o ok da squad. O painel não foi aberto no navegador, e o `make test` inteiro não rodou.
 - **Quem revisou:** pendente, no PR.
+
+### 2026-11-24 — Página Perguntar: link do Diário Oficial, perguntas que são do painel e sem o botão Deploy (#109)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `src/painel/busca.py`, `src/painel/perguntar.py`, `src/painel/pages/2_Perguntar.py`, `src/painel/.streamlit/config.toml`, `tests/painel/test_perguntar.py`
+- **O que foi pedido:** pela Luiza, ao testar o assistente com a API: abrir o documento do ato, ou o link externo dele; mandar contagens e "quem está ativo" para o painel; esconder o botão Deploy do Streamlit.
+- **O que foi aproveitado:** o link dos atos citados abaixo da resposta e o botão "Abrir no Diário Oficial" em cada ato achado, montados do título e da data que o banco já tem, sem migração. Sem título numerado, ele abre a edição do dia; o ato da planilha não tem link, e a página diz isso.
+- **Como foi verificado:**
+  - os testes novos falharam antes do código e passaram depois: 43 testes do painel OK;
+  - dos 389 atos do DOU do clone limpo, 295 vão para a busca pelo título e 94 para a edição do dia;
+  - os links da Resolução CONAMA nº 516 e da Resolução CNAS/MDS nº 246 dão um resultado só, o ato certo, e o da edição de 10/07/2026 abre. Os demais não foram abertos um a um;
+  - a página conferida no navegador, sem chave de API. O `make test` inteiro não rodou.
+- **Quem revisou:** pendente.
+
+### 2026-11-24 — Página Perguntar em formato de chat, com as últimas perguntas (#109)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `src/painel/pages/2_Perguntar.py`, `tests/painel/test_perguntar.py`
+- **O que foi pedido:** pela Luiza: guardar as últimas perguntas e deixar a página como um chat.
+- **O que foi aproveitado:** a conversa com `st.chat_input` e `st.chat_message`, as últimas 20 perguntas na memória do painel e o botão "Limpar conversa". Cada pergunta segue independente: a conversa anterior não vai para a API.
+- **Como foi verificado:** 46 testes do painel OK, três deles novos; no navegador, sem chave: duas perguntas seguidas continuam na tela depois de recarregar a página. O `make test` inteiro não rodou.
+- **Quem revisou:** pendente.
 
 ### 2026-11-24 — Página da E4, retrospectiva em rascunho e roteiro da defesa (#102, parte 1)
 
