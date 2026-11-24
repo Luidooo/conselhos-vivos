@@ -140,6 +140,7 @@ export default withMermaid(defineConfig({
           { text: 'Carga da planilha', link: '/docs/carga/relatorio-planilha' },
           { text: 'Identidade dos conselhos', link: '/docs/carga/relatorio-conselhos' },
           { text: 'Gold e menções (E3)', link: '/docs/carga/relatorio-gold' },
+          { text: 'LGPD (E4)', link: '/docs/lgpd' },
         ],
       },
       {

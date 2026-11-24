@@ -1,0 +1,18 @@
+# make demo-backfill DE=2026-09 ATE=2026-09, 2026-11-24 13:09:38 UTC, gerado por scripts/demo_backfill.sh
+==> partição 2026-09-01, run 9c84cd3c-1ae0-4a76-b0d3-acd1c787a563
+2026-11-24 13:10:29 STEP_START atos_do_mes
+2026-11-24 13:11:32 STEP_SUCCESS atos_do_mes
+2026-11-24 13:11:39 STEP_START silver__mencoes
+2026-11-24 13:11:39 STEP_START silver__atos
+2026-11-24 13:11:39 STEP_SUCCESS silver__atos
+2026-11-24 13:11:57 STEP_SUCCESS silver__mencoes
+2026-11-24 13:12:02 STEP_START gold
+2026-11-24 13:12:20 STEP_SUCCESS gold
+2026-11-24 13:12:25 STEP_START metricas
+2026-11-24 13:12:41 STEP_SUCCESS metricas
+2026-11-24 13:12:46 STEP_START alertas
+2026-11-24 13:12:46 STEP_SUCCESS alertas
+2026-11-24 13:12:47 RUN_SUCCESS
+persist: gravadas=132 versoes-novas=0 inalteradas=0 orgao-desconhecido=8794 repetidas=1 ignoradas=2019 falhou=0
+==> atos do DOU por mês depois do backfill
+2026-09-01|132
