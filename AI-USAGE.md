@@ -993,4 +993,7 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
   - a linhagem interativa foi aberta no site construído e capturada com o Chrome sem janela: a seta "ETL reverso" não cruza caixa.
 
   Os links para o ADR 0011 e para a página de LGPD, nas caixas novas, só funcionam depois do #101 e do #99.
-- **Quem revisou:** pendente, no PR.
+- **Quem revisou:** Luiza, no PR #119. Da revisão entraram:
+  - a seta "Revisar", do alerta para o painel;
+  - o teste novo confere as três setas da camada semântica, em vez de repetir a contagem;
+  - o merge depois do #118 e do #120, para os links das caixas novas não nascerem quebrados.

@@ -44,7 +44,9 @@ class Mermaid(unittest.TestCase):
         self.assertIn('subgraph c3["semântica"]', d)
         self.assertIn('subgraph c4["consultas salvas"]', d)
         self.assertIn('["métrica atos_publicados"]', d)
-        self.assertEqual(d.count("-->"), 5, "fonte → stg → fct → modelo semântico → métrica → consulta")
+        # Os ids seguem a ordem dos unique_id: n1 é o fct_ato, n4 o modelo semântico, n0 a métrica e n3 a consulta.
+        for seta in ("n1 --> n4", "n4 --> n0", "n0 --> n3"):
+            self.assertIn(seta, d)
 
     def test_teste_do_dbt_nao_entra(self):
         self.assertNotIn("unique_fct_ato", mermaid(MANIFEST))

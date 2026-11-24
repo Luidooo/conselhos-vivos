@@ -120,6 +120,7 @@ const LIGACOES: [string, string, string?][] = [
   ['fct_mencao', 'metricas'],
   ['metricas', 'painel', 'CSV'], // rótulo curto: "consultas salvas" ficava atrás da caixa da mart
   ['mart', 'alerta', 'ETL reverso'],
+  ['alerta', 'painel', 'Revisar'],
 ]
 
 const PASSOS = [
