@@ -399,6 +399,31 @@ class TestApp(unittest.TestCase):
         self.assertEqual(list(autorregulacao[0]["Conselho"]), ["Conselho Um"])
         self.assertEqual(list(autorregulacao[0]["Autorregulação"]), [0.25])
 
+    def test_tipologia_por_ano(self):
+        with duckdb.connect(self.gold_path) as con:
+            self._cria_tabelas_base(con)
+            self._cria_freshness(con)
+        self._grava_metricas()
+        # fora de ordem e com um ano sem ato no meio (2005), como a planilha de verdade tem buracos
+        with open(os.path.join(os.environ["PAINEL_METRICAS"], "tipologia_por_ano.csv"), "w") as f:
+            f.write("metric_time__year,ato__tipologia_sigla,atos_classificados\n"
+                    "2006-01-01 00:00:00,GEST,7\n2003-01-01 00:00:00,AUTO,10\n2003-01-01 00:00:00,DEF,4\n")
+        os.environ["PAINEL_GOLD"] = self.gold_path
+        at = AppTest.from_file(APP).run(timeout=60)
+        self.assertEqual(len(at.exception), 0)
+        self.assertIn("A tipologia ao longo dos anos", [s.value for s in at.subheader])
+        self.assertTrue(any("atos_classificados" in c.value for c in at.caption))
+
+    def test_sem_a_consulta_da_tipologia_o_painel_abre_sem_o_grafico(self):
+        with duckdb.connect(self.gold_path) as con:
+            self._cria_tabelas_base(con)
+            self._cria_freshness(con)
+        self._grava_metricas()  # só as duas consultas antigas: quem não rodou make metricas de novo
+        os.environ["PAINEL_GOLD"] = self.gold_path
+        at = AppTest.from_file(APP).run(timeout=60)
+        self.assertEqual(len(at.exception), 0)
+        self.assertNotIn("A tipologia ao longo dos anos", [s.value for s in at.subheader])
+
     def test_sem_metricas_pede_make_metricas(self):
         with duckdb.connect(self.gold_path) as con:
             self._cria_tabelas_base(con)

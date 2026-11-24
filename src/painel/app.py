@@ -282,6 +282,27 @@ def grafico_tipologia(tipologia):
                  alt.Tooltip("significado:N", title="O que é"), alt.Tooltip("atos:Q", title="Atos")],
     ).transform_calculate(ordem=f"indexof({TIPOLOGIAS}, datum.tipologia_sigla)").properties(height=max(80, 40 * dados.nome.nunique()))
 
+def tipologia_por_ano():
+    """P2 da E1: a métrica atos_classificados por ano e tipologia, da consulta salva tipologia_por_ano."""
+    m = metrica("tipologia_por_ano")
+    if m is None:
+        return None
+    m["ano"] = pd.to_datetime(m["metric_time__year"]).dt.year
+    return m.rename(columns={"ato__tipologia_sigla": "tipologia_sigla", "atos_classificados": "atos"})[["ano", "tipologia_sigla", "atos"]]
+
+def grafico_tipologia_por_ano(t):
+    t = t.assign(significado=t.tipologia_sigla.map(NOME_TIPOLOGIA))
+    # todos os anos do intervalo no eixo: um ano sem ato classificado aparece como buraco, e não some
+    anos = list(range(int(t.ano.min()), int(t.ano.max()) + 1))
+    return alt.Chart(t).mark_bar(stroke=T["cartao"], strokeWidth=1).encode(
+        x=alt.X("ano:O", title=None, scale=alt.Scale(domain=anos), axis=alt.Axis(labelAngle=0)),
+        y=alt.Y("atos:Q", title="Atos classificados", axis=alt.Axis(tickMinStep=1, format="d")),
+        color=alt.Color("tipologia_sigla:N", title="Tipologia", scale=escala_tipologia(t.tipologia_sigla)),
+        order=alt.Order("ordem:Q"),
+        tooltip=[alt.Tooltip("ano:O", title="Ano"), alt.Tooltip("tipologia_sigla:N", title="Tipologia"),
+                 alt.Tooltip("significado:N", title="O que é"), alt.Tooltip("atos:Q", title="Atos")],
+    ).transform_calculate(ordem=f"indexof({TIPOLOGIAS}, datum.tipologia_sigla)").properties(height=240)
+
 def detalhe_conselho(linha, serie, por_ano, mencoes):
     cor = CORES_SITUACAO[SITUACOES.index(linha.situacao)] if linha.situacao in SITUACOES else "#8e8e93"
     meses_sem = "" if pd.isna(linha.meses_sem_publicar) else int(linha.meses_sem_publicar)
@@ -464,6 +485,11 @@ with aba_decidem:
         grafico(grafico_tipologia(tipologia))
         st.caption(" · ".join(f"{s}: {NOME_TIPOLOGIA[s]}" for s in TIPOLOGIAS[:5]))
     st.dataframe(tipologia.rename(columns={"nome": "Conselho", "origem": "Origem", "tipologia_sigla": "Tipologia", "atos": "Atos"}), hide_index=True, width="stretch")
+    anual = tipologia_por_ano()
+    if anual is not None and not anual.empty:
+        st.subheader("A tipologia ao longo dos anos")
+        st.caption("Atos classificados por ano e tipologia (métrica atos_classificados), de todos os conselhos. Hoje são quase só os atos da planilha, de 2003 a 2020: os do DOU entram quando forem classificados.")
+        grafico(grafico_tipologia_por_ano(anual))
     por_conselho = metrica("atividade_por_conselho")
     if por_conselho is not None:
         p = v[["orgao_id", "nome"]].merge(por_conselho.rename(columns={"conselho": "orgao_id"}), on="orgao_id")
