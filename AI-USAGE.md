@@ -1145,3 +1145,16 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 
   Com os três meses carregados, as duas colunas são nulas e o painel mostra "—": **o número de verdade da P1 não foi medido.** Ele depende do passo 4, o download de outubro de 2025 a junho de 2026, que espera o ok da squad. O painel não foi aberto no navegador, e o `make test` inteiro não rodou.
 - **Quem revisou:** pendente, no PR.
+
+### 2026-11-24 — Página Perguntar: link do Diário Oficial, perguntas que são do painel e sem o botão Deploy (#109)
+
+- **Ferramenta:** Claude Code (Claude Opus 5.5)
+- **Onde:** `src/painel/busca.py`, `src/painel/perguntar.py`, `src/painel/pages/2_Perguntar.py`, `src/painel/.streamlit/config.toml`, `tests/painel/test_perguntar.py`
+- **O que foi pedido:** pela Luiza, ao testar o assistente com a API: abrir o documento do ato, ou o link externo dele; mandar contagens e "quem está ativo" para o painel; esconder o botão Deploy do Streamlit.
+- **O que foi aproveitado:** o link dos atos citados abaixo da resposta e o botão "Abrir no Diário Oficial" em cada ato achado, montados do título e da data que o banco já tem, sem migração. Sem título numerado, ele abre a edição do dia; o ato da planilha não tem link, e a página diz isso.
+- **Como foi verificado:**
+  - os testes novos falharam antes do código e passaram depois: 43 testes do painel OK;
+  - dos 389 atos do DOU do clone limpo, 295 vão para a busca pelo título e 94 para a edição do dia;
+  - os links da Resolução CONAMA nº 516 e da Resolução CNAS/MDS nº 246 dão um resultado só, o ato certo, e o da edição de 10/07/2026 abre. Os demais não foram abertos um a um;
+  - a página conferida no navegador, sem chave de API. O `make test` inteiro não rodou.
+- **Quem revisou:** pendente.

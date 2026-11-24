@@ -8,11 +8,28 @@ from unittest import mock
 
 from streamlit.testing.v1 import AppTest
 
-from busca import Ato
+from busca import Ato, link_dou
 from perguntar import CitacaoInvalida, Recusada, Resposta, responder
 
 ATOS = [Ato(1, "DOU-1", date(2026, 8, 12), "Conselho Um", "Aprova o licenciamento", "o **licenciamento** ambiental"),
         Ato(2, "DOU-2", date(2026, 9, 1), "Conselho Dois", None, "o regimento interno")]
+
+
+class LinkDoDou(unittest.TestCase):
+    def ato(self, id_dou, titulo):
+        return Ato(1, id_dou, date(2026, 7, 10), "Conselho", None, "trecho", titulo)
+
+    def test_titulo_numerado_vai_para_a_busca_do_dia(self):
+        link = link_dou(self.ato("50247338", "RESOLUÇÃO CONAMA Nº 516, DE 8 DE JULHO DE 2026"))
+        self.assertTrue(link.startswith("https://www.in.gov.br/consulta/-/buscar/dou?q=%22RESOLU%C3%87%C3%83O%20CONAMA%20N%C2%BA%20516%2C"), link)
+        self.assertTrue(link.endswith("&publishFrom=10-07-2026&publishTo=10-07-2026"), link)
+
+    def test_sem_titulo_ou_titulo_generico_vai_para_a_edicao_do_dia(self):
+        for titulo in (None, "", "RETIFICAÇÃO"):
+            self.assertEqual(link_dou(self.ato("1", titulo)), "https://www.in.gov.br/leiturajornal?data=10-07-2026")
+
+    def test_ato_da_planilha_nao_tem_link(self):
+        self.assertIsNone(link_dou(self.ato(None, None)))
 
 
 class Cliente:
@@ -41,6 +58,8 @@ class Responder(unittest.TestCase):
         self.assertEqual(pedido["model"], "claude-sonnet-5-5")
         self.assertIn("[1] Conselho Um, 12/08/2026, DOU DOU-1", pedido["messages"][0]["content"])
         self.assertIn("só os atos", pedido["system"])
+        # contagem e "quem está ativo" são do painel: aqui a IA vê só os atos que a busca achou
+        self.assertIn("painel", pedido["system"])
 
     def test_citacao_de_ato_que_nao_foi_enviado(self):
         with self.assertRaises(CitacaoInvalida):
@@ -104,6 +123,13 @@ class Pagina(unittest.TestCase):
 
     def test_resposta_com_citacao_nao_avisa(self):
         self.assertEqual(len(self._pergunta(Resposta("Sim [1].", [1], 120)).warning), 0)
+
+    def test_resposta_traz_o_link_de_cada_ato_citado(self):
+        at = self._pergunta(Resposta("Sim [2].", [2], 120))
+        links = [m.value for m in at.markdown if "in.gov.br" in m.value]
+        self.assertEqual(len(links), 1)
+        self.assertIn("[ato 2](https://www.in.gov.br/leiturajornal?data=01-09-2026)", links[0])
+        self.assertNotIn("[ato 1]", links[0])
 
 
 if __name__ == "__main__":

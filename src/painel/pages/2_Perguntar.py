@@ -7,7 +7,7 @@ import anthropic
 import psycopg
 import streamlit as st
 
-from busca import buscar
+from busca import buscar, link_dou
 from perguntar import MODELO, CitacaoInvalida, Recusada, responder
 
 st.title("Perguntar aos atos")
@@ -47,6 +47,9 @@ else:
         with st.spinner("Lendo os atos achados..."):
             r = responder(pergunta, atos, anthropic.Anthropic())
         st.markdown(r.texto)
+        links = [f"[ato {i}]({link})" for i in r.citados if (link := link_dou(atos[i - 1]))]
+        if links:
+            st.markdown("**Abrir no Diário Oficial:** " + " · ".join(links))
         if atos and not r.citados:
             st.warning("A resposta não cita nenhum ato. Se ela afirma algo, confira nos atos abaixo.")
         if r.cortada:
@@ -73,3 +76,7 @@ for i, a in enumerate(atos, 1):
         if a.ementa:
             st.write(a.ementa)
         st.markdown(a.trecho)
+        if link := link_dou(a):
+            st.link_button("Abrir no Diário Oficial", link)
+        else:
+            st.caption("Ato da planilha da pesquisadora: sem link do Diário Oficial.")
