@@ -1,0 +1,89 @@
+# Segunda conferência da E4 num clone limpo do main (#102), 2026-11-24, já com a P1 (#105), o #129 e o #130. Horários locais (UTC-3) nos marcadores ########.
+# Clone: git clone https://github.com/Luidooo/conselhos-vivos numa pasta temporária, projeto compose próprio (conselhos-vivos-limpo, volume de banco novo).
+# Sem download: os ZIPs de julho a setembro de 2026 foram copiados do bronze de trabalho antes do make setup.
+# POSTGRES_PORT=5434 na sessão, e um docker-compose.override.yml fora do git com o pgAdmin na 5051 e o painel na 8504, porque as portas padrão estavam ocupadas.
+# Resumo extraído do log completo. Os RUN_FAILURE do make test, nos testes de retry do Dagster, são o caso de teste e não entram aqui.
+#
+# - make gold: PASS=81, e não 79 como na primeira conferência, pelos dois testes unitários da P1. WARN=1 é o sla_vitalidade.
+# - make alertas: inalterados=10 nas duas rodadas, porque o job do backfill já gravou. 24 alertas abertos: 7, 7 e 10.
+# - Os dois arquivos novos no git status são as provas que o demo-backfill e o demo-retry gravam a cada execução.
+# - O painel subiu com docker compose --profile e3 up -d painel, o serviço do make painel, e respondeu HTTP 200. Aberto no navegador: 26 ativos, 33 sem ato no período, 10 citados, e a P1 em "—".
+
+commit: e08632d feat(rag): página Perguntar em chat, com link do Diário Oficial, e contagens vão para o painel (#109) (#130)
+######## make setup · 16:24:36
+######## make setup OK em 11s
+######## make test · 16:24:47
+Ran 46 tests in 4.083s
+OK
+Ran 9 tests in 0.356s
+OK
+Ran 46 tests in 4.063s
+OK
+Ran 16 tests in 0.062s
+OK
+Ran 3 tests in 0.001s
+OK
+Ran 6 tests in 0.000s
+OK
+OK
+OK
+acesso: todos os casos passaram
+Ran 21 tests in 0.445s
+OK
+Ran 28 tests in 0.328s
+OK
+Ran 5 tests in 0.008s
+OK
+Ran 4 tests in 0.000s
+OK
+OK
+==> [test_lake] OK: Camada analítica Delta Lake validada com sucesso (215 atos)!
+==> [test_atrasado] OK: ato de 2024 chegado hoje está no OLTP e em ano=2024 no Delta; reexecução não duplica
+==> [test_cdc] OK: reclassificação, simulação de queda com reprocessamento e restauração passaram com sucesso
+Ran 29 tests in 0.167s
+OK
+######## make test OK em 241s
+######## make demo-backfill DE=2026-07 ATE=2026-09 · 16:28:48
+==> partição 2026-07-01, run 63cc952d-94c3-46cb-a9ba-7dc66978f8ad
+2026-11-24 19:29:34 RUN_SUCCESS
+persist: gravadas=161 versoes-novas=0 inalteradas=0 orgao-desconhecido=9278 repetidas=15 ignoradas=2244 falhou=0
+==> partição 2026-08-01, run 337e2748-4add-46e9-87c0-af7e3cb7a418
+2026-11-24 19:30:23 RUN_SUCCESS
+persist: gravadas=96 versoes-novas=0 inalteradas=0 orgao-desconhecido=8494 repetidas=0 ignoradas=120 falhou=0
+==> partição 2026-09-01, run 7dd1483d-c0d7-430a-8b71-568b129c2470
+2026-11-24 19:31:13 RUN_SUCCESS
+persist: gravadas=132 versoes-novas=0 inalteradas=0 orgao-desconhecido=8794 repetidas=1 ignoradas=2019 falhou=0
+2026-07-01|161
+2026-08-01|96
+2026-09-01|132
+######## make demo-backfill DE=2026-07 ATE=2026-09 OK em 146s
+######## make gold · 16:31:14
+Done. PASS=81 WARN=1 ERROR=0 SKIP=0 NO-OP=3 REUSED=0 TOTAL=85
+######## make gold OK em 22s
+######## make metricas · 16:31:36
+[INFO] done consultas=3 destino=/data/gold/metricas
+######## make metricas OK em 31s
+######## make alertas · 16:32:07
+[INFO] done novos=0 atualizados=0 inalterados=10
+######## make alertas OK em 18s
+######## make alertas · 16:32:25
+[INFO] done novos=0 atualizados=0 inalterados=10
+######## make alertas OK em 17s
+######## make dicionario · 16:32:42
+######## make dicionario OK em 22s
+######## make demo-retry · 16:33:04
+2026-11-24 19:33:24 STEP_UP_FOR_RETRY atos_do_mes | causa: dou persist saiu com 1: 2026-11-24 19:33:24,819 [ERROR] run aborted err=[Errno -2] Name or service not known
+2026-11-24 19:33:56 STEP_RESTARTED atos_do_mes
+2026-11-24 19:34:04 RUN_SUCCESS
+persist: gravadas=0 versoes-novas=0 inalteradas=96 orgao-desconhecido=8494 repetidas=0 ignoradas=120 falhou=0
+OK: a primeira tentativa caiu com o banco fora e o retry recuperou (rc=0)
+######## make demo-retry OK em 61s
+painel http 200
+== alertas por mês
+2026-07-01|citado_sem_ato_proprio|7
+2026-08-01|citado_sem_ato_proprio|7
+2026-09-01|citado_sem_ato_proprio|10
+== git status
+?? docs/adr/medicoes/0009-gold/backfill-2026-07-a-2026-09-20261124T192848Z.txt
+?? docs/adr/medicoes/0009-gold/retry-2026-08-20261124T193304Z.txt
+######## FIM · 16:34:19

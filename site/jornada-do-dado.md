@@ -107,7 +107,7 @@ A disciplina percorre os cinco estágios do ciclo de vida do dado. Cada estágio
 | **Armazenamento** | OLTP de curadoria em PostgreSQL 16 ([ADR 0002](/docs/adr/0002-manter-postgresql-como-motor-do-oltp)), com os 215 atos e as classificações da pesquisadora. | E1 ✅ |
 | **Ingestão** | O DOU em XML pelos dados abertos da Imprensa Nacional, um ZIP por mês ([ADR 0008](/docs/adr/0008-unificar-o-pipeline-em-python)), e as mudanças da curadoria por CDC, gravados em formato aberto (Delta, sobre Parquet). | E2 ✅ |
 | **Transformação** | A gold em estrela no dbt, com o indicador de vitalidade por conselho e as menções de outros órgãos ([ADR 0009](/docs/adr/0009-modelar-a-gold-em-estrela-com-dbt-e-orquestrar-com-dagster)). A tipologia proposta pela IA fica para depois. | E3 ✅ |
-| **Disponibilização** | O painel da vitalidade para a pesquisadora (`make painel`) e o assistente de perguntas (RAG). | E3 ✅ painel · E4 assistente |
+| **Disponibilização** | O painel da vitalidade para a pesquisadora (`make painel`) e o assistente de perguntas (RAG). | E3 ✅ painel · E4 ✅ camada semântica e alertas |
 
 ## Etapa 1 · Replicar a planilha
 

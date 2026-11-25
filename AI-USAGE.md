@@ -1167,3 +1167,36 @@ tradução. Registre o que produziu artefato ou mudou uma decisão.
 - **O que foi aproveitado:** a conversa com `st.chat_input` e `st.chat_message`, as últimas 20 perguntas na memória do painel e o botão "Limpar conversa". Cada pergunta segue independente: a conversa anterior não vai para a API.
 - **Como foi verificado:** 46 testes do painel OK, três deles novos; no navegador, sem chave: duas perguntas seguidas continuam na tela depois de recarregar a página. O `make test` inteiro não rodou.
 - **Quem revisou:** pendente.
+
+### 2026-11-24 — Página da E4, retrospectiva em rascunho e roteiro da defesa (#102, parte 1)
+
+- **Ferramenta:** Claude Code (Claude Fable 5.2)
+- **Onde:**
+  - `site/entrega-e4.md`, `docs/diario/2026-11-24.md`, `docs/defesa.md`;
+  - `site/arquitetura.md`, `site/jornada-do-dado.md`, `site/.vitepress/theme/ArquiteturaInterativa.vue`, `site/.vitepress/config.mts`;
+  - `README.md`.
+- **O que foi pedido:** a Tarefa 9 do plano da E4, até onde dá sem a squad.
+- **O que foi aproveitado:**
+  - a página da entrega, no molde da E3, com a prova de cada item do checklist;
+  - o roteiro da defesa do plano, com uma seção "Antes de começar" e a ressalva de que o passo da página Perguntar depende da #109;
+  - a arquitetura com a E4 entregue. O texto da caixa Revisar foi corrigido: a página marca o alerta como tratado, e não reclassifica ato;
+  - a retrospectiva **como rascunho**. As colunas de fato saem dos ADRs 0001 a 0011 e do diário de 10/11; a coluna "o que faríamos diferente" é sugestão da IA, e a squad precisa confirmar ou trocar cada linha.
+- **Como foi verificado:**
+  - cada número da página e do diário vem de um arquivo de `docs/adr/medicoes/0011-disponibilizacao/` ou de `docs/lgpd/medicoes.txt`;
+  - `npm --prefix site run build`: `build complete`, sem link morto.
+- **O que não foi feito:** a coluna "Quem" da defesa e a tag `e4`.
+- **Quem revisou:** Luiza, no PR #122. Da revisão entraram:
+  - o diário diz de qual banco é cada contagem da LGPD;
+  - o roteiro diz que o banco de trabalho tem outubro no OLTP, ainda fora da silver;
+  - o passo 5 da demonstração ganhou o comando que mostra o `permission denied`, conferido no banco local.
+
+  A coluna "o que faríamos diferente", a coluna "Quem" e quem trabalhou no diário continuam com a squad.
+- **Atualização depois dos merges de #106 a #109 e #112:** a página ganhou a seção "Além do checklist" (P2, dicionário e assistente de perguntas), o diário lista o que entrou, e o roteiro deixa de condicionar o passo Perguntar à #109. Os três dizem que o assistente ainda não rodou com a API de verdade.
+- **Clone limpo (24/11):** a IA rodou a sequência do plano num clone do `main` (`33fc836`), com projeto compose e volume próprios, e extraiu o resumo `clone-limpo-20261124.txt` do log. Tudo passou. A conferência mostrou duas diferenças do que a página dizia, já corrigidas: o `make alertas` depois do backfill dá `inalterados=10`, e a tabela fica com 24 alertas abertos.
+- **Correção depois da segunda review** (Claude Code, Claude Opus 5.5):
+  - o roteiro dizia que outubro estava fora da silver no banco de trabalho. O dado veio de uma review feita pela IA e estava errado: o `demo-backfill` de setembro da #97 sincroniza o OLTP inteiro e levou outubro junto. A defesa passa a usar um clone limpo, de julho a setembro;
+  - os casos do `test_acesso.sh` passam de 14 para 19, com os do `app_perguntas`, e o `acesso.txt` foi refeito num banco criado do zero com o `make setup`;
+  - o roteiro ganhou `make migrate` e as portas, e a `docs/lgpd.md` deixa de dizer que o banco de trabalho é o da defesa.
+- **Atualização depois do #129 e do #130** (Claude Code, Claude Opus 5.5): a página, o roteiro e o diário dizem o que o assistente respondeu com a API de verdade, em quatro perguntas, e o que ele não mostra ainda (prints, avaliação e ADR 0012). Três das perguntas foram feitas pela Luiza, e uma pela IA, com o ok dela.
+- **Segunda conferência em clone limpo** (Claude Code, Claude Opus 5.5): a mesma sequência no `e08632d`, com portas próprias. Tudo passou; o resumo é o `clone-limpo-20261124-e08632d.txt`, extraído do log.
+- **Prints do assistente e tempo da arguição** (Claude Code, Claude Opus 5.5): as duas perguntas e os prints são da Luiza, e a IA conferiu no banco os atos citados. O roteiro usava os 20 minutos com fala, e o enunciado inclui a arguição neles: a IA apontou e propôs 14 e 6. Os hashes citados ganharam o equivalente no `main` refeito; as provas ficaram como foram geradas.

@@ -1,0 +1,86 @@
+# Conferência da E4 num clone limpo do main (#102), 2026-11-24, horários locais (UTC-3) nos marcadores ########.
+# Clone: git clone https://github.com/Luidooo/conselhos-vivos numa pasta temporária, projeto compose próprio (conselhos-vivos-limpo, volume de banco novo).
+# Sem download: os ZIPs de julho a setembro de 2026 foram copiados do bronze de trabalho para o bronze do clone antes do make setup.
+# POSTGRES_PORT=5433 na sessão, porque a 5432 desta máquina está com outro Postgres; o .env do clone é o do make setup, sem edição.
+# Resumo extraído do log completo. O make test demorou pelo build das imagens, que o clone refaz.
+#
+# O que não é o que a página da entrega dizia:
+# - make alertas deu inalterados=10 nas duas rodadas, e não novos=10 na primeira. O job mensal já grava os alertas (#97),
+#   então o backfill gravou antes. Os 10 são os do último mês coberto, setembro.
+# - A tabela alerta ficou com 24 linhas abertas, todas "citado_sem_ato_proprio": 7 de julho, 7 de agosto e 10 de setembro.
+#   O backfill roda mês a mês, cada mês grava os alertas do seu mês de referência, e alerta antigo não fecha sozinho (ADR 0011).
+#   A página Revisar mostra os 24.
+# - make gold: WARN=1 é o sla_vitalidade (setembro é o último mês coberto, e hoje é 24/11); NO-OP=3 são as consultas salvas.
+
+######## parar o ambiente de trabalho (stop, sem apagar dados) · 14:12:28
+######## clone · 14:12:31
+commit: 33fc836 feat(dicionario): dicionário de dados gerado do banco e do dbt (#112) (#127)
+######## bronze: ZIPs de julho a setembro copiados do ambiente de trabalho · 14:12:32
+######## make setup · 14:12:33
+######## make setup OK em 18s
+######## make test · 14:12:51
+Ran 46 tests in 4.171s
+OK
+Ran 9 tests in 1.440s
+OK
+Ran 37 tests in 15.635s
+OK
+Ran 16 tests in 0.228s
+OK
+Ran 3 tests in 0.002s
+OK
+Ran 6 tests in 0.000s
+OK
+OK
+OK
+Ran 21 tests in 2.118s
+OK
+Ran 28 tests in 1.474s
+OK
+Ran 5 tests in 0.044s
+OK
+Ran 4 tests in 0.001s
+OK
+OK
+==> [test_lake] OK: Camada analítica Delta Lake validada com sucesso (215 atos)!
+==> [test_atrasado] OK: ato de 2024 chegado hoje está no OLTP e em ano=2024 no Delta; reexecução não duplica
+==> [test_cdc] OK: reclassificação, simulação de queda com reprocessamento e restauração passaram com sucesso
+Ran 29 tests in 0.825s
+OK
+######## make test OK em 781s
+######## make demo-backfill DE=2026-07 ATE=2026-09 · 14:25:52
+==> partição 2026-07-01, run 670083cc-8a2f-44d6-bbd2-2cd45b489778
+2026-11-24 17:28:31 RUN_SUCCESS
+persist: gravadas=161 versoes-novas=0 inalteradas=0 orgao-desconhecido=9278 repetidas=15 ignoradas=2244 falhou=0
+==> partição 2026-08-01, run 1ce35a9b-29a4-4d16-aa6f-9ccdca8d6e97
+2026-11-24 17:31:21 RUN_SUCCESS
+persist: gravadas=96 versoes-novas=0 inalteradas=0 orgao-desconhecido=8494 repetidas=0 ignoradas=120 falhou=0
+==> partição 2026-09-01, run 20861f91-a3d4-4478-a412-b7c92057c46c
+2026-11-24 17:34:23 RUN_SUCCESS
+persist: gravadas=132 versoes-novas=0 inalteradas=0 orgao-desconhecido=8794 repetidas=1 ignoradas=2019 falhou=0
+2026-07-01|161
+2026-08-01|96
+2026-09-01|132
+######## make demo-backfill DE=2026-07 ATE=2026-09 OK em 513s
+######## make gold · 14:34:25
+Done. PASS=79 WARN=1 ERROR=0 SKIP=0 NO-OP=3 REUSED=0 TOTAL=83
+######## make gold OK em 66s
+######## make metricas · 14:35:31
+[INFO] done consultas=3 destino=/data/gold/metricas
+######## make metricas OK em 82s
+######## make alertas · 14:36:53
+[INFO] done novos=0 atualizados=0 inalterados=10
+######## make alertas OK em 44s
+######## make alertas · 14:37:37
+[INFO] done novos=0 atualizados=0 inalterados=10
+######## make alertas OK em 44s
+######## make dicionario · 14:38:21
+######## make dicionario OK em 64s
+######## make demo-retry · 14:39:25
+2026-11-24 17:40:26 STEP_UP_FOR_RETRY atos_do_mes | causa: dou persist saiu com 1: 2026-11-24 17:40:26,177 [ERROR] run aborted err=[Errno -3] Temporary failure in name resolution
+2026-11-24 17:41:00 STEP_RESTARTED atos_do_mes
+2026-11-24 17:41:25 RUN_SUCCESS
+persist: gravadas=0 versoes-novas=0 inalteradas=96 orgao-desconhecido=8494 repetidas=0 ignoradas=120 falhou=0
+OK: a primeira tentativa caiu com o banco fora e o retry recuperou (rc=0)
+######## make demo-retry OK em 122s
+######## FIM: tudo passou · 14:41:27

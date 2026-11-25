@@ -45,6 +45,7 @@ export default withMermaid(defineConfig({
   rewrites: {
     'site/index.md': 'index.md',
     'site/entrega-e1.md': 'entrega-e1.md',
+    'site/entrega-e4.md': 'entrega-e4.md',
     'site/entrega-e3.md': 'entrega-e3.md',
     'site/dicionario.md': 'dicionario.md',
     'site/entrega-e2.md': 'entrega-e2.md',
@@ -94,6 +95,7 @@ export default withMermaid(defineConfig({
   themeConfig: {
     siteTitle: 'Conselhos Vivos',
     nav: [
+      { text: 'Entrega E4', link: '/entrega-e4' },
       { text: 'Entrega E3', link: '/entrega-e3' },
       { text: 'Entrega E2', link: '/entrega-e2' },
       { text: 'Entrega E1', link: '/entrega-e1' },
@@ -103,12 +105,13 @@ export default withMermaid(defineConfig({
       { text: 'Visão geral', link: '/visao-geral' },
       { text: 'Decisões', link: '/docs/adr/' },
       { text: 'Dados', link: '/docs/carga/relatorio-planilha' },
-      { text: 'Processo', link: '/docs/diario/2026-11-10' },
+      { text: 'Processo', link: '/docs/diario/2026-11-24' },
     ],
     sidebar: [
       {
         text: 'Comece aqui',
         items: [
+          { text: 'Entrega E4', link: '/entrega-e4' },
           { text: 'Entrega E3', link: '/entrega-e3' },
           { text: 'Entrega E2', link: '/entrega-e2' },
           { text: 'Entrega E1', link: '/entrega-e1' },
@@ -154,6 +157,8 @@ export default withMermaid(defineConfig({
           { text: 'Diário · semana 9 (06/10)', link: '/docs/diario/2026-10-06' },
           { text: 'Diário · semana 10 (13/10)', link: '/docs/diario/2026-10-13' },
           { text: 'Diário · semana 14 (10/11)', link: '/docs/diario/2026-11-10' },
+          { text: 'Diário · semana 16 (24/11), com a retrospectiva', link: '/docs/diario/2026-11-24' },
+          { text: 'Roteiro da defesa (E4)', link: '/docs/defesa' },
           { text: 'Plano · migração do Go para Python', link: '/docs/planos/2026-10-13-migracao-ingestor-go-para-python' },
           { text: 'Plano · camada analítica da E3', link: '/docs/planos/2026-11-03-e3-camada-analitica' },
           { text: 'Plano · menções de outros órgãos', link: '/docs/planos/2026-11-09-mencoes-de-terceiros' },
